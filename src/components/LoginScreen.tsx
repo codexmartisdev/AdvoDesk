@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+} from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { LOGO_IMAGE_URL } from '../data/mockData';
 
@@ -19,6 +24,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Check redirect login results on mount
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log('Google Redirect login success:', result.user);
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect login error:', err);
+        if (err?.code) {
+          setError(getPortugueseErrorMessage(err.code));
+        }
+      });
+  }, []);
+
   const getPortugueseErrorMessage = (errCode: string): string => {
     switch (errCode) {
       case 'auth/invalid-credential':
@@ -28,9 +49,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       case 'auth/invalid-email':
         return 'Endereço de e-mail inválido.';
       case 'auth/too-many-requests':
-        return 'Muitas tentativas malsucedidas. Tente novamente mais tarde.';
+        return 'Muitas tentativas de login. Por favor, aguarde alguns minutos e tente novamente.';
       case 'auth/popup-closed-by-user':
-        return 'A janela de login do Google foi fechada antes da conclusão.';
+        return 'A janela de autenticação do Google foi fechada antes da conclusão.';
+      case 'auth/unauthorized-domain':
+        return 'Atenção: O domínio deste site precisa ser liberado no Firebase Console (Authentication > Configurações > Domínios Autorizados). Para testar imediatamente, utilize o "Acesso Rápido de Demonstração" ou login por E-mail.';
+      case 'auth/operation-not-allowed':
+        return 'O login com Google não está habilitado no Firebase Console. Ative o provedor Google no painel do Firebase.';
+      case 'auth/popup-blocked':
+        return 'O pop-up de login foi bloqueado pelo seu navegador. Tente liberar os pop-ups ou tente novamente.';
+      case 'auth/account-exists-with-different-credential':
+        return 'Já existe uma conta cadastrada com este e-mail utilizando outro método de autenticação.';
       default:
         return 'Falha ao autenticar. Verifique seus dados e conexão.';
     }
@@ -63,9 +92,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
-      console.error('Google Auth error:', err);
-      const msg = getPortugueseErrorMessage(err?.code || '');
-      setError(msg);
+      console.error('Google Auth Popup Error:', err);
+      const code = err?.code || '';
+
+      // Fallback to redirect if popup was blocked or failed in iframe
+      if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr: any) {
+          console.error('Google Auth Redirect Error:', redirectErr);
+          setError(getPortugueseErrorMessage(redirectErr?.code || ''));
+        }
+      } else {
+        setError(getPortugueseErrorMessage(code));
+      }
     } finally {
       setLoading(false);
     }
