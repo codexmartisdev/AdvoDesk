@@ -1,0 +1,6 @@
+{
+  "name": "Bizerra Neto Advocacia",
+  "description": "Sistema de gestão jurídica, acompanhamento de prazos, carteira de clientes e gerador de minutas do escritório Bizerra Neto Advocacia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

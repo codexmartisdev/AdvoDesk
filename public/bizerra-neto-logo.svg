@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <style>
+    .arch-text {
+      font-family: 'Cinzel', 'Playfair Display', 'Times New Roman', serif;
+      font-size: 38px;
+      font-weight: 700;
+      fill: #5c7899;
+      letter-spacing: 7px;
+    }
+    .mono-dark {
+      fill: #16325c;
+    }
+  </style>
+  <defs>
+    <!-- Top arch path for BIZERRA NETO -->
+    <path id="topArch" d="M 80 250 A 170 170 0 0 1 420 250" fill="none" />
+    <!-- Bottom arch path for ADVOCACIA -->
+    <path id="bottomArch" d="M 420 250 A 170 170 0 0 1 80 250" fill="none" />
+  </defs>
+
+  <!-- Arched Text Top: BIZERRA NETO -->
+  <text class="arch-text">
+    <textPath href="#topArch" startOffset="50%" text-anchor="middle">BIZERRA NETO</textPath>
+  </text>
+
+  <!-- Left and Right Dots -->
+  <circle cx="65" cy="250" r="11" fill="#16325c" />
+  <circle cx="435" cy="250" r="11" fill="#16325c" />
+
+  <!-- Arched Text Bottom: ADVOCACIA -->
+  <text class="arch-text">
+    <textPath href="#bottomArch" startOffset="50%" text-anchor="middle">ADVOCACIA</textPath>
+  </text>
+
+  <!-- Center Monogram Group (NBJ with Classical Pillar accents) -->
+  <g class="mono-dark" transform="translate(145, 155)">
+    <!-- Classical Pillar Base (Left) -->
+    <path d="M 10 185 L 70 185 L 70 175 L 15 175 L 15 170 L 65 170 L 60 160 L 20 160 Z" />
+    <!-- Left Column Stem -->
+    <rect x="25" y="30" width="20" height="130" rx="1" />
+
+    <!-- N Left Serif Cap -->
+    <path d="M 12 30 L 58 30 L 58 20 L 12 20 Z" />
+
+    <!-- N Diagonal Stroke -->
+    <polygon points="25,30 45,30 185,175 165,175" />
+
+    <!-- B Loops & Monogram Intertwine -->
+    <!-- B Upper Loop -->
+    <path d="M 80 30 L 125 30 C 155 30 155 85 125 85 L 80 85 Z M 100 48 L 120 48 C 135 48 135 67 120 67 L 100 67 Z" fill-rule="evenodd" />
+    
+    <!-- B Lower Loop -->
+    <path d="M 80 85 L 135 85 C 170 85 170 150 130 150 L 80 150 Z M 100 102 L 128 102 C 146 102 146 133 128 133 L 100 133 Z" fill-rule="evenodd" />
+
+    <!-- J / Pillar Stem Right -->
+    <rect x="165" y="30" width="20" height="135" rx="1" />
+    <!-- Classical Pillar Capital Top (Right) -->
+    <path d="M 152 30 L 198 30 L 198 20 L 152 20 L 152 14 L 198 14 L 202 5 L 148 5 Z" />
+
+    <!-- J Hook Bottom Right -->
+    <path d="M 185 150 C 185 180 145 185 130 175 L 138 158 C 148 165 167 165 167 150 Z" />
+  </g>
+</svg>

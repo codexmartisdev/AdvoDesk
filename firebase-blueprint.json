@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "A client of the law firm",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Client code" },
+        "name": { "type": "string", "description": "Full name of client" },
+        "avatarUrl": { "type": "string", "description": "Client avatar image URL" },
+        "typePill": { "type": "string", "description": "Type tag e.g. BPC Loas" },
+        "status": { "type": "string", "description": "Client status" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp" },
+        "cpf": { "type": "string", "description": "CPF number" },
+        "email": { "type": "string", "description": "Email address" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "casesCount": { "type": "number", "description": "Number of cases" },
+        "socialName": { "type": "string" },
+        "rgNumber": { "type": "string" },
+        "rgIssuer": { "type": "string" },
+        "rgUf": { "type": "string" },
+        "rgIssueDate": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "nationality": { "type": "string" },
+        "birthplace": { "type": "string" },
+        "gender": { "type": "string" },
+        "motherName": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "maritalStatus": { "type": "string" },
+        "propertyRegime": { "type": "string" },
+        "spouseName": { "type": "string" },
+        "phoneSecondary": { "type": "string" },
+        "addressStreet": { "type": "string" },
+        "addressNumber": { "type": "string" },
+        "addressComplement": { "type": "string" },
+        "addressNeighborhood": { "type": "string" },
+        "addressCityUf": { "type": "string" },
+        "addressZip": { "type": "string" },
+        "addressZone": { "type": "string" },
+        "occupation": { "type": "string" },
+        "monthlyIncome": { "type": "string" },
+        "employmentStatus": { "type": "string" },
+        "inssContributionRegime": { "type": "string" },
+        "nitPisPasep": { "type": "string" },
+        "benefitNumber": { "type": "string" },
+        "bankName": { "type": "string" },
+        "bankAgency": { "type": "string" },
+        "bankAccount": { "type": "string" },
+        "pixKey": { "type": "string" }
+      },
+      "required": ["name", "cpf", "email", "phone"]
+    },
+    "LegalCase": {
+      "title": "LegalCase",
+      "description": "A legal case or process handled by the firm",
+      "type": "object",
+      "properties": {
+        "caseNumber": { "type": "string" },
+        "processNumber": { "type": "string" },
+        "court": { "type": "string" },
+        "agencyOrCourt": { "type": "string" },
+        "category": { "type": "string" },
+        "benefitType": { "type": "string" },
+        "instance": { "type": "string" },
+        "title": { "type": "string" },
+        "statusLabel": { "type": "string" },
+        "finalResult": { "type": "string" },
+        "concededValue": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientCpf": { "type": "string" },
+        "filingDate": { "type": "string" },
+        "lastMovementDate": { "type": "string" },
+        "nextDeadlineDate": { "type": "string" },
+        "nextDeadlineType": { "type": "string" },
+        "agreedFees": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "quickNotes": { "type": "string" },
+        "deadlinesCount": { "type": "number" },
+        "currentStepIndex": { "type": "number" }
+      },
+      "required": ["title", "category", "statusLabel", "clientId"]
+    },
+    "DocumentTemplate": {
+      "title": "DocumentTemplate",
+      "description": "A document template minuta",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "badge": { "type": "string" },
+        "icon": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "format": { "type": "string" },
+        "contentPattern": { "type": "string" }
+      },
+      "required": ["title", "category", "description"]
+    },
+    "ScheduledEvent": {
+      "title": "ScheduledEvent",
+      "description": "A scheduled event, hearing, or deadline on calendar",
+      "type": "object",
+      "properties": {
+        "dateStr": { "type": "string" },
+        "fullDate": { "type": "string" },
+        "time": { "type": "string" },
+        "type": { "type": "string" },
+        "badgeColor": { "type": "string" },
+        "title": { "type": "string" },
+        "caseId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "benefitType": { "type": "string" },
+        "processNumber": { "type": "string" },
+        "eventType": { "type": "string" },
+        "location": { "type": "string" },
+        "status": { "type": "string" },
+        "priorityLevel": { "type": "string" },
+        "notes": { "type": "string" },
+        "reminderDays": { "type": "number" }
+      },
+      "required": ["title", "fullDate", "status"]
+    },
+    "FirmSettings": {
+      "title": "FirmSettings",
+      "description": "Office branding and settings configuration",
+      "type": "object",
+      "properties": {
+        "firmName": { "type": "string" },
+        "firmSubtitle": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "lawyerName": { "type": "string" },
+        "lawyerTitle": { "type": "string" },
+        "lawyerAvatarUrl": { "type": "string" },
+        "oabNumber": { "type": "string" }
+      },
+      "required": ["firmName"]
+    }
+  },
+  "firestore": {
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Collection of clients"
+    },
+    "/cases/{caseId}": {
+      "schema": "LegalCase",
+      "description": "Collection of legal cases"
+    },
+    "/templates/{templateId}": {
+      "schema": "DocumentTemplate",
+      "description": "Collection of document templates"
+    },
+    "/events/{eventId}": {
+      "schema": "ScheduledEvent",
+      "description": "Collection of calendar scheduled events"
+    },
+    "/settings/firmSettings": {
+      "schema": "FirmSettings",
+      "description": "Firm settings singleton document"
+    }
+  }
+}
