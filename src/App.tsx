@@ -82,16 +82,16 @@ export default function App() {
     testConnection();
     seedInitialFirestoreData().then(() => {
       const unsubClients = subscribeToClients((remoteClients) => {
-        if (remoteClients.length > 0) setClients(remoteClients);
+        setClients(remoteClients);
       });
       const unsubCases = subscribeToCases((remoteCases) => {
-        if (remoteCases.length > 0) setCases(remoteCases);
+        setCases(remoteCases);
       });
       const unsubTemplates = subscribeToTemplates((remoteTemplates) => {
-        if (remoteTemplates.length > 0) setTemplates(remoteTemplates);
+        setTemplates(remoteTemplates);
       });
       const unsubEvents = subscribeToEvents((remoteEvents) => {
-        if (remoteEvents.length > 0) setEvents(remoteEvents);
+        setEvents(remoteEvents);
       });
       const unsubSettings = subscribeToSettings((remoteSettings) => {
         if (remoteSettings && remoteSettings.firmName) setSettings(remoteSettings);
@@ -272,9 +272,14 @@ export default function App() {
   };
 
   const handleUpdateClientField = (clientId: string, fieldKey: keyof Client, value: any) => {
-    setClients((prev) =>
-      prev.map((c) => (c.id === clientId ? { ...c, [fieldKey]: value } : c))
-    );
+    setClients((prev) => {
+      const updated = prev.map((c) => (c.id === clientId ? { ...c, [fieldKey]: value } : c));
+      const target = updated.find((c) => c.id === clientId);
+      if (target) {
+        saveClientInFirestore(target);
+      }
+      return updated;
+    });
   };
 
   const handleSelectClientForDoc = (clientName: string, clientCpf: string) => {
