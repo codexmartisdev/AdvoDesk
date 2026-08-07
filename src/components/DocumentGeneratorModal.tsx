@@ -13,6 +13,7 @@ interface DocumentGeneratorModalProps {
   initialClientCpf?: string;
   initialGeneratedText?: string;
   settings?: FirmSettings;
+  onSaveTemplate?: (template: DocumentTemplate) => void;
 }
 
 export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
@@ -34,6 +35,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
     practiceAreas: [],
     clientCategories: [],
   },
+  onSaveTemplate,
 }) => {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [clientName, setClientName] = useState(initialClientName || 'João Silva e Oliveira');
@@ -45,8 +47,22 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
+  const [templateSaveStatus, setTemplateSaveStatus] = useState<string | null>(null);
+  const [isTemplateModified, setIsTemplateModified] = useState(false);
 
   const docPrintRef = useRef<HTMLDivElement>(null);
+
+  const handleSaveAsTemplatePattern = () => {
+    if (!template || !generatedDoc || !onSaveTemplate) return;
+    const updatedTemplate: DocumentTemplate = {
+      ...template,
+      contentPattern: generatedDoc,
+    };
+    onSaveTemplate(updatedTemplate);
+    setIsTemplateModified(false);
+    setTemplateSaveStatus('Modelo de minuta salvo com sucesso no banco de dados para os próximos usos!');
+    setTimeout(() => setTemplateSaveStatus(null), 5000);
+  };
 
   useEffect(() => {
     if (initialClientName) setClientName(initialClientName);
@@ -249,8 +265,8 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
       }
 
       // 4. Signatures
-      checkAddPage(40);
-      currentY += 8;
+      checkAddPage(55);
+      currentY += 28; // Espaçamento amplo antes da linha de assinatura física
 
       const colWidth = 65;
       const col1X = marginLeft + 8;
@@ -261,28 +277,28 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
       pdf.setLineWidth(0.3);
       pdf.line(col1X, currentY, col1X + colWidth, currentY);
       pdf.line(col2X, currentY, col2X + colWidth, currentY);
-      currentY += 4;
+      currentY += 5;
 
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(9);
       pdf.setTextColor(15, 23, 42);
       pdf.text((clientName || 'CLIENTE').toUpperCase(), col1X + colWidth / 2, currentY, { align: 'center' });
       pdf.text((settings.lawyerName || 'Dr. Francisco Bizerra Neto').toUpperCase(), col2X + colWidth / 2, currentY, { align: 'center' });
-      currentY += 3.8;
+      currentY += 4;
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
       pdf.setTextColor(71, 85, 105);
       pdf.text(`CPF: ${clientCpf}`, col1X + colWidth / 2, currentY, { align: 'center' });
       pdf.text(settings.oabNumber || 'OAB-PI nº 24.334', col2X + colWidth / 2, currentY, { align: 'center' });
-      currentY += 3.5;
+      currentY += 4;
 
       pdf.setFont('helvetica', 'italic');
       pdf.setFontSize(7.5);
       pdf.setTextColor(148, 163, 184);
       pdf.text('Contratante / Outorgante', col1X + colWidth / 2, currentY, { align: 'center' });
       pdf.text('Advogado Sócio / Outorgado', col2X + colWidth / 2, currentY, { align: 'center' });
-      currentY += 10;
+      currentY += 14;
 
       // 5. Footer
       checkAddPage(15);
@@ -350,6 +366,15 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
 
           if (trimmed === '') {
             return <div key={lineIdx} className="h-3" />;
+          }
+
+          // If line is an explicit physical signature line in text (e.g., ____ or X___)
+          if (trimmed.startsWith('X____') || trimmed.startsWith('_____') || trimmed.startsWith('X___') || (trimmed.startsWith('X') && trimmed.includes('_____'))) {
+            return (
+              <div key={lineIdx} className="pt-16 md:pt-20 pb-2 font-mono text-slate-800 text-center">
+                {line}
+              </div>
+            );
           }
 
           // Process inline **bold** text for standard lines
@@ -614,18 +639,18 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                     </div>
 
                     {/* SIGNATURES & FOOTER */}
-                    <div className="pt-6 space-y-8 shrink-0">
+                    <div className="pt-16 md:pt-24 space-y-10 shrink-0">
                       {/* Signatures */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-center text-xs font-sans pt-4">
-                        <div className="space-y-1">
-                          <div className="w-48 md:w-56 mx-auto border-b border-slate-800 pb-1" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-center text-xs font-sans pt-8">
+                        <div className="space-y-2">
+                          <div className="w-52 md:w-64 mx-auto border-b-2 border-slate-900 pb-1" />
                           <p className="font-bold text-slate-900 uppercase text-[11px]">{clientName}</p>
                           <p className="text-[10px] text-slate-600">CPF: {clientCpf}</p>
                           <p className="text-[9px] text-slate-400 italic">Contratante / Outorgante</p>
                         </div>
 
-                        <div className="space-y-1">
-                          <div className="w-48 md:w-56 mx-auto border-b border-slate-800 pb-1" />
+                        <div className="space-y-2">
+                          <div className="w-52 md:w-64 mx-auto border-b-2 border-slate-900 pb-1" />
                           <p className="font-bold uppercase text-[11px]" style={{ color: '#0A1F44' }}>
                             {settings.lawyerName || 'Dr. Francisco Bizerra Neto'}
                           </p>
@@ -653,12 +678,45 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                 </div>
               </div>
             ) : (
-              <textarea
-                value={generatedDoc}
-                onChange={(e) => setGeneratedDoc(e.target.value)}
-                rows={16}
-                className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-4 font-mono text-xs text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0A1F44] shadow-inner"
-              />
+              <div className="space-y-3">
+                {templateSaveStatus && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center justify-between animate-in fade-in">
+                    <div className="flex items-center space-x-2">
+                      <span className="material-symbols-outlined text-sm text-emerald-600">check_circle</span>
+                      <span>{templateSaveStatus}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-slate-100 p-2.5 rounded-xl border border-slate-200">
+                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-slate-500">edit_note</span>
+                    <span>Editando Texto da Minuta</span>
+                  </span>
+
+                  {template && onSaveTemplate && (
+                    <button
+                      onClick={handleSaveAsTemplatePattern}
+                      className="px-3.5 py-1.5 bg-[#0A1F44] hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                      title="Salvar estas alterações como padrão oficial do Modelo no banco de dados"
+                    >
+                      <span className="material-symbols-outlined text-xs">save</span>
+                      <span>Salvar Alterações no Modelo (Para Uso Futuro)</span>
+                    </button>
+                  )}
+                </div>
+
+                <textarea
+                  value={generatedDoc || ''}
+                  onChange={(e) => {
+                    setGeneratedDoc(e.target.value);
+                    setIsTemplateModified(true);
+                    setTemplateSaveStatus(null);
+                  }}
+                  rows={18}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-4 font-mono text-xs text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0A1F44] shadow-inner"
+                />
+              </div>
             )}
 
             {/* Bottom Actions */}
@@ -670,7 +728,15 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                 Voltar e Ajustar Parâmetros
               </button>
               <button
-                onClick={onClose}
+                onClick={() => {
+                  if (isTemplateModified && template && generatedDoc && onSaveTemplate) {
+                    onSaveTemplate({
+                      ...template,
+                      contentPattern: generatedDoc,
+                    });
+                  }
+                  onClose();
+                }}
                 className="flex-1 bg-[#0A1F44] hover:bg-slate-900 py-3 rounded-xl text-white text-xs font-extrabold flex items-center justify-center gap-2 transition-all shadow-md"
               >
                 <span className="material-symbols-outlined text-sm">check_circle</span>

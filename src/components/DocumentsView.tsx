@@ -539,16 +539,19 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
                   <label className="block text-xs font-bold text-slate-800">
                     Estrutura ou Conteúdo Padrão da Minuta
                   </label>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    Variáveis: {'{CLIENTE_NOME}'}, {'{CLIENTE_CPF}'}, {'{DATA_ATUAL}'}
+                  <span className="text-[10px] text-blue-900 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    Salvo no Banco de Dados
                   </span>
                 </div>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  Qualquer alteração neste texto ficará salva permanentemente no sistema para todas as próximas gerações.
+                </p>
                 <textarea
-                  rows={5}
-                  placeholder="Insira o texto base da minuta aqui ou deixe em branco para geração por Inteligência Artificial..."
+                  rows={12}
+                  placeholder="Insira o texto base da minuta aqui com as variáveis {CLIENTE_NOME}, {CLIENTE_CPF}, {CIDADE_DATA_EXTENSO}, etc..."
                   value={formContentPattern}
                   onChange={(e) => setFormContentPattern(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-900/20"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-900/20 leading-relaxed"
                 />
               </div>
 
