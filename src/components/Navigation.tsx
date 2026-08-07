@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { User } from 'firebase/auth';
 import { NavigationTab, FirmSettings } from '../types';
 import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
 
@@ -10,6 +11,8 @@ interface NavigationProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   settings?: FirmSettings;
+  user?: User | null;
+  onLogout?: () => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -28,6 +31,8 @@ export const Navigation: React.FC<NavigationProps> = ({
     lawyerAvatarUrl: USER_AVATAR_URL,
     oabNumber: 'OAB/SP 412.001',
   },
+  user,
+  onLogout,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -251,23 +256,35 @@ export const Navigation: React.FC<NavigationProps> = ({
 
           {/* Profile Card in Sidebar Footer */}
           <div className="pt-2">
-            <div
-              onClick={() => onTabChange('settings')}
-              className="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 transition-colors cursor-pointer"
-            >
-              <img
-                src={settings.lawyerAvatarUrl}
-                alt="Lawyer Avatar"
-                className="w-9 h-9 rounded-full object-cover border border-slate-300 shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900 text-[11px] truncate leading-tight">
-                  {settings.lawyerName}
-                </p>
-                <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
-                  {settings.oabNumber}
-                </p>
+            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+              <div 
+                onClick={() => onTabChange('settings')}
+                className="flex items-center space-x-2.5 min-w-0 cursor-pointer flex-1"
+              >
+                <img
+                  src={user?.photoURL || settings.lawyerAvatarUrl}
+                  alt="Avatar"
+                  className="w-8 h-8 rounded-full object-cover border border-slate-300 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-900 text-[11px] truncate leading-tight">
+                    {user?.displayName || settings.lawyerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
+                    {user?.email || settings.oabNumber}
+                  </p>
+                </div>
               </div>
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  title="Sair do Sistema"
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors shrink-0 ml-1"
+                >
+                  <span className="material-symbols-outlined text-[18px]">logout</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -398,16 +415,31 @@ export const Navigation: React.FC<NavigationProps> = ({
             </div>
 
             <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200">
-                <img
-                  src={settings.lawyerAvatarUrl}
-                  alt="Avatar"
-                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                />
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 text-[11px] truncate">{settings.lawyerName}</p>
-                  <p className="text-[10px] text-slate-500 truncate">{settings.oabNumber}</p>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                  <img
+                    src={user?.photoURL || settings.lawyerAvatarUrl}
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-900 text-[11px] truncate">{user?.displayName || settings.lawyerName}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{user?.email || settings.oabNumber}</p>
+                  </div>
                 </div>
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors shrink-0 ml-1"
+                    title="Sair do Sistema"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">logout</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -35,7 +35,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const upcomingEvents = [...events].filter(e => e.status === 'Pendente').slice(0, 5);
 
   return (
-    <main className="md:ml-64 pt-24 pb-12 px-4 sm:px-6 md:px-8 min-h-screen relative z-10 flex flex-col space-y-6 md:space-y-8 max-w-7xl mx-auto">
+    <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen relative z-10 flex flex-col space-y-6 md:space-y-8 max-w-7xl mx-auto">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/60">
         <div>

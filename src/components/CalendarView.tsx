@@ -236,7 +236,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const pendingCount = events.filter((e) => e.status === 'Pendente').length;
 
   return (
-    <main className="md:ml-64 pt-24 pb-12 px-4 sm:px-6 md:px-8 min-h-screen relative z-10 max-w-7xl mx-auto space-y-6">
+    <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen relative z-10 max-w-7xl mx-auto space-y-6">
       {/* Header & Controls */}
       <div className="flex flex-col md:flex-row md:items-end justify-between pb-2 border-b border-slate-200/60 gap-4">
         <div>

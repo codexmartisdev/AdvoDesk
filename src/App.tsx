@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { NavigationTab, Client, LegalCase, DocumentTemplate, ScheduledEvent, FirmSettings } from './types';
 import {
   INITIAL_CLIENTS,
@@ -8,7 +9,7 @@ import {
   LOGO_IMAGE_URL,
   USER_AVATAR_URL,
 } from './data/mockData';
-import { testConnection } from './lib/firebase';
+import { auth, testConnection } from './lib/firebase';
 import {
   seedInitialFirestoreData,
   subscribeToClients,
@@ -33,14 +34,34 @@ import { CasesView } from './components/CasesView';
 import { DocumentsView } from './components/DocumentsView';
 import { CalendarView } from './components/CalendarView';
 import { SettingsView } from './components/SettingsView';
+import { LoginScreen } from './components/LoginScreen';
 import { NewCaseModal } from './components/NewCaseModal';
 import { DocumentGeneratorModal } from './components/DocumentGeneratorModal';
 import { ClientSelectorDocumentModal } from './components/ClientSelectorDocumentModal';
 import { VariablesGuideModal } from './components/VariablesGuideModal';
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Firebase Auth State Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   // Branding & Lawyer settings state
   const [settings, setSettings] = useState<FirmSettings>({
@@ -289,6 +310,25 @@ export default function App() {
     setDocModalOpen(true);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4" />
+        <p className="text-white text-xs font-bold uppercase tracking-widest">Carregando Sistema Jurídico...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <LoginScreen
+        firmName={settings.firmName}
+        firmSubtitle={settings.firmSubtitle}
+        logoUrl={settings.logoUrl}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-body-md text-sm relative overflow-x-hidden">
       {/* Background Ambient Glow */}
@@ -314,6 +354,8 @@ export default function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         settings={settings}
+        user={user}
+        onLogout={handleLogout}
       />
 
       {/* Main View Router */}

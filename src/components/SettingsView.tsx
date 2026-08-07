@@ -112,7 +112,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <main className="md:ml-64 pt-24 pb-12 px-4 sm:px-6 md:px-8 min-h-screen max-w-4xl mx-auto space-y-6">
+    <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen relative z-10 max-w-4xl mx-auto space-y-6">
       {/* Page Title */}
       <div>
         <h1 className="font-display-lg text-2xl md:text-3xl font-extrabold text-slate-900 mb-1">

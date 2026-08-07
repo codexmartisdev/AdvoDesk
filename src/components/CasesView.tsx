@@ -255,7 +255,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
   }
 
   return (
-    <main className="pt-24 pb-12 px-4 sm:px-6 md:px-8 md:ml-64 min-h-screen max-w-7xl mx-auto space-y-6">
+    <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen relative z-10 max-w-7xl mx-auto space-y-6">
       {/* Case selector dropdown header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2 border-b border-slate-200/60 gap-3">
         {/* Breadcrumbs */}

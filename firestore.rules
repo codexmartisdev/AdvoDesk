@@ -2,33 +2,175 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny
+    // Default deny for unhandled paths
     match /{document=**} {
       allow read, write: if false;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
+    // Helper functions for input sanitization and payload limits
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isValidNumber(val) {
+      return val is int || val is float;
+    }
+
+    function isValidOptionalNumber(data, key) {
+      return !(key in data) || (data[key] is int || data[key] is float);
+    }
+
+    // Client schema validation (preventing rogue payload injection & oversized data)
+    function isValidClient(data) {
+      return data.keys().hasAll(['name', 'cpf']) &&
+        isValidString(data.name, 1, 300) &&
+        isValidString(data.cpf, 1, 50) &&
+        isValidOptionalString(data, 'email', 200) &&
+        isValidOptionalString(data, 'phone', 50) &&
+        isValidOptionalString(data, 'code', 50) &&
+        isValidOptionalString(data, 'avatarUrl', 1000) &&
+        isValidOptionalString(data, 'typePill', 100) &&
+        isValidOptionalString(data, 'status', 100) &&
+        isValidOptionalString(data, 'updatedAt', 100) &&
+        isValidOptionalString(data, 'socialName', 300) &&
+        isValidOptionalString(data, 'rgNumber', 50) &&
+        isValidOptionalString(data, 'rgIssuer', 50) &&
+        isValidOptionalString(data, 'rgUf', 10) &&
+        isValidOptionalString(data, 'rgIssueDate', 50) &&
+        isValidOptionalString(data, 'birthDate', 50) &&
+        isValidOptionalString(data, 'nationality', 100) &&
+        isValidOptionalString(data, 'birthplace', 100) &&
+        isValidOptionalString(data, 'gender', 50) &&
+        isValidOptionalString(data, 'motherName', 300) &&
+        isValidOptionalString(data, 'fatherName', 300) &&
+        isValidOptionalString(data, 'maritalStatus', 100) &&
+        isValidOptionalString(data, 'propertyRegime', 100) &&
+        isValidOptionalString(data, 'spouseName', 300) &&
+        isValidOptionalString(data, 'phoneSecondary', 50) &&
+        isValidOptionalString(data, 'addressStreet', 300) &&
+        isValidOptionalString(data, 'addressNumber', 50) &&
+        isValidOptionalString(data, 'addressComplement', 200) &&
+        isValidOptionalString(data, 'addressNeighborhood', 200) &&
+        isValidOptionalString(data, 'addressCityUf', 200) &&
+        isValidOptionalString(data, 'addressZip', 50) &&
+        isValidOptionalString(data, 'addressZone', 50) &&
+        isValidOptionalString(data, 'occupation', 200) &&
+        isValidOptionalString(data, 'monthlyIncome', 100) &&
+        isValidOptionalString(data, 'employmentStatus', 100) &&
+        isValidOptionalString(data, 'inssContributionRegime', 100) &&
+        isValidOptionalString(data, 'nitPisPasep', 100) &&
+        isValidOptionalString(data, 'benefitNumber', 100) &&
+        isValidOptionalString(data, 'bankName', 200) &&
+        isValidOptionalString(data, 'bankAgency', 50) &&
+        isValidOptionalString(data, 'bankAccount', 50) &&
+        isValidOptionalString(data, 'pixKey', 200);
     }
 
     match /clients/{clientId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidClient(request.resource.data);
+      allow delete: if true;
+    }
+
+    // LegalCase schema validation
+    function isValidCase(data) {
+      return data.keys().hasAll(['title', 'category', 'statusLabel']) &&
+        isValidString(data.title, 1, 300) &&
+        isValidString(data.category, 1, 100) &&
+        isValidString(data.statusLabel, 1, 100) &&
+        isValidOptionalString(data, 'caseNumber', 100) &&
+        isValidOptionalString(data, 'processNumber', 100) &&
+        isValidOptionalString(data, 'court', 200) &&
+        isValidOptionalString(data, 'agencyOrCourt', 200) &&
+        isValidOptionalString(data, 'benefitType', 100) &&
+        isValidOptionalString(data, 'instance', 100) &&
+        isValidOptionalString(data, 'finalResult', 200) &&
+        isValidOptionalString(data, 'concededValue', 100) &&
+        isValidOptionalString(data, 'clientId', 100) &&
+        isValidOptionalString(data, 'clientName', 300) &&
+        isValidOptionalString(data, 'clientCpf', 50) &&
+        isValidOptionalString(data, 'filingDate', 50) &&
+        isValidOptionalString(data, 'lastMovementDate', 50) &&
+        isValidOptionalString(data, 'nextDeadlineDate', 50) &&
+        isValidOptionalString(data, 'nextDeadlineType', 100) &&
+        isValidOptionalString(data, 'agreedFees', 100) &&
+        isValidOptionalString(data, 'paymentStatus', 100) &&
+        isValidOptionalString(data, 'quickNotes', 10000) &&
+        isValidOptionalNumber(data, 'deadlinesCount') &&
+        isValidOptionalNumber(data, 'currentStepIndex');
     }
 
     match /cases/{caseId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidCase(request.resource.data);
+      allow delete: if true;
+    }
+
+    // DocumentTemplate schema validation
+    function isValidTemplate(data) {
+      return data.keys().hasAll(['title', 'category']) &&
+        isValidString(data.title, 1, 300) &&
+        isValidString(data.category, 1, 100) &&
+        isValidOptionalString(data, 'badge', 100) &&
+        isValidOptionalString(data, 'icon', 100) &&
+        isValidOptionalString(data, 'description', 2000) &&
+        isValidOptionalString(data, 'format', 50) &&
+        isValidOptionalString(data, 'contentPattern', 50000);
     }
 
     match /templates/{templateId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidTemplate(request.resource.data);
+      allow delete: if true;
+    }
+
+    // ScheduledEvent schema validation
+    function isValidEvent(data) {
+      return data.keys().hasAll(['title', 'status']) &&
+        isValidString(data.title, 1, 300) &&
+        isValidString(data.status, 1, 100) &&
+        isValidOptionalString(data, 'dateStr', 50) &&
+        isValidOptionalString(data, 'fullDate', 100) &&
+        isValidOptionalString(data, 'time', 50) &&
+        isValidOptionalString(data, 'type', 100) &&
+        isValidOptionalString(data, 'badgeColor', 50) &&
+        isValidOptionalString(data, 'caseId', 100) &&
+        isValidOptionalString(data, 'clientId', 100) &&
+        isValidOptionalString(data, 'clientName', 300) &&
+        isValidOptionalString(data, 'benefitType', 100) &&
+        isValidOptionalString(data, 'processNumber', 100) &&
+        isValidOptionalString(data, 'eventType', 100) &&
+        isValidOptionalString(data, 'location', 300) &&
+        isValidOptionalString(data, 'priorityLevel', 50) &&
+        isValidOptionalString(data, 'notes', 5000) &&
+        isValidOptionalNumber(data, 'reminderDays');
     }
 
     match /events/{eventId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidEvent(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Settings schema validation
+    function isValidSettings(data) {
+      return isValidOptionalString(data, 'firmName', 200) &&
+        isValidOptionalString(data, 'firmSubtitle', 200) &&
+        isValidOptionalString(data, 'logoUrl', 1000) &&
+        isValidOptionalString(data, 'lawyerName', 200) &&
+        isValidOptionalString(data, 'lawyerTitle', 200) &&
+        isValidOptionalString(data, 'lawyerAvatarUrl', 1000) &&
+        isValidOptionalString(data, 'oabNumber', 100);
     }
 
     match /settings/{settingId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidSettings(request.resource.data);
+      allow delete: if true;
     }
   }
 }
