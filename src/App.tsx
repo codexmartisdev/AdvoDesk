@@ -456,19 +456,50 @@ export default function App() {
       {currentTab === 'support' && (
         <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen">
           <div className="max-w-3xl mx-auto glass-panel rounded-[24px] p-8 border border-slate-200/90 shadow-sm space-y-6">
-            <h1 className="font-display-lg text-2xl font-extrabold text-slate-900">Suporte ao Advogado • {settings.firmName} {settings.firmSubtitle}</h1>
+            <h1 className="font-display-lg text-2xl font-extrabold text-slate-900">Suporte Técnico • {settings.firmName} {settings.firmSubtitle}</h1>
             <p className="text-sm text-slate-600">
-              Caso tenha dúvidas sobre acompanhamento de prazos no PJe, e-SAJ ou Projudi, ou sobre a geração de minutas, entre em contato com nossa equipe dedicada.
+              Caso tenha dúvidas sobre o sistema ou para suporte no desenvolvimento, entre em contato através dos canais abaixo:
             </p>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <span className="font-medium text-slate-700">Atendimento Prioritário OAB</span>
-                <span className="text-blue-900 font-bold">(11) 3000-8800</span>
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <span className="material-symbols-outlined text-xl">chat</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-800 text-sm block">WhatsApp do Desenvolvedor do Sistema</span>
+                    <span className="text-slate-500 text-xs">Contato direto via WhatsApp para suporte técnico</span>
+                  </div>
+                </div>
+                <a
+                  href="https://wa.me/55991503232"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-sm">chat</span>
+                  <span>(55) 99150-3232</span>
+                </a>
               </div>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <span className="font-medium text-slate-700">E-mail de Suporte Técnico</span>
-                <span className="text-blue-900 font-bold">suporte@bizerraneto.adv.br</span>
+
+              <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#0A1F44] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <span className="material-symbols-outlined text-xl">mail</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-800 text-sm block">E-mail de Suporte Técnico</span>
+                    <span className="text-slate-500 text-xs">Canal oficial para dúvidas, melhorias e chamados</span>
+                  </div>
+                </div>
+                <a
+                  href="mailto:codex.martis.dev@gmail.com"
+                  className="px-4 py-2 bg-[#0A1F44] hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-sm">mail</span>
+                  <span>codex.martis.dev@gmail.com</span>
+                </a>
               </div>
             </div>
           </div>
