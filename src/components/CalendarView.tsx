@@ -32,7 +32,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onUpdateEvent,
   onDeleteEvent,
 }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedDayFilter, setSelectedDayFilter] = useState<string | null>(null);
 
   // Filters
@@ -249,26 +248,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
 
         <div className="flex items-center space-x-3 shrink-0">
-          {/* List / Calendar Toggle */}
-          <div className="bg-white p-1 rounded-xl flex items-center border border-slate-300 shadow-xs">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'list' ? 'bg-blue-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Lista
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'calendar' ? 'bg-blue-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Calendário
-            </button>
-          </div>
-
           <button
             onClick={handleOpenCreateModal}
             className="glass-btn-primary px-4 py-2.5 rounded-xl text-white font-semibold text-xs md:text-sm flex items-center space-x-2 shadow-xs transition-all hover:scale-[1.02]"
