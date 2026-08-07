@@ -100,22 +100,21 @@ export default function App() {
 
   // Initialize and Sync Firebase Firestore
   useEffect(() => {
-    if (!user) return;
     testConnection();
-    seedInitialFirestoreData(user.uid, user.displayName, user.email).then(() => {
-      const unsubClients = subscribeToClients(user.uid, (remoteClients) => {
+    seedInitialFirestoreData().then(() => {
+      const unsubClients = subscribeToClients((remoteClients) => {
         setClients(remoteClients);
       });
-      const unsubCases = subscribeToCases(user.uid, (remoteCases) => {
+      const unsubCases = subscribeToCases((remoteCases) => {
         setCases(remoteCases);
       });
-      const unsubTemplates = subscribeToTemplates(user.uid, (remoteTemplates) => {
+      const unsubTemplates = subscribeToTemplates((remoteTemplates) => {
         setTemplates(remoteTemplates);
       });
-      const unsubEvents = subscribeToEvents(user.uid, (remoteEvents) => {
+      const unsubEvents = subscribeToEvents((remoteEvents) => {
         setEvents(remoteEvents);
       });
-      const unsubSettings = subscribeToSettings(user.uid, (remoteSettings) => {
+      const unsubSettings = subscribeToSettings((remoteSettings) => {
         if (remoteSettings && remoteSettings.firmName) setSettings(remoteSettings);
       });
 
@@ -127,7 +126,7 @@ export default function App() {
         unsubSettings();
       };
     });
-  }, [user]);
+  }, []);
 
   // Document Categories & Formats
   const [docCategories, setDocCategories] = useState<string[]>([
@@ -170,7 +169,7 @@ export default function App() {
   // Handlers with Firestore Persistence
   const handleSaveSettings = (newSettings: FirmSettings) => {
     setSettings(newSettings);
-    if (user) saveSettingsInFirestore(newSettings, user.uid);
+    saveSettingsInFirestore(newSettings);
   };
 
   const handleSaveTemplate = (tpl: DocumentTemplate) => {
@@ -180,7 +179,7 @@ export default function App() {
     } else {
       setTemplates([tpl, ...templates]);
     }
-    if (user) saveTemplateInFirestore(tpl, user.uid);
+    saveTemplateInFirestore(tpl);
   };
 
   const handleDeleteTemplate = (id: string) => {
@@ -198,9 +197,7 @@ export default function App() {
     setDocCategories(docCategories.map((c) => (c === oldCat ? newCat : c)));
     const updated = templates.map((t) => (t.category === oldCat ? { ...t, category: newCat } : t));
     setTemplates(updated);
-    if (user) {
-      updated.filter((t) => t.category === newCat).forEach((t) => saveTemplateInFirestore(t, user.uid));
-    }
+    updated.filter((t) => t.category === newCat).forEach(saveTemplateInFirestore);
   };
 
   const handleDeleteCategory = (cat: string) => {
@@ -217,9 +214,7 @@ export default function App() {
     setDocFormats(docFormats.map((f) => (f === oldFmt ? newFmt : f)));
     const updated = templates.map((t) => (t.format === oldFmt ? { ...t, format: newFmt } : t));
     setTemplates(updated);
-    if (user) {
-      updated.filter((t) => t.format === newFmt).forEach((t) => saveTemplateInFirestore(t, user.uid));
-    }
+    updated.filter((t) => t.format === newFmt).forEach(saveTemplateInFirestore);
   };
 
   const handleDeleteFormat = (fmt: string) => {
@@ -231,12 +226,12 @@ export default function App() {
     setCases([newCase, ...cases]);
     setSelectedCaseId(newCase.id);
     setCurrentTab('cases');
-    if (user) saveCaseInFirestore(newCase, user.uid);
+    saveCaseInFirestore(newCase);
   };
 
   const handleUpdateCase = (updatedCase: LegalCase) => {
     setCases(cases.map((c) => (c.id === updatedCase.id ? updatedCase : c)));
-    if (user) saveCaseInFirestore(updatedCase, user.uid);
+    saveCaseInFirestore(updatedCase);
   };
 
   const handleDeleteCase = (caseId: string) => {
@@ -251,12 +246,12 @@ export default function App() {
   const handleClientCreated = (newClient: Client) => {
     setClients([newClient, ...clients]);
     setCurrentTab('clients');
-    if (user) saveClientInFirestore(newClient, user.uid);
+    saveClientInFirestore(newClient);
   };
 
   const handleSaveClient = (updatedClient: Client) => {
     setClients(clients.map((c) => (c.id === updatedClient.id ? updatedClient : c)));
-    if (user) saveClientInFirestore(updatedClient, user.uid);
+    saveClientInFirestore(updatedClient);
   };
 
   const handleDeleteClient = (clientId: string) => {
@@ -266,12 +261,12 @@ export default function App() {
 
   const handleAddEvent = (newEv: ScheduledEvent) => {
     setEvents([newEv, ...events]);
-    if (user) saveEventInFirestore(newEv, user.uid);
+    saveEventInFirestore(newEv);
   };
 
   const handleUpdateEvent = (updatedEv: ScheduledEvent) => {
     setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e)));
-    if (user) saveEventInFirestore(updatedEv, user.uid);
+    saveEventInFirestore(updatedEv);
   };
 
   const handleDeleteEvent = (eventId: string) => {
@@ -301,8 +296,8 @@ export default function App() {
     setClients((prev) => {
       const updated = prev.map((c) => (c.id === clientId ? { ...c, [fieldKey]: value } : c));
       const target = updated.find((c) => c.id === clientId);
-      if (target && user) {
-        saveClientInFirestore(target, user.uid);
+      if (target) {
+        saveClientInFirestore(target);
       }
       return updated;
     });

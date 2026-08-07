@@ -29,7 +29,6 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'cpf']) &&
         isValidString(data.name, 1, 300) &&
         isValidString(data.cpf, 1, 50) &&
-        isValidOptionalString(data, 'userId', 100) &&
         isValidOptionalString(data, 'email', 200) &&
         isValidOptionalString(data, 'phone', 50) &&
         isValidOptionalString(data, 'code', 50) &&
@@ -72,10 +71,9 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && isValidClient(request.resource.data);
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidClient(request.resource.data);
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if true;
+      allow create, update: if isValidClient(request.resource.data);
+      allow delete: if true;
     }
 
     // LegalCase schema validation
@@ -84,7 +82,6 @@ service cloud.firestore {
         isValidString(data.title, 1, 300) &&
         isValidString(data.category, 1, 100) &&
         isValidString(data.statusLabel, 1, 100) &&
-        isValidOptionalString(data, 'userId', 100) &&
         isValidOptionalString(data, 'caseNumber', 100) &&
         isValidOptionalString(data, 'processNumber', 100) &&
         isValidOptionalString(data, 'court', 200) &&
@@ -108,10 +105,9 @@ service cloud.firestore {
     }
 
     match /cases/{caseId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && isValidCase(request.resource.data);
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidCase(request.resource.data);
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if true;
+      allow create, update: if isValidCase(request.resource.data);
+      allow delete: if true;
     }
 
     // DocumentTemplate schema validation
@@ -119,7 +115,6 @@ service cloud.firestore {
       return data.keys().hasAll(['title', 'category']) &&
         isValidString(data.title, 1, 300) &&
         isValidString(data.category, 1, 100) &&
-        isValidOptionalString(data, 'userId', 100) &&
         isValidOptionalString(data, 'badge', 100) &&
         isValidOptionalString(data, 'icon', 100) &&
         isValidOptionalString(data, 'description', 2000) &&
@@ -128,10 +123,9 @@ service cloud.firestore {
     }
 
     match /templates/{templateId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && isValidTemplate(request.resource.data);
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidTemplate(request.resource.data);
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if true;
+      allow create, update: if isValidTemplate(request.resource.data);
+      allow delete: if true;
     }
 
     // ScheduledEvent schema validation
@@ -139,7 +133,6 @@ service cloud.firestore {
       return data.keys().hasAll(['title', 'status']) &&
         isValidString(data.title, 1, 300) &&
         isValidString(data.status, 1, 100) &&
-        isValidOptionalString(data, 'userId', 100) &&
         isValidOptionalString(data, 'dateStr', 50) &&
         isValidOptionalString(data, 'fullDate', 100) &&
         isValidOptionalString(data, 'time', 50) &&
@@ -158,16 +151,14 @@ service cloud.firestore {
     }
 
     match /events/{eventId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && isValidEvent(request.resource.data);
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidEvent(request.resource.data);
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if true;
+      allow create, update: if isValidEvent(request.resource.data);
+      allow delete: if true;
     }
 
     // Settings schema validation
     function isValidSettings(data) {
-      return isValidOptionalString(data, 'userId', 100) &&
-        isValidOptionalString(data, 'firmName', 200) &&
+      return isValidOptionalString(data, 'firmName', 200) &&
         isValidOptionalString(data, 'firmSubtitle', 200) &&
         isValidOptionalString(data, 'logoUrl', 1000) &&
         isValidOptionalString(data, 'lawyerName', 200) &&
@@ -176,11 +167,10 @@ service cloud.firestore {
         isValidOptionalString(data, 'oabNumber', 100);
     }
 
-    match /settings/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null && request.auth.uid == userId && isValidSettings(request.resource.data);
-      allow delete: if request.auth != null && request.auth.uid == userId;
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update: if isValidSettings(request.resource.data);
+      allow delete: if true;
     }
   }
 }
-
