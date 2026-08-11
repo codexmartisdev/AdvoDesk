@@ -86,6 +86,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       lawyerTitle: 'Advogado Sócio • OAB/SP',
       lawyerAvatarUrl: USER_AVATAR_URL,
       oabNumber: 'OAB/SP 412.001',
+      notificationEmail: 'codex.martis.dev@gmail.com',
       practiceAreas: [
         'Contencioso Cível',
         'Direito Trabalhista',
@@ -287,6 +288,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Email for Google Calendar & System Notifications */}
+        <section className="glass-panel rounded-2xl p-6 bg-white border border-slate-200/90 shadow-sm space-y-4">
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">E-mail Cadastrado & Notificações (Google Agenda)</h3>
+              <p className="text-xs text-slate-500">Endereço de e-mail principal utilizado para os avisos de prazos, compromissos e integração com o Google Agenda.</p>
+            </div>
+            <span className="material-symbols-outlined text-blue-900">mark_email_read</span>
+          </div>
+
+          <div className="space-y-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                E-mail para Alertas e Google Agenda <span className="text-blue-900 font-extrabold">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={form.notificationEmail || ''}
+                  onChange={(e) => handleChange('notificationEmail', e.target.value)}
+                  placeholder="seuemail@exemplo.com"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-900"
+                />
+                <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-base">
+                  mail
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-950 space-y-1">
+              <span className="font-extrabold flex items-center gap-1.5 text-xs text-blue-900">
+                <span className="material-symbols-outlined text-sm">info</span>
+                Como funciona o envio de avisos:
+              </span>
+              <p className="text-[11px] leading-relaxed text-blue-900/90 font-medium">
+                Os compromissos do Calendário sincronizados com o Google Agenda enviarão notificações pop-up no seu celular e e-mails de alerta antecipados diretamente para este endereço.
+              </p>
             </div>
           </div>
         </section>

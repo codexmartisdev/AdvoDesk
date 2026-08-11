@@ -131,12 +131,12 @@ export const Navigation: React.FC<NavigationProps> = ({
             }}
             className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
               currentTab === 'dashboard'
-                ? 'text-slate-900 bg-slate-100 font-extrabold border border-slate-200/90 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
+                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span
-              className="material-symbols-outlined text-[18px]"
+              className={`material-symbols-outlined text-[18px] ${currentTab === 'dashboard' ? 'text-[#C9A227]' : 'text-slate-500'}`}
               style={{ fontVariationSettings: currentTab === 'dashboard' ? "'FILL' 1" : "'FILL' 0" }}
             >
               dashboard
@@ -152,12 +152,12 @@ export const Navigation: React.FC<NavigationProps> = ({
             }}
             className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
               currentTab === 'clients'
-                ? 'text-slate-900 bg-slate-100 font-extrabold border border-slate-200/90 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
+                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span
-              className="material-symbols-outlined text-[18px]"
+              className={`material-symbols-outlined text-[18px] ${currentTab === 'clients' ? 'text-[#C9A227]' : 'text-slate-500'}`}
               style={{ fontVariationSettings: currentTab === 'clients' ? "'FILL' 1" : "'FILL' 0" }}
             >
               group
@@ -173,12 +173,12 @@ export const Navigation: React.FC<NavigationProps> = ({
             }}
             className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
               currentTab === 'cases'
-                ? 'text-slate-900 bg-slate-100 font-extrabold border border-slate-200/90 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
+                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span
-              className="material-symbols-outlined text-[18px]"
+              className={`material-symbols-outlined text-[18px] ${currentTab === 'cases' ? 'text-[#C9A227]' : 'text-slate-500'}`}
               style={{ fontVariationSettings: currentTab === 'cases' ? "'FILL' 1" : "'FILL' 0" }}
             >
               folder_open
@@ -194,12 +194,12 @@ export const Navigation: React.FC<NavigationProps> = ({
             }}
             className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
               currentTab === 'documents'
-                ? 'text-slate-900 bg-slate-100 font-extrabold border border-slate-200/90 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
+                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span
-              className="material-symbols-outlined text-[18px]"
+              className={`material-symbols-outlined text-[18px] ${currentTab === 'documents' ? 'text-[#C9A227]' : 'text-slate-500'}`}
               style={{ fontVariationSettings: currentTab === 'documents' ? "'FILL' 1" : "'FILL' 0" }}
             >
               description
@@ -215,12 +215,12 @@ export const Navigation: React.FC<NavigationProps> = ({
             }}
             className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
               currentTab === 'calendar'
-                ? 'text-slate-900 bg-slate-100 font-extrabold border border-slate-200/90 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
+                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span
-              className="material-symbols-outlined text-[18px]"
+              className={`material-symbols-outlined text-[18px] ${currentTab === 'calendar' ? 'text-[#C9A227]' : 'text-slate-500'}`}
               style={{ fontVariationSettings: currentTab === 'calendar' ? "'FILL' 1" : "'FILL' 0" }}
             >
               calendar_month
@@ -235,22 +235,22 @@ export const Navigation: React.FC<NavigationProps> = ({
             onClick={() => onTabChange('settings')}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl transition-all font-medium text-left text-xs ${
               currentTab === 'settings'
-                ? 'text-slate-900 bg-slate-100 font-bold'
-                : 'text-slate-600 hover:bg-slate-100/60 hover:text-slate-900'
+                ? 'text-white bg-[#0D0D0D] font-bold border border-[#C9A227]/50'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">settings</span>
+            <span className={`material-symbols-outlined text-[18px] ${currentTab === 'settings' ? 'text-[#C9A227]' : 'text-slate-500'}`}>settings</span>
             <span>Configurações</span>
           </button>
           <button
             onClick={() => onTabChange('support')}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl transition-all font-medium text-left text-xs ${
               currentTab === 'support'
-                ? 'text-slate-900 bg-slate-100 font-bold'
-                : 'text-slate-600 hover:bg-slate-100/60 hover:text-slate-900'
+                ? 'text-white bg-[#0D0D0D] font-bold border border-[#C9A227]/50'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">help_outline</span>
+            <span className={`material-symbols-outlined text-[18px] ${currentTab === 'support' ? 'text-[#C9A227]' : 'text-slate-500'}`}>help_outline</span>
             <span>Suporte Tecnológico</span>
           </button>
 

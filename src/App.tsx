@@ -330,12 +330,12 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-body-md text-sm relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#0D0D0D] font-body-md text-sm relative overflow-x-hidden">
       {/* Background Ambient Glow */}
       <div 
-        className="fixed inset-0 z-[-1] pointer-events-none opacity-60"
+        className="fixed inset-0 z-[-1] pointer-events-none opacity-40"
         style={{
-          background: 'radial-gradient(circle at 10% 20%, rgba(15, 43, 92, 0.03), transparent 40%), radial-gradient(circle at 90% 80%, rgba(30, 58, 138, 0.03), transparent 40%)',
+          background: 'radial-gradient(circle at 10% 20%, rgba(201, 162, 39, 0.05), transparent 45%), radial-gradient(circle at 90% 80%, rgba(13, 13, 13, 0.03), transparent 45%)',
         }}
       />
 

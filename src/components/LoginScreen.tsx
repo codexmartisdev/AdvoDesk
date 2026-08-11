@@ -134,22 +134,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full bg-[#0D0D0D] flex items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Background Decorative Gradients */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-900/25 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-900/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#C9A227]/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#C9A227]/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200/80 p-8 sm:p-10 relative z-10 flex flex-col space-y-6">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200/80 border-t-2 border-t-[#C9A227] p-8 sm:p-10 relative z-10 flex flex-col space-y-6">
         {/* Header Branding */}
         <div className="text-center flex flex-col items-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 p-2.5 shadow-sm mb-4 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-[#C9A227]/40 p-2.5 shadow-sm mb-4 flex items-center justify-center">
             <img
               src={logoUrl}
               alt={firmName}
               className="w-full h-full object-contain"
             />
           </div>
-          <h1 className="font-display-lg text-2xl font-black text-slate-900 tracking-tight uppercase">
+          <h1 className="font-display-lg text-2xl font-black text-[#0D0D0D] tracking-tight uppercase">
             {firmName}
           </h1>
           <p className="text-xs text-slate-500 font-extrabold uppercase tracking-widest mt-0.5">

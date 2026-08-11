@@ -175,6 +175,11 @@ export interface ScheduledEvent {
   // 4. Complementares
   notes?: string; // Nota/Observação rápida
   reminderDays?: number; // Lembrete antecipado em dias
+  reminderOption?: 'at_time' | '1_hour' | '1_day' | '2_days' | 'custom' | string; // Opção de alerta (1 hora, 1 dia, 2 dias, hora personalizada)
+  customReminderTime?: string; // Horário personalizado para o alerta (ex: "09:00")
+  syncedWithGoogleCalendar?: boolean;
+  googleEventId?: string;
+  googleHtmlLink?: string;
 }
 
 export interface FirmSettings {
@@ -185,6 +190,7 @@ export interface FirmSettings {
   lawyerTitle: string;
   lawyerAvatarUrl: string;
   oabNumber: string;
+  notificationEmail?: string;
   practiceAreas: string[];
   clientCategories: string[];
 }

@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: FirmSettings = {
   lawyerTitle: 'Advogado Sócio • OAB/SP',
   lawyerAvatarUrl: USER_AVATAR_URL,
   oabNumber: 'OAB/SP 412.001',
+  notificationEmail: 'codex.martis.dev@gmail.com',
   practiceAreas: [
     'Contencioso Cível',
     'Direito Trabalhista',
@@ -47,6 +48,23 @@ export const DEFAULT_SETTINGS: FirmSettings = {
   ],
 };
 
+function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeForFirestore(item)) as unknown as T;
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const cleanObj: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleanObj[key] = sanitizeForFirestore(value);
+      }
+    }
+    return cleanObj as T;
+  }
+  return data;
+}
+
 /**
  * Seed initial data if Firestore collections are empty
  */
@@ -56,14 +74,14 @@ export async function seedInitialFirestoreData() {
     const settingsRef = doc(db, 'settings', 'firmSettings');
     const settingsSnap = await getDoc(settingsRef);
     if (!settingsSnap.exists()) {
-      await setDoc(settingsRef, DEFAULT_SETTINGS);
+      await setDoc(settingsRef, sanitizeForFirestore(DEFAULT_SETTINGS));
     }
 
     // 2. Clients
     const clientsSnap = await getDocs(collection(db, 'clients'));
     if (clientsSnap.empty) {
       for (const client of INITIAL_CLIENTS) {
-        await setDoc(doc(db, 'clients', client.id), client);
+        await setDoc(doc(db, 'clients', client.id), sanitizeForFirestore(client));
       }
     }
 
@@ -71,7 +89,7 @@ export async function seedInitialFirestoreData() {
     const casesSnap = await getDocs(collection(db, 'cases'));
     if (casesSnap.empty) {
       for (const c of INITIAL_CASES) {
-        await setDoc(doc(db, 'cases', c.id), c);
+        await setDoc(doc(db, 'cases', c.id), sanitizeForFirestore(c));
       }
     }
 
@@ -79,7 +97,7 @@ export async function seedInitialFirestoreData() {
     const templatesSnap = await getDocs(collection(db, 'templates'));
     if (templatesSnap.empty) {
       for (const t of TEMPLATES) {
-        await setDoc(doc(db, 'templates', t.id), t);
+        await setDoc(doc(db, 'templates', t.id), sanitizeForFirestore(t));
       }
     }
 
@@ -87,7 +105,7 @@ export async function seedInitialFirestoreData() {
     const eventsSnap = await getDocs(collection(db, 'events'));
     if (eventsSnap.empty) {
       for (const ev of SCHEDULED_EVENTS) {
-        await setDoc(doc(db, 'events', ev.id), ev);
+        await setDoc(doc(db, 'events', ev.id), sanitizeForFirestore(ev));
       }
     }
   } catch (error) {
@@ -183,7 +201,7 @@ export function subscribeToSettings(callback: (settings: FirmSettings) => void) 
 export async function saveClientInFirestore(client: Client) {
   const path = `clients/${client.id}`;
   try {
-    await setDoc(doc(db, 'clients', client.id), client, { merge: true });
+    await setDoc(doc(db, 'clients', client.id), sanitizeForFirestore(client), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -201,7 +219,7 @@ export async function deleteClientFromFirestore(clientId: string) {
 export async function saveCaseInFirestore(legalCase: LegalCase) {
   const path = `cases/${legalCase.id}`;
   try {
-    await setDoc(doc(db, 'cases', legalCase.id), legalCase, { merge: true });
+    await setDoc(doc(db, 'cases', legalCase.id), sanitizeForFirestore(legalCase), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -219,7 +237,7 @@ export async function deleteCaseFromFirestore(caseId: string) {
 export async function saveTemplateInFirestore(template: DocumentTemplate) {
   const path = `templates/${template.id}`;
   try {
-    await setDoc(doc(db, 'templates', template.id), template, { merge: true });
+    await setDoc(doc(db, 'templates', template.id), sanitizeForFirestore(template), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -237,7 +255,7 @@ export async function deleteTemplateFromFirestore(templateId: string) {
 export async function saveEventInFirestore(event: ScheduledEvent) {
   const path = `events/${event.id}`;
   try {
-    await setDoc(doc(db, 'events', event.id), event, { merge: true });
+    await setDoc(doc(db, 'events', event.id), sanitizeForFirestore(event), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -255,7 +273,7 @@ export async function deleteEventFromFirestore(eventId: string) {
 export async function saveSettingsInFirestore(settings: FirmSettings) {
   const path = 'settings/firmSettings';
   try {
-    await setDoc(doc(db, 'settings', 'firmSettings'), settings, { merge: true });
+    await setDoc(doc(db, 'settings', 'firmSettings'), sanitizeForFirestore(settings), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }

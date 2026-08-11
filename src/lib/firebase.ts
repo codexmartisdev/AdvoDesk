@@ -6,7 +6,8 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 
 /* CRITICAL: The app will break without this database ID parameter */
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const databaseId = (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-bizerranetoadvoc-3ceabbf7-259b-4a9e-b48e-0ede91e287be';
+export const db = getFirestore(app, databaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
