@@ -78,22 +78,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Summary Card 1: Processos Ativos */}
         <div 
           onClick={() => onNavigateToTab('cases')}
-          className="glass-panel rounded-2xl col-span-1 md:col-span-4 p-6 flex flex-col justify-between border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer bg-white group"
+          className="glass-panel rounded-2xl col-span-1 md:col-span-4 p-6 flex flex-col justify-between border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer bg-white group gold-accent-edge"
         >
           <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-              <span className="material-symbols-outlined text-blue-900 text-[26px]">gavel</span>
+            <div className="w-12 h-12 rounded-2xl bg-[#0D0D0D] border border-[#C9A227]/50 flex items-center justify-center shrink-0 group-hover:border-[#C9A227] transition-colors">
+              <span className="material-symbols-outlined text-[#C9A227] text-[26px]">gavel</span>
             </div>
-            <span className="px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs text-blue-900 font-bold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">folder_managed</span> Ativos
+            <span className="px-3 py-1 bg-[#0D0D0D] text-white border border-[#C9A227]/60 rounded-full text-xs font-bold flex items-center gap-1 shadow-xs">
+              <span className="material-symbols-outlined text-[#C9A227] text-[14px]">folder_managed</span> Ativos
             </span>
           </div>
           <div className="mt-6">
             <p className="text-slate-500 font-medium text-xs mb-1">Processos em Andamento</p>
             <div className="flex items-baseline justify-between">
-              <p className="font-display-lg text-3xl text-slate-900 font-extrabold">{activeCasesCount}</p>
-              <span className="text-xs text-blue-900 font-semibold group-hover:underline flex items-center gap-0.5">
-                Ver lista <span className="material-symbols-outlined text-xs">arrow_forward</span>
+              <p className="font-display-lg text-3xl text-[#0D0D0D] font-extrabold">{activeCasesCount}</p>
+              <span className="text-xs text-[#0D0D0D] font-bold group-hover:text-[#8c6e14] group-hover:underline flex items-center gap-0.5">
+                Ver lista <span className="material-symbols-outlined text-xs text-[#C9A227]">arrow_forward</span>
               </span>
             </div>
           </div>
@@ -102,14 +102,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Summary Card 2: Prazos Próximos */}
         <div 
           onClick={() => onNavigateToTab('calendar')}
-          className="glass-panel rounded-2xl col-span-1 md:col-span-4 p-6 flex flex-col justify-between border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer bg-white group"
+          className="glass-panel rounded-2xl col-span-1 md:col-span-4 p-6 flex flex-col justify-between border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer bg-white group gold-accent-edge"
         >
           <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition-colors">
-              <span className="material-symbols-outlined text-amber-700 text-[26px]">alarm</span>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-[#C9A227]/40 flex items-center justify-center shrink-0 group-hover:border-[#C9A227] transition-colors">
+              <span className="material-symbols-outlined text-[#8c6e14] text-[26px]">alarm</span>
             </div>
             {urgentEvents.length > 0 ? (
-              <span className="px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs text-amber-800 font-bold flex items-center gap-1 animate-pulse">
+              <span className="px-3 py-1 bg-amber-500/15 border border-[#C9A227] rounded-full text-xs text-[#8c6e14] font-bold flex items-center gap-1 animate-pulse">
                 <span className="material-symbols-outlined text-[14px]">warning</span> {urgentEvents.length} Urgentes
               </span>
             ) : (
@@ -121,9 +121,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="mt-6">
             <p className="text-slate-500 font-medium text-xs mb-1">Prazos e Compromissos Pendentes</p>
             <div className="flex items-baseline justify-between">
-              <p className="font-display-lg text-3xl text-slate-900 font-extrabold">{pendingEvents.length}</p>
-              <span className="text-xs text-amber-800 font-semibold group-hover:underline flex items-center gap-0.5">
-                Ver agenda <span className="material-symbols-outlined text-xs">arrow_forward</span>
+              <p className="font-display-lg text-3xl text-[#0D0D0D] font-extrabold">{pendingEvents.length}</p>
+              <span className="text-xs text-[#0D0D0D] font-bold group-hover:text-[#8c6e14] group-hover:underline flex items-center gap-0.5">
+                Ver agenda <span className="material-symbols-outlined text-xs text-[#C9A227]">arrow_forward</span>
               </span>
             </div>
           </div>
@@ -132,22 +132,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Summary Card 3: Clientes & Minutas */}
         <div 
           onClick={() => onNavigateToTab('clients')}
-          className="glass-panel rounded-2xl col-span-1 md:col-span-4 p-6 flex flex-col justify-between border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer bg-white group"
+          className="glass-panel rounded-2xl col-span-1 md:col-span-4 p-6 flex flex-col justify-between border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer bg-white group gold-accent-edge"
         >
           <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition-colors">
-              <span className="material-symbols-outlined text-indigo-800 text-[26px]">groups</span>
+            <div className="w-12 h-12 rounded-2xl bg-[#0D0D0D] border border-[#C9A227]/50 flex items-center justify-center shrink-0 group-hover:border-[#C9A227] transition-colors">
+              <span className="material-symbols-outlined text-[#C9A227] text-[26px]">groups</span>
             </div>
-            <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-full text-xs text-indigo-700 font-semibold">
+            <span className="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-200 rounded-full text-xs font-semibold">
               {templates.length} Modelos de Minutas
             </span>
           </div>
           <div className="mt-6">
             <p className="text-slate-500 font-medium text-xs mb-1">Clientes Cadastrados</p>
             <div className="flex items-baseline justify-between">
-              <p className="font-display-lg text-3xl text-slate-900 font-extrabold">{clients.length}</p>
-              <span className="text-xs text-indigo-800 font-semibold group-hover:underline flex items-center gap-0.5">
-                Ver clientes <span className="material-symbols-outlined text-xs">arrow_forward</span>
+              <p className="font-display-lg text-3xl text-[#0D0D0D] font-extrabold">{clients.length}</p>
+              <span className="text-xs text-[#0D0D0D] font-bold group-hover:text-[#8c6e14] group-hover:underline flex items-center gap-0.5">
+                Ver clientes <span className="material-symbols-outlined text-xs text-[#C9A227]">arrow_forward</span>
               </span>
             </div>
           </div>
