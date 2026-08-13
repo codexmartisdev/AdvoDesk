@@ -61,6 +61,17 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [agreedFees, setAgreedFees] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Pendente');
 
+  // Parcerias & Captação
+  const [hasLawyerPartnership, setHasLawyerPartnership] = useState(false);
+  const [partnerLawyerName, setPartnerLawyerName] = useState('');
+  const [partnerLawyerOab, setPartnerLawyerOab] = useState('');
+  const [partnerLawyerShare, setPartnerLawyerShare] = useState('');
+
+  const [hasScoutCommission, setHasScoutCommission] = useState(false);
+  const [scoutName, setScoutName] = useState('');
+  const [scoutFeeOrShare, setScoutFeeOrShare] = useState('');
+  const [scoutNotes, setScoutNotes] = useState('');
+
   const [quickNotes, setQuickNotes] = useState('');
 
   // New Client State (8 Previdenciário / Legal Sections)
@@ -142,6 +153,18 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       clientId: selectedClientId || 'c-new',
       clientName: finalClientName,
       clientCpf: finalClientCpf,
+
+      // Parceria com Advogado & Repasse para Captador
+      hasLawyerPartnership,
+      partnerLawyerName: hasLawyerPartnership ? partnerLawyerName.trim() : undefined,
+      partnerLawyerOab: hasLawyerPartnership ? partnerLawyerOab.trim() : undefined,
+      partnerLawyerShare: hasLawyerPartnership ? partnerLawyerShare.trim() : undefined,
+
+      hasScoutCommission,
+      scoutName: hasScoutCommission ? scoutName.trim() : undefined,
+      scoutFeeOrShare: hasScoutCommission ? scoutFeeOrShare.trim() : undefined,
+      scoutNotes: hasScoutCommission ? scoutNotes.trim() : undefined,
+
       filingDate: filingDate || undefined,
       lastMovementDate: lastMovementDate || getBrasiliaISO(),
       nextDeadlineDate: nextDeadlineDate || undefined,
@@ -313,6 +336,108 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       />
                     </div>
                   )}
+
+                  {/* Parcerias com Advogado e Repasse para Captador */}
+                  <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 space-y-3">
+                    <div className="text-[11px] font-bold text-slate-700 uppercase flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+                      <span className="material-symbols-outlined text-sm text-[#C9A227]">handshake</span>
+                      <span>Parcerias e Repasse de Captação (Opcional)</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Parceria com Advogado */}
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                        <label className="flex items-center gap-2 cursor-pointer mb-2 font-bold text-slate-800 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={hasLawyerPartnership}
+                            onChange={(e) => setHasLawyerPartnership(e.target.checked)}
+                            className="rounded border-slate-300 text-blue-900 focus:ring-blue-900"
+                          />
+                          <span>Parceria com outro advogado</span>
+                        </label>
+                        {hasLawyerPartnership && (
+                          <div className="space-y-2 pt-1 border-t border-slate-200">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                                Nome do Advogado Parceiro *
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                value={partnerLawyerName}
+                                onChange={(e) => setPartnerLawyerName(e.target.value)}
+                                placeholder="Ex: Dr. Roberto Guimarães"
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <input
+                                type="text"
+                                value={partnerLawyerOab}
+                                onChange={(e) => setPartnerLawyerOab(e.target.value)}
+                                placeholder="OAB do Parceiro"
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                              />
+                              <input
+                                type="text"
+                                value={partnerLawyerShare}
+                                onChange={(e) => setPartnerLawyerShare(e.target.value)}
+                                placeholder="% ou Honorários"
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Repasse para Captador */}
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                        <label className="flex items-center gap-2 cursor-pointer mb-2 font-bold text-slate-800 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={hasScoutCommission}
+                            onChange={(e) => setHasScoutCommission(e.target.checked)}
+                            className="rounded border-slate-300 text-blue-900 focus:ring-blue-900"
+                          />
+                          <span>Repasse para captador / indicação</span>
+                        </label>
+                        {hasScoutCommission && (
+                          <div className="space-y-2 pt-1 border-t border-slate-200">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                                Nome do Captador *
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                value={scoutName}
+                                onChange={(e) => setScoutName(e.target.value)}
+                                placeholder="Ex: Carlos Eduardo"
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <input
+                                type="text"
+                                value={scoutFeeOrShare}
+                                onChange={(e) => setScoutFeeOrShare(e.target.value)}
+                                placeholder="Valor ou %"
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                              />
+                              <input
+                                type="text"
+                                value={scoutNotes}
+                                onChange={(e) => setScoutNotes(e.target.value)}
+                                placeholder="Condição"
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

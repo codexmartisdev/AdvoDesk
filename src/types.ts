@@ -192,6 +192,17 @@ export interface LegalCase {
   agreedFees?: string; // Honorários combinados (valor fixo ou % do benefício, ex: "30% dos atrasados")
   paymentStatus?: 'Pendente' | 'Pago' | 'Parcelado' | 'Em Andamento' | string; // Status de pagamento
 
+  // Parceria com Advogado & Repasse para Captador
+  hasLawyerPartnership?: boolean;
+  partnerLawyerName?: string;
+  partnerLawyerOab?: string;
+  partnerLawyerShare?: string; // ex: "50% dos honorários", "R$ 1.500,00"
+
+  hasScoutCommission?: boolean;
+  scoutName?: string;
+  scoutFeeOrShare?: string; // ex: "10% dos honorários", "R$ 500,00"
+  scoutNotes?: string;
+
   // Anotações
   quickNotes?: string; // Observações rápidas livres
   notes: string[]; // Histórico de notas do processo

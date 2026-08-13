@@ -65,6 +65,17 @@ export const CasesView: React.FC<CasesViewProps> = ({
   const [editAgreedFees, setEditAgreedFees] = useState('');
   const [editPaymentStatus, setEditPaymentStatus] = useState('');
 
+  // Parcerias & Captação
+  const [editHasLawyerPartnership, setEditHasLawyerPartnership] = useState(false);
+  const [editPartnerLawyerName, setEditPartnerLawyerName] = useState('');
+  const [editPartnerLawyerOab, setEditPartnerLawyerOab] = useState('');
+  const [editPartnerLawyerShare, setEditPartnerLawyerShare] = useState('');
+
+  const [editHasScoutCommission, setEditHasScoutCommission] = useState(false);
+  const [editScoutName, setEditScoutName] = useState('');
+  const [editScoutFeeOrShare, setEditScoutFeeOrShare] = useState('');
+  const [editScoutNotes, setEditScoutNotes] = useState('');
+
   const [editQuickNotes, setEditQuickNotes] = useState('');
 
   // Interactive Legal Deadline Calculator State
@@ -113,6 +124,17 @@ export const CasesView: React.FC<CasesViewProps> = ({
     setEditAgreedFees(c.agreedFees || '');
     setEditPaymentStatus(c.paymentStatus || 'Pendente');
 
+    // Parcerias & Captação
+    setEditHasLawyerPartnership(!!c.hasLawyerPartnership);
+    setEditPartnerLawyerName(c.partnerLawyerName || '');
+    setEditPartnerLawyerOab(c.partnerLawyerOab || '');
+    setEditPartnerLawyerShare(c.partnerLawyerShare || '');
+
+    setEditHasScoutCommission(!!c.hasScoutCommission);
+    setEditScoutName(c.scoutName || '');
+    setEditScoutFeeOrShare(c.scoutFeeOrShare || '');
+    setEditScoutNotes(c.scoutNotes || '');
+
     setEditQuickNotes(c.quickNotes || '');
   };
 
@@ -153,6 +175,18 @@ export const CasesView: React.FC<CasesViewProps> = ({
       concededValue: editConcededValue.trim() || undefined,
       agreedFees: editAgreedFees.trim() || undefined,
       paymentStatus: editPaymentStatus,
+
+      // Parceria & Captação
+      hasLawyerPartnership: editHasLawyerPartnership,
+      partnerLawyerName: editHasLawyerPartnership ? editPartnerLawyerName.trim() : undefined,
+      partnerLawyerOab: editHasLawyerPartnership ? editPartnerLawyerOab.trim() : undefined,
+      partnerLawyerShare: editHasLawyerPartnership ? editPartnerLawyerShare.trim() : undefined,
+
+      hasScoutCommission: editHasScoutCommission,
+      scoutName: editHasScoutCommission ? editScoutName.trim() : undefined,
+      scoutFeeOrShare: editHasScoutCommission ? editScoutFeeOrShare.trim() : undefined,
+      scoutNotes: editHasScoutCommission ? editScoutNotes.trim() : undefined,
+
       quickNotes: editQuickNotes.trim() || undefined,
       notes: editQuickNotes.trim() && editQuickNotes.trim() !== currentCase.quickNotes
         ? [`[Editado] ${editQuickNotes.trim()}`, ...notes]
@@ -858,6 +892,70 @@ export const CasesView: React.FC<CasesViewProps> = ({
                 </div>
               </div>
 
+              {/* 6. Parcerias & Captação */}
+              <div className="md:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+                <h4 className="font-extrabold text-xs text-[#8c6e14] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                  <span className="material-symbols-outlined text-base text-[#C9A227]">handshake</span>
+                  <span>6. Parcerias com Advogados & Repasse para Captadores</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  {/* Advogado Parceiro */}
+                  <div className={`p-4 rounded-xl border ${
+                    currentCase.hasLawyerPartnership
+                      ? 'bg-amber-50/40 border-[#C9A227]/40'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-base text-[#C9A227]">gavel</span>
+                      <strong className="font-bold text-slate-900">Parceria com Advogado:</strong>
+                    </div>
+                    {currentCase.hasLawyerPartnership ? (
+                      <div className="space-y-1 pl-6">
+                        <p className="text-slate-900 font-bold text-sm">{currentCase.partnerLawyerName || 'Nome não especificado'}</p>
+                        {currentCase.partnerLawyerOab && (
+                          <p className="text-slate-600 font-mono text-xs">{currentCase.partnerLawyerOab}</p>
+                        )}
+                        {currentCase.partnerLawyerShare && (
+                          <p className="text-[#8c6e14] font-semibold text-xs mt-1">
+                            Divisão de Honorários: {currentCase.partnerLawyerShare}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 italic pl-6">Nenhuma parceria com advogado externo cadastrada.</p>
+                    )}
+                  </div>
+
+                  {/* Repasse para Captador */}
+                  <div className={`p-4 rounded-xl border ${
+                    currentCase.hasScoutCommission
+                      ? 'bg-emerald-50/40 border-emerald-300'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-base text-emerald-600">person_pin</span>
+                      <strong className="font-bold text-slate-900">Repasse para Captador / Indicação:</strong>
+                    </div>
+                    {currentCase.hasScoutCommission ? (
+                      <div className="space-y-1 pl-6">
+                        <p className="text-slate-900 font-bold text-sm">{currentCase.scoutName || 'Nome não especificado'}</p>
+                        {currentCase.scoutFeeOrShare && (
+                          <p className="text-emerald-700 font-semibold text-xs mt-1">
+                            Valor / Comissão: {currentCase.scoutFeeOrShare}
+                          </p>
+                        )}
+                        {currentCase.scoutNotes && (
+                          <p className="text-slate-500 text-xs italic">{currentCase.scoutNotes}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 italic pl-6">Nenhum repasse de comissão/captação cadastrado.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
@@ -1504,6 +1602,116 @@ export const CasesView: React.FC<CasesViewProps> = ({
                     placeholder="Observações rápidas sobre o caso..."
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-900 resize-none"
                   />
+                </div>
+              </div>
+
+              {/* 6. Parcerias & Captação */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+                <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                  <span className="material-symbols-outlined text-[#C9A227] text-base">handshake</span>
+                  <span>6. Parcerias & Repasse de Captação</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Parceria com Advogado */}
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={editHasLawyerPartnership}
+                        onChange={(e) => setEditHasLawyerPartnership(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-900 focus:ring-blue-900"
+                      />
+                      <span>Parceria com outro advogado</span>
+                    </label>
+
+                    {editHasLawyerPartnership && (
+                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Nome do Advogado Parceiro *</label>
+                          <input
+                            type="text"
+                            value={editPartnerLawyerName}
+                            onChange={(e) => setEditPartnerLawyerName(e.target.value)}
+                            placeholder="Ex: Dr. Roberto Guimarães"
+                            className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-slate-500 mb-0.5">OAB</label>
+                            <input
+                              type="text"
+                              value={editPartnerLawyerOab}
+                              onChange={(e) => setEditPartnerLawyerOab(e.target.value)}
+                              placeholder="OAB/PI 12.345"
+                              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Honorários</label>
+                            <input
+                              type="text"
+                              value={editPartnerLawyerShare}
+                              onChange={(e) => setEditPartnerLawyerShare(e.target.value)}
+                              placeholder="50% do êxito"
+                              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Repasse para Captador */}
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={editHasScoutCommission}
+                        onChange={(e) => setEditHasScoutCommission(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-900 focus:ring-blue-900"
+                      />
+                      <span>Repasse para captador / indicação</span>
+                    </label>
+
+                    {editHasScoutCommission && (
+                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Nome do Captador *</label>
+                          <input
+                            type="text"
+                            value={editScoutName}
+                            onChange={(e) => setEditScoutName(e.target.value)}
+                            placeholder="Ex: Carlos Eduardo"
+                            className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Valor / %</label>
+                            <input
+                              type="text"
+                              value={editScoutFeeOrShare}
+                              onChange={(e) => setEditScoutFeeOrShare(e.target.value)}
+                              placeholder="R$ 500,00 ou 10%"
+                              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Condição</label>
+                            <input
+                              type="text"
+                              value={editScoutNotes}
+                              onChange={(e) => setEditScoutNotes(e.target.value)}
+                              placeholder="No 1º RPV"
+                              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

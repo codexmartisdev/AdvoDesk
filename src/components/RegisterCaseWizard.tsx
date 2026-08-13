@@ -65,6 +65,17 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   const [clientSearch, setClientSearch] = useState<string>('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(clients[0] || null);
 
+  // --- Step 1: Parcerias & Captação ---
+  const [hasLawyerPartnership, setHasLawyerPartnership] = useState<boolean>(false);
+  const [partnerLawyerName, setPartnerLawyerName] = useState<string>('');
+  const [partnerLawyerOab, setPartnerLawyerOab] = useState<string>('');
+  const [partnerLawyerShare, setPartnerLawyerShare] = useState<string>('');
+
+  const [hasScoutCommission, setHasScoutCommission] = useState<boolean>(false);
+  const [scoutName, setScoutName] = useState<string>('');
+  const [scoutFeeOrShare, setScoutFeeOrShare] = useState<string>('');
+  const [scoutNotes, setScoutNotes] = useState<string>('');
+
   // --- Step 2: Process Type Selection ---
   const [processSearch, setProcessSearch] = useState<string>('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('todos'); // 'todos', 'favoritos', 'recentes', or category_id
@@ -334,6 +345,17 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
       clientName: selectedClient.name,
       clientCpf: selectedClient.cpf,
 
+      // Parceria com Advogado & Repasse para Captador
+      hasLawyerPartnership,
+      partnerLawyerName: hasLawyerPartnership ? partnerLawyerName.trim() : undefined,
+      partnerLawyerOab: hasLawyerPartnership ? partnerLawyerOab.trim() : undefined,
+      partnerLawyerShare: hasLawyerPartnership ? partnerLawyerShare.trim() : undefined,
+
+      hasScoutCommission,
+      scoutName: hasScoutCommission ? scoutName.trim() : undefined,
+      scoutFeeOrShare: hasScoutCommission ? scoutFeeOrShare.trim() : undefined,
+      scoutNotes: hasScoutCommission ? scoutNotes.trim() : undefined,
+
       filingDate: filingDate || der || openingDate,
       lastMovementDate: getBrasiliaISO(),
 
@@ -594,6 +616,165 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
               </div>
             </div>
           )}
+
+          {/* Seção: Parcerias com Advogado & Repasse para Captador */}
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100/70 rounded-2xl border border-slate-200 p-5 space-y-5">
+            <div>
+              <h3 className="font-bold text-sm text-[#0D0D0D] flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#C9A227] text-lg">handshake</span>
+                Parcerias & Captação do Processo (Opcional)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Indique se haverá atuação conjunta com outro advogado parceiro ou repasse de comissão para captador.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Opção 1: Parceria com outro advogado */}
+              <div className={`p-4 rounded-xl border transition-all ${
+                hasLawyerPartnership
+                  ? 'bg-white border-[#C9A227] shadow-xs ring-1 ring-[#C9A227]/30'
+                  : 'bg-white/80 border-slate-200 hover:border-slate-300'
+              }`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-base ${
+                      hasLawyerPartnership ? 'bg-[#0D0D0D] text-[#C9A227]' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <span className="material-symbols-outlined text-base">gavel</span>
+                    </span>
+                    <div>
+                      <h4 className="font-bold text-xs text-slate-900">Parceria com Advogado</h4>
+                      <p className="text-[11px] text-slate-500">Atuação conjunta com advogado externo</p>
+                    </div>
+                  </div>
+
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasLawyerPartnership}
+                      onChange={(e) => setHasLawyerPartnership(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0D0D0D]"></div>
+                  </label>
+                </div>
+
+                {hasLawyerPartnership && (
+                  <div className="mt-3.5 pt-3.5 border-t border-slate-100 space-y-2.5 animate-fade-in text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Nome do Advogado Parceiro <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={partnerLawyerName}
+                        onChange={(e) => setPartnerLawyerName(e.target.value)}
+                        placeholder="Ex: Dr. Roberto Guimarães"
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-medium text-slate-600 mb-1">OAB do Parceiro</label>
+                        <input
+                          type="text"
+                          value={partnerLawyerOab}
+                          onChange={(e) => setPartnerLawyerOab(e.target.value)}
+                          placeholder="Ex: OAB/PI 12.345"
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-medium text-slate-600 mb-1">Divisão de Honorários</label>
+                        <input
+                          type="text"
+                          value={partnerLawyerShare}
+                          onChange={(e) => setPartnerLawyerShare(e.target.value)}
+                          placeholder="Ex: 50% dos honorários de êxito"
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Opção 2: Repasse para Captador */}
+              <div className={`p-4 rounded-xl border transition-all ${
+                hasScoutCommission
+                  ? 'bg-white border-[#C9A227] shadow-xs ring-1 ring-[#C9A227]/30'
+                  : 'bg-white/80 border-slate-200 hover:border-slate-300'
+              }`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-base ${
+                      hasScoutCommission ? 'bg-[#0D0D0D] text-[#C9A227]' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <span className="material-symbols-outlined text-base">person_pin</span>
+                    </span>
+                    <div>
+                      <h4 className="font-bold text-xs text-slate-900">Repasse para Captador</h4>
+                      <p className="text-[11px] text-slate-500">Comissão ou valor para parceiro que indicou</p>
+                    </div>
+                  </div>
+
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasScoutCommission}
+                      onChange={(e) => setHasScoutCommission(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0D0D0D]"></div>
+                  </label>
+                </div>
+
+                {hasScoutCommission && (
+                  <div className="mt-3.5 pt-3.5 border-t border-slate-100 space-y-2.5 animate-fade-in text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Nome do Captador <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={scoutName}
+                        onChange={(e) => setScoutName(e.target.value)}
+                        placeholder="Ex: Carlos Eduardo (Líder Comunitário)"
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-medium text-slate-600 mb-1">Valor ou % a Repassar</label>
+                        <input
+                          type="text"
+                          value={scoutFeeOrShare}
+                          onChange={(e) => setScoutFeeOrShare(e.target.value)}
+                          placeholder="Ex: R$ 500,00 ou 10%"
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-medium text-slate-600 mb-1">Condição de Repasse</label>
+                        <input
+                          type="text"
+                          value={scoutNotes}
+                          onChange={(e) => setScoutNotes(e.target.value)}
+                          placeholder="Ex: No recebimento do 1º RPV"
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Action Navigation */}
           <div className="flex justify-end pt-2">
@@ -1430,6 +1611,43 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                 <strong className="text-slate-900">{attachedDocs.length} arquivo(s)</strong>
               </div>
             </div>
+
+            {/* Parcerias & Captação Resumo (se houver) */}
+            {(hasLawyerPartnership || hasScoutCommission) && (
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                <span className="text-[10px] font-extrabold uppercase text-[#8c6e14] tracking-wider block flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-[#C9A227]">handshake</span>
+                  PARCERIAS & REPASSE DE CAPTAÇÃO
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {hasLawyerPartnership && (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-slate-500 font-medium block text-[11px]">Advogado Parceiro:</span>
+                      <strong className="text-slate-900 font-bold block">{partnerLawyerName || 'Não especificado'}</strong>
+                      {partnerLawyerOab && <span className="text-slate-600 block text-[11px] font-mono">{partnerLawyerOab}</span>}
+                      {partnerLawyerShare && (
+                        <span className="text-[#8c6e14] font-semibold block text-[11px] mt-0.5">
+                          Honorários: {partnerLawyerShare}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {hasScoutCommission && (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-slate-500 font-medium block text-[11px]">Captador / Indicação:</span>
+                      <strong className="text-slate-900 font-bold block">{scoutName || 'Não especificado'}</strong>
+                      {scoutFeeOrShare && (
+                        <span className="text-emerald-700 font-semibold block text-[11px] mt-0.5">
+                          Repasse: {scoutFeeOrShare}
+                        </span>
+                      )}
+                      {scoutNotes && <span className="text-slate-500 block text-[10px] italic mt-0.5">{scoutNotes}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Buttons */}
