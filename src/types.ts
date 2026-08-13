@@ -1,4 +1,35 @@
-export type NavigationTab = 'dashboard' | 'clients' | 'cases' | 'documents' | 'calendar' | 'settings' | 'support' | 'create-case';
+export type NavigationTab = 'dashboard' | 'clients' | 'cases' | 'documents' | 'calendar' | 'drive' | 'settings' | 'support' | 'create-case';
+
+export interface GoogleDriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  webViewLink?: string;
+  webContentLink?: string;
+  iconLink?: string;
+  thumbnailLink?: string;
+  size?: string;
+  modifiedTime?: string;
+  createdTime?: string;
+  parents?: string[];
+  owners?: { displayName: string; emailAddress: string; photoLink?: string }[];
+  shared?: boolean;
+  trashed?: boolean;
+}
+
+export interface GoogleDriveAbout {
+  user?: {
+    displayName: string;
+    emailAddress: string;
+    photoLink?: string;
+  };
+  storageQuota?: {
+    limit?: string;
+    usage?: string;
+    usageInDrive?: string;
+    usageInDriveTrash?: string;
+  };
+}
 
 export interface UserPermissions {
   canManageWorkflows?: boolean;

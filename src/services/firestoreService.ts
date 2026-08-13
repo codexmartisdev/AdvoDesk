@@ -40,6 +40,93 @@ import { getBrasiliaISO } from '../utils/dateUtils';
 
 export const DEFAULT_FIRM_ID = 'firm-bizerra';
 
+// Local storage cache keys for zero data loss
+export const STORAGE_KEYS = {
+  CLIENTS: 'bizerra_cache_clients_v2',
+  CASES: 'bizerra_cache_cases_v2',
+  EVENTS: 'bizerra_cache_events_v2',
+  TEMPLATES: 'bizerra_cache_templates_v2',
+  SETTINGS: 'bizerra_cache_settings_v2',
+  DRAFT_CASE: 'bizerra_draft_case_v2',
+  DRAFT_CLIENT: 'bizerra_draft_client_v2',
+};
+
+export function getLocalCache<T>(key: string, fallback: T): T {
+  try {
+    if (typeof window === 'undefined') return fallback;
+    const stored = window.localStorage.getItem(key);
+    if (!stored) return fallback;
+    const parsed = JSON.parse(stored);
+    return parsed ?? fallback;
+  } catch (err) {
+    console.warn(`[LocalCache] Read warning for ${key}:`, err);
+    return fallback;
+  }
+}
+
+export function setLocalCache<T>(key: string, data: T): void {
+  try {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    console.warn(`[LocalCache] Write warning for ${key}:`, err);
+  }
+}
+
+export function saveLocalClient(client: Client): void {
+  const current = getLocalCache<Client[]>(STORAGE_KEYS.CLIENTS, []);
+  const index = current.findIndex((c) => c.id === client.id);
+  let updated: Client[];
+  if (index >= 0) {
+    updated = [...current];
+    updated[index] = client;
+  } else {
+    updated = [client, ...current];
+  }
+  setLocalCache(STORAGE_KEYS.CLIENTS, updated);
+}
+
+export function removeLocalClient(clientId: string): void {
+  const current = getLocalCache<Client[]>(STORAGE_KEYS.CLIENTS, []);
+  setLocalCache(STORAGE_KEYS.CLIENTS, current.filter((c) => c.id !== clientId));
+}
+
+export function saveLocalCase(legalCase: LegalCase): void {
+  const current = getLocalCache<LegalCase[]>(STORAGE_KEYS.CASES, []);
+  const index = current.findIndex((c) => c.id === legalCase.id);
+  let updated: LegalCase[];
+  if (index >= 0) {
+    updated = [...current];
+    updated[index] = legalCase;
+  } else {
+    updated = [legalCase, ...current];
+  }
+  setLocalCache(STORAGE_KEYS.CASES, updated);
+}
+
+export function removeLocalCase(caseId: string): void {
+  const current = getLocalCache<LegalCase[]>(STORAGE_KEYS.CASES, []);
+  setLocalCache(STORAGE_KEYS.CASES, current.filter((c) => c.id !== caseId));
+}
+
+export function saveLocalEvent(event: ScheduledEvent): void {
+  const current = getLocalCache<ScheduledEvent[]>(STORAGE_KEYS.EVENTS, []);
+  const index = current.findIndex((e) => e.id === event.id);
+  let updated: ScheduledEvent[];
+  if (index >= 0) {
+    updated = [...current];
+    updated[index] = event;
+  } else {
+    updated = [event, ...current];
+  }
+  setLocalCache(STORAGE_KEYS.EVENTS, updated);
+}
+
+export function removeLocalEvent(eventId: string): void {
+  const current = getLocalCache<ScheduledEvent[]>(STORAGE_KEYS.EVENTS, []);
+  setLocalCache(STORAGE_KEYS.EVENTS, current.filter((e) => e.id !== eventId));
+}
+
 export const DEFAULT_SETTINGS: FirmSettings = {
   firmId: DEFAULT_FIRM_ID,
   firmName: 'Bizerra Neto',
@@ -111,12 +198,113 @@ export function createDefaultUserProfile(authUser: User): UserProfile {
 }
 
 /**
- * Seed initial data if Firestore collections are empty & auto-migrate old workflow storage (cached per session)
+ * Known simulated mock IDs to ensure they are never retained in real operation
+ */
+const KNOWN_MOCK_CLIENT_IDS = ['c1', 'c2', 'c3', 'c4'];
+const KNOWN_MOCK_CASE_IDS = ['case-2023-8941', 'case-2024-1022', 'case-2023-7721', 'case-2023-5510', 'case-2023-4109', 'case-2023-1102'];
+const KNOWN_MOCK_EVENT_IDS = ['ev-1', 'ev-2', 'ev-3', 'ev-4', 'ev-5'];
+
+/**
+ * Purge mock/simulated data automatically from Firestore
+ */
+export async function purgeSimulatedDataFromFirestore(firmId: string = DEFAULT_FIRM_ID): Promise<number> {
+  try {
+    const batch = writeBatch(db);
+    let count = 0;
+
+    // 1. Purge known mock clients
+    for (const cid of KNOWN_MOCK_CLIENT_IDS) {
+      const clientRef = doc(db, 'clients', cid);
+      const snap = await getDoc(clientRef);
+      if (snap.exists()) {
+        batch.delete(clientRef);
+        count++;
+      }
+    }
+
+    // 2. Purge known mock cases
+    for (const caseId of KNOWN_MOCK_CASE_IDS) {
+      const caseRef = doc(db, 'cases', caseId);
+      const snap = await getDoc(caseRef);
+      if (snap.exists()) {
+        batch.delete(caseRef);
+        count++;
+      }
+    }
+
+    // 3. Purge known mock events
+    for (const evId of KNOWN_MOCK_EVENT_IDS) {
+      const evRef = doc(db, 'events', evId);
+      const snap = await getDoc(evRef);
+      if (snap.exists()) {
+        batch.delete(evRef);
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      await batch.commit();
+      console.log(`[Firestore] Successfully purged ${count} simulated items.`);
+    }
+    return count;
+  } catch (error) {
+    console.warn('[Firestore] Error while purging simulated data:', error);
+    return 0;
+  }
+}
+
+/**
+ * Clear all records of a specific collection or all operational data for a fresh production start
+ */
+export async function clearFirmData(
+  firmId: string = DEFAULT_FIRM_ID,
+  options: { clients?: boolean; cases?: boolean; events?: boolean } = { clients: true, cases: true, events: true }
+): Promise<number> {
+  try {
+    const batch = writeBatch(db);
+    let opCount = 0;
+
+    if (options.clients) {
+      const clientsSnap = await getDocs(query(collection(db, 'clients'), where('firmId', '==', firmId)));
+      clientsSnap.forEach((d) => {
+        batch.delete(d.ref);
+        opCount++;
+      });
+    }
+
+    if (options.cases) {
+      const casesSnap = await getDocs(query(collection(db, 'cases'), where('firmId', '==', firmId)));
+      casesSnap.forEach((d) => {
+        batch.delete(d.ref);
+        opCount++;
+      });
+    }
+
+    if (options.events) {
+      const eventsSnap = await getDocs(query(collection(db, 'events'), where('firmId', '==', firmId)));
+      eventsSnap.forEach((d) => {
+        batch.delete(d.ref);
+        opCount++;
+      });
+    }
+
+    if (opCount > 0) {
+      await batch.commit();
+    }
+    return opCount;
+  } catch (error) {
+    console.error('Error clearing firm data:', error);
+    throw error;
+  }
+}
+
+/**
+ * Seed initial structure (settings, templates, workflows) without populating fake clients or cases
  */
 export async function seedInitialFirestoreData(userProfile?: UserProfile | null) {
   // Check if already executed in this session to prevent repeated queries
   try {
-    if (typeof window !== 'undefined' && window.sessionStorage?.getItem('bizerra_db_seeded_v1')) {
+    if (typeof window !== 'undefined' && window.sessionStorage?.getItem('bizerra_db_seeded_v2')) {
       return;
     }
   } catch {
@@ -135,30 +323,17 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
   const firmId = userProfile?.firmId || DEFAULT_FIRM_ID;
 
   try {
-    // 1. Settings
+    // Purge any legacy simulated data that might have been seeded previously
+    await purgeSimulatedDataFromFirestore(firmId);
+
+    // 1. Settings (Office settings and branding)
     const settingsRef = doc(db, 'settings', 'firmSettings');
     const settingsSnap = await getDoc(settingsRef);
     if (!settingsSnap.exists()) {
       await setDoc(settingsRef, sanitizeForFirestore({ firmId, ...DEFAULT_SETTINGS }));
     }
 
-    // 2. Clients
-    const clientsSnap = await getDocs(query(collection(db, 'clients'), where('firmId', '==', firmId), limit(1)));
-    if (clientsSnap.empty) {
-      for (const client of INITIAL_CLIENTS) {
-        await setDoc(doc(db, 'clients', client.id), sanitizeForFirestore({ firmId, ...client }));
-      }
-    }
-
-    // 3. Cases
-    const casesSnap = await getDocs(query(collection(db, 'cases'), where('firmId', '==', firmId), limit(1)));
-    if (casesSnap.empty) {
-      for (const c of INITIAL_CASES) {
-        await setDoc(doc(db, 'cases', c.id), sanitizeForFirestore({ firmId, ...c }));
-      }
-    }
-
-    // 4. Templates
+    // 2. Document Templates (Document generation templates like Procuração, Contrato, etc.)
     const templatesSnap = await getDocs(query(collection(db, 'templates'), where('firmId', '==', firmId), limit(1)));
     if (templatesSnap.empty) {
       for (const t of TEMPLATES) {
@@ -166,15 +341,7 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
       }
     }
 
-    // 5. Events
-    const eventsSnap = await getDocs(query(collection(db, 'events'), where('firmId', '==', firmId), limit(1)));
-    if (eventsSnap.empty) {
-      for (const ev of SCHEDULED_EVENTS) {
-        await setDoc(doc(db, 'events', ev.id), sanitizeForFirestore({ firmId, ...ev }));
-      }
-    }
-
-    // 6. Workflow Templates Subcollection Seed
+    // 3. Workflow Templates Subcollection Seed (BPC, Auxílio-Doença, etc.)
     const wfTemplatesSnap = await getDocs(query(collection(db, 'workflowTemplates'), where('firmId', '==', firmId), limit(1)));
     if (wfTemplatesSnap.empty) {
       for (const wf of INITIAL_WORKFLOWS) {
@@ -184,7 +351,7 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
 
     try {
       if (typeof window !== 'undefined') {
-        window.sessionStorage?.setItem('bizerra_db_seeded_v1', 'true');
+        window.sessionStorage?.setItem('bizerra_db_seeded_v2', 'true');
       }
     } catch {
       // Ignore

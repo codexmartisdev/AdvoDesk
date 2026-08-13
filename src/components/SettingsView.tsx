@@ -3,7 +3,7 @@ import { FirmSettings, ProcessWorkflow } from '../types';
 import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
 import { INITIAL_WORKFLOWS } from '../data/defaultWorkflows';
 import { WorkflowAdminPanel } from './WorkflowAdminPanel';
-import { saveWorkflowTemplateInFirestore } from '../services/firestoreService';
+import { saveWorkflowTemplateInFirestore, purgeSimulatedDataFromFirestore, clearFirmData } from '../services/firestoreService';
 
 export type { FirmSettings };
 
@@ -19,6 +19,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [form, setForm] = useState<FirmSettings>({ ...settings });
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'workflows'>('general');
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeMessage, setPurgeMessage] = useState<string | null>(null);
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
 
   const [newAreaInput, setNewAreaInput] = useState('');
   const [newCategoryInput, setNewCategoryInput] = useState('');
@@ -80,6 +83,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePurgeData = async () => {
+    setIsPurging(true);
+    setPurgeMessage(null);
+    try {
+      const firmId = form.firmId || 'firm-bizerra';
+      // First purge known simulation IDs
+      await purgeSimulatedDataFromFirestore(firmId);
+      // Then clear all clients, cases and events if requested
+      await clearFirmData(firmId, { clients: true, cases: true, events: true });
+      setShowPurgeModal(false);
+      setPurgeMessage('Todos os dados simulados foram removidos com sucesso. O sistema está 100% limpo e pronto para operação real!');
+      setTimeout(() => setPurgeMessage(null), 6000);
+    } catch (error) {
+      console.error('Erro ao limpar dados:', error);
+      setPurgeMessage('Ocorreu um erro ao limpar os dados. Tente novamente.');
+      setTimeout(() => setPurgeMessage(null), 6000);
+    } finally {
+      setIsPurging(false);
     }
   };
 
@@ -524,6 +548,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </section>
 
+        {/* Section 6: Data & Production Management */}
+        <section className="glass-panel rounded-2xl p-6 bg-white border border-slate-200/90 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-600 text-lg">verified</span>
+                Ambiente de Produção & Limpeza de Dados
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Gerencie os registros da banca e mantenha o sistema 100% pronto para a rotina do advogado.</p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 self-start sm:self-auto">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Modo Produção Real
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h4 className="text-xs font-extrabold text-slate-800">Limpar Dados de Simulação / Testes</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5 max-w-xl">
+                Remove permanentemente quaisquer dados simulados ou de teste (clientes, processos e prazos de demonstração), deixando o sistema totalmente limpo e pronto para o cadastro de casos reais.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPurgeModal(true)}
+              disabled={isPurging}
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <span className="material-symbols-outlined text-sm">cleaning_services</span>
+              <span>{isPurging ? 'Limpando...' : 'Limpar Dados Simulados'}</span>
+            </button>
+          </div>
+
+          {purgeMessage && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+              <span className="material-symbols-outlined text-base text-emerald-600 shrink-0">check_circle</span>
+              <span>{purgeMessage}</span>
+            </div>
+          )}
+        </section>
+
         {/* Submit Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
           <button
@@ -552,6 +618,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onSaveWorkflows={handleSaveWorkflows}
           practiceAreas={form.practiceAreas}
         />
+      )}
+
+      {/* Modal Confirmation for Data Purge */}
+      {showPurgeModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">delete_sweep</span>
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900">Limpar Dados de Simulação</h3>
+                <p className="text-xs text-slate-500">Ação de preparação para produção</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-700 leading-relaxed">
+              Tem certeza de que deseja limpar todos os dados simulados e de teste do sistema? As tabelas de <strong>clientes</strong>, <strong>processos</strong> e <strong>prazos</strong> de demonstração serão esvaziadas para você operar o sistema com clientes reais.
+            </p>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-2">
+              <span className="material-symbols-outlined text-base text-amber-600 shrink-0">info</span>
+              <span>Seus modelos de documentos e fluxos de trabalho configurados serão preservados com segurança.</span>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowPurgeModal(false)}
+                disabled={isPurging}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handlePurgeData}
+                disabled={isPurging}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+              >
+                {isPurging ? (
+                  <>
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                    <span>Limpando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">check</span>
+                    <span>Confirmar e Limpar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

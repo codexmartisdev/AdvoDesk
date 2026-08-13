@@ -39,6 +39,7 @@ import { ClientsView } from './components/ClientsView';
 import { CasesView } from './components/CasesView';
 import { DocumentsView } from './components/DocumentsView';
 import { CalendarView } from './components/CalendarView';
+import { DriveView } from './components/DriveView';
 import { SettingsView } from './components/SettingsView';
 import { LoginScreen } from './components/LoginScreen';
 import { NewCaseModal } from './components/NewCaseModal';
@@ -216,7 +217,7 @@ export default function App() {
   ]);
 
   // Active selections
-  const [selectedCaseId, setSelectedCaseId] = useState<string>(INITIAL_CASES[0]?.id || '');
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
 
   // Modals
   const [newCaseModalOpen, setNewCaseModalOpen] = useState(false);
@@ -227,8 +228,8 @@ export default function App() {
   const [variablesGuideModalOpen, setVariablesGuideModalOpen] = useState(false);
 
   const [selectedTemplateForDoc, setSelectedTemplateForDoc] = useState<DocumentTemplate | null>(TEMPLATES[0] || null);
-  const [docClientName, setDocClientName] = useState('João Silva e Oliveira');
-  const [docClientCpf, setDocClientCpf] = useState('123.456.789-00');
+  const [docClientName, setDocClientName] = useState('');
+  const [docClientCpf, setDocClientCpf] = useState('');
   const [prefilledGeneratedText, setPrefilledGeneratedText] = useState<string | null>(null);
 
   // Handlers with Firestore Persistence
@@ -520,6 +521,14 @@ export default function App() {
           onAddEvent={handleAddEvent}
           onUpdateEvent={handleUpdateEvent}
           onDeleteEvent={handleDeleteEvent}
+        />
+      )}
+
+      {/* Google Drive View */}
+      {currentTab === 'drive' && (
+        <DriveView
+          user={user}
+          clients={clients}
         />
       )}
 
