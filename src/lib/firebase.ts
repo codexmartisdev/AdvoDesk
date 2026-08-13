@@ -5,9 +5,8 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-/* CRITICAL: The app will break without this database ID parameter */
-const databaseId = (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-bizerranetoadvoc-3ceabbf7-259b-4a9e-b48e-0ede91e287be';
-export const db = getFirestore(app, databaseId);
+const databaseId = (firebaseConfig as any).firestoreDatabaseId;
+export const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -39,8 +38,16 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  const isOffline = errMsg.includes('the client is offline') || errMsg.includes('offline') || (error as any)?.code === 'unavailable';
+  
+  if (isOffline) {
+    console.warn(`[Firestore Offline] Operation ${operationType} on path '${path || ''}' is pending or using cache.`);
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -64,8 +71,8 @@ export async function testConnection() {
     await getDocFromServer(doc(db, '_connection_test_', 'init'));
     console.log('Firebase Firestore connection verified.');
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
+    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('offline'))) {
+      console.log('Firestore is connecting or operating in offline mode.');
     }
   }
 }

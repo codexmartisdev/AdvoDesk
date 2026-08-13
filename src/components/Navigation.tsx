@@ -101,14 +101,17 @@ export const Navigation: React.FC<NavigationProps> = ({
         {/* Quick Actions (Novo Processo & Novo Cliente) */}
         <div className="grid grid-cols-2 gap-2 pb-1">
           <button
-            onClick={onOpenNewCaseModal}
+            onClick={() => {
+              onTabChange('create-case');
+              setMobileMenuOpen(false);
+            }}
             className="glass-btn-primary py-2.5 px-2 rounded-xl text-white font-title-md text-xs font-bold flex items-center justify-center space-x-1.5 group transition-all shadow-xs"
-            title="Cadastrar Novo Processo"
+            title="Cadastrar Novo Processo Previdenciário"
           >
-            <span className="material-symbols-outlined text-[16px] group-hover:rotate-90 transition-transform">
-              add
+            <span className="material-symbols-outlined text-[16px] text-[#C9A227] group-hover:rotate-90 transition-transform">
+              add_circle
             </span>
-            <span>Processo</span>
+            <span>+ Processo</span>
           </button>
 
           <button
@@ -142,6 +145,27 @@ export const Navigation: React.FC<NavigationProps> = ({
               dashboard
             </span>
             <span>Painel Principal</span>
+          </button>
+
+          {/* Cadastrar Processos */}
+          <button
+            onClick={() => {
+              onTabChange('create-case');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
+              currentTab === 'create-case'
+                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span
+              className={`material-symbols-outlined text-[18px] ${currentTab === 'create-case' ? 'text-[#C9A227]' : 'text-[#8c6e14]'}`}
+              style={{ fontVariationSettings: currentTab === 'create-case' ? "'FILL' 1" : "'FILL' 0" }}
+            >
+              post_add
+            </span>
+            <span>Cadastrar Processos</span>
           </button>
 
           {/* Clients */}
@@ -183,7 +207,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             >
               folder_open
             </span>
-            <span>Processos</span>
+            <span>Acompanhar Processos</span>
           </button>
 
           {/* Documents */}
@@ -346,11 +370,23 @@ export const Navigation: React.FC<NavigationProps> = ({
                   setMobileMenuOpen(false);
                 }}
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
-                  currentTab === 'dashboard' ? 'bg-slate-100 text-slate-900 font-extrabold' : 'text-slate-600'
+                  currentTab === 'dashboard' ? 'bg-[#0D0D0D] text-white font-extrabold border border-[#C9A227]/50' : 'text-slate-600'
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">dashboard</span>
                 <span>Painel Principal</span>
+              </button>
+              <button
+                onClick={() => {
+                  onTabChange('create-case');
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
+                  currentTab === 'create-case' ? 'bg-[#0D0D0D] text-white font-extrabold border border-[#C9A227]/50' : 'text-slate-600'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px] text-[#C9A227]">post_add</span>
+                <span>Cadastrar Processos</span>
               </button>
               <button
                 onClick={() => {
@@ -374,7 +410,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">folder_open</span>
-                <span>Processos</span>
+                <span>Acompanhar Processos</span>
               </button>
               <button
                 onClick={() => {

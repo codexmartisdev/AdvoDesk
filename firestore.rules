@@ -2,30 +2,103 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny for unhandled paths
+
+    // ==========================================
+    // HELPER FUNCTIONS
+    // ==========================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return isAuthenticated() && request.auth.token.email == 'codex.martis.dev@gmail.com';
+    }
+
+    // ==========================================
+    // 1. DEFAULT DENY
+    // ==========================================
     match /{document=**} {
       allow read, write: if false;
     }
 
+    // ==========================================
+    // 2. USER PROFILES (/users/{userId})
+    // ==========================================
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isOwner());
+      allow delete: if isOwner();
+    }
+
+    // ==========================================
+    // 3. CLIENTS (/clients/{clientId})
+    // ==========================================
     match /clients/{clientId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
 
+    // ==========================================
+    // 4. CASES (/cases/{caseId})
+    // ==========================================
     match /cases/{caseId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
 
+    // ==========================================
+    // 5. WORKFLOW TEMPLATES & VERSIONS
+    // ==========================================
+    match /workflowTemplates/{templateId} {
+      allow read, write: if isAuthenticated();
+
+      match /versions/{versionId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ==========================================
+    // 6. WORKFLOW INSTANCES, STEPS & AUDIT LOGS
+    // ==========================================
+    match /workflowInstances/{instanceId} {
+      allow read, write: if isAuthenticated();
+
+      match /steps/{stepId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /auditLogs/{eventId} {
+        allow read, create: if isAuthenticated();
+        allow update, delete: if false;
+      }
+    }
+
+    // ==========================================
+    // 7. FIRM SETTINGS (/settings/{settingId})
+    // ==========================================
+    match /settings/{settingId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ==========================================
+    // 8. TEMPLATES (/templates/{templateId}) & EVENTS (/events/{eventId})
+    // ==========================================
     match /templates/{templateId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
 
     match /events/{eventId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
 
-    match /settings/{settingId} {
-      allow read, write: if true;
+    // ==========================================
+    // 9. CONNECTION TEST (/test/{docId} or /_connection_test_/{docId})
+    // ==========================================
+    match /_connection_test_/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /test/{docId} {
+      allow read, write: if isAuthenticated();
     }
   }
 }
-

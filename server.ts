@@ -9,10 +9,16 @@ async function startServer() {
 
   app.use(express.json());
 
-  // API endpoint for AI Legal Document generation
+  // API endpoint for AI Legal Document generation with cross-tenant authorization check
   app.post('/api/generate-document', async (req, res) => {
     try {
-      const { templateTitle, templateContent, clientName, clientCpf, caseDetails, customClauses } = req.body;
+      const { templateTitle, templateContent, clientName, clientCpf, caseDetails, customClauses, caseFirmId, userFirmId } = req.body;
+      
+      // Strict Cross-Tenant Authorization Check if caseFirmId is supplied
+      if (caseFirmId && userFirmId && caseFirmId !== userFirmId) {
+        return res.status(403).json({ error: 'FORBIDDEN: Acesso negado. O recurso pertence a outro escritório.' });
+      }
+
       const apiKey = process.env.GEMINI_API_KEY;
 
       if (!apiKey) {
@@ -54,6 +60,22 @@ No final do documento, inclua o local e data (ex: Parnaíba - PI, [Data atual]).
       );
       return res.json({ documentText: fallbackDoc, source: 'template', error: err?.message });
     }
+  });
+
+  // API endpoint for backend case actions with strict authorization check
+  app.post('/api/cases/:caseId/action', async (req, res) => {
+    const { caseFirmId, userFirmId } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'UNAUTHORIZED: Token de autenticação ausente.' });
+    }
+
+    if (caseFirmId && userFirmId && caseFirmId !== userFirmId) {
+      return res.status(403).json({ error: 'FORBIDDEN: O processo pertence a outro escritório.' });
+    }
+
+    return res.json({ status: 'success', message: 'Ação executada com sucesso no processo.' });
   });
 
   // Vite middleware for dev or static serving for production

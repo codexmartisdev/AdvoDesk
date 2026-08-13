@@ -158,7 +158,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div>
               <h2 className="font-title-md text-base font-bold text-slate-900">Processos e Movimentações Recentes</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Clique para abrir detalhes diretamente na aba Processos</p>
+              <p className="text-xs text-slate-500 mt-0.5">Clique para abrir detalhes diretamente na aba Acompanhar Processos</p>
             </div>
             <button 
               onClick={() => onNavigateToTab('cases')}

@@ -43,6 +43,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   const [caseDetails, setCaseDetails] = useState('');
   const [customClauses, setCustomClauses] = useState('');
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(initialGeneratedText || null);
+  const [docSource, setDocSource] = useState<'ai' | 'template'>('ai');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -105,6 +106,9 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
 
       const data = await res.json();
       setGeneratedDoc(data.documentText || 'Não foi possível gerar a minuta.');
+      if (data.source) {
+        setDocSource(data.source);
+      }
       setViewMode('preview');
     } catch (err) {
       console.error(err);
@@ -520,27 +524,40 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
           <div className="space-y-4">
             {/* Action Bar */}
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-              <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-slate-200">
-                <button
-                  onClick={() => setViewMode('preview')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    viewMode === 'preview'
-                      ? 'bg-[#0A1F44] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  Papel Timbrado Oficial (PDF)
-                </button>
-                <button
-                  onClick={() => setViewMode('edit')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    viewMode === 'edit'
-                      ? 'bg-[#0A1F44] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  Editar Minuta
-                </button>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-slate-200">
+                  <button
+                    onClick={() => setViewMode('preview')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      viewMode === 'preview'
+                        ? 'bg-[#0A1F44] text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Papel Timbrado Oficial (PDF)
+                  </button>
+                  <button
+                    onClick={() => setViewMode('edit')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      viewMode === 'edit'
+                        ? 'bg-[#0A1F44] text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Editar Minuta
+                  </button>
+                </div>
+
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                  docSource === 'ai'
+                    ? 'bg-amber-50 text-amber-900 border-amber-200'
+                    : 'bg-slate-100 text-slate-700 border-slate-200'
+                }`}>
+                  <span className="material-symbols-outlined text-xs">
+                    {docSource === 'ai' ? 'auto_awesome' : 'description'}
+                  </span>
+                  <span>{docSource === 'ai' ? 'Redigido com IA Gemini' : 'Modelo Paramétrico Padrão'}</span>
+                </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 justify-end">

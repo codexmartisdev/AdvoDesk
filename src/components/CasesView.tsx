@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { LegalCase, CaseDocument, Client } from '../types';
 import { getBrasiliaISO, getBrasiliaFormatted, formatToPtBR } from '../utils/dateUtils';
+import { calculateLegalDeadline, DeadlineType } from '../utils/legalDeadlines';
+import { WorkflowExecutionPanel } from './WorkflowExecutionPanel';
+import { instantiateWorkflow } from '../services/workflowEngine';
+import { INITIAL_WORKFLOWS } from '../data/defaultWorkflows';
 
 interface CasesViewProps {
   cases: LegalCase[];
@@ -27,7 +31,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
 }) => {
   const currentCase = cases.find((c) => c.id === selectedCaseId) || cases[0];
 
-  const [activeTab, setActiveTab] = useState<'ficha' | 'documentos' | 'prazos' | 'anotacoes' | 'custas'>('ficha');
+  const [activeTab, setActiveTab] = useState<'workflow' | 'ficha' | 'documentos' | 'prazos' | 'anotacoes' | 'custas'>('workflow');
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<CaseDocument[]>(currentCase?.documents || []);
   const [newNoteText, setNewNoteText] = useState('');
@@ -62,6 +66,19 @@ export const CasesView: React.FC<CasesViewProps> = ({
   const [editPaymentStatus, setEditPaymentStatus] = useState('');
 
   const [editQuickNotes, setEditQuickNotes] = useState('');
+
+  // Interactive Legal Deadline Calculator State
+  const [calcStartDate, setCalcStartDate] = useState(getBrasiliaISO());
+  const [calcDays, setCalcDays] = useState(15);
+  const [calcType, setCalcType] = useState<DeadlineType>('judicial_cpc');
+  const [calcResult, setCalcResult] = useState(() => calculateLegalDeadline(getBrasiliaISO(), 15, 'judicial_cpc'));
+
+  const handleRecalculate = (start: string, days: number, type: DeadlineType) => {
+    setCalcStartDate(start);
+    setCalcDays(days);
+    setCalcType(type);
+    setCalcResult(calculateLegalDeadline(start, days, type));
+  };
 
   // Sync when currentCase changes
   useEffect(() => {
@@ -262,7 +279,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
         <div className="flex items-center gap-2 text-slate-500 text-xs md:text-sm font-medium">
           <span className="hover:text-blue-900 transition-colors flex items-center cursor-pointer">
             <span className="material-symbols-outlined text-[16px] mr-1">arrow_back</span>
-            Processos
+            Acompanhar Processos
           </span>
           <span>/</span>
           <span>{currentCase.category}</span>
@@ -563,6 +580,17 @@ export const CasesView: React.FC<CasesViewProps> = ({
         {/* Tabs */}
         <div className="flex gap-2 border-b border-slate-200 pb-[1px] overflow-x-auto">
           <button
+            onClick={() => setActiveTab('workflow')}
+            className={`px-5 py-2.5 border-b-2 text-xs md:text-sm font-bold rounded-t-xl transition-all flex items-center gap-1.5 ${
+              activeTab === 'workflow'
+                ? 'border-[#C9A227] text-slate-950 bg-white font-black shadow-xs'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base text-[#C9A227]">schema</span>
+            <span>Workflow Executável</span>
+          </button>
+          <button
             onClick={() => setActiveTab('ficha')}
             className={`px-5 py-2.5 border-b-2 text-xs md:text-sm font-bold rounded-t-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'ficha'
@@ -614,6 +642,39 @@ export const CasesView: React.FC<CasesViewProps> = ({
             Custas ({currentCase.costs?.length || 0})
           </button>
         </div>
+
+        {/* Tab 0: Workflow Engine Executável */}
+        {activeTab === 'workflow' && (
+          <div>
+            {(() => {
+              const clientObj = clients.find((c) => c.id === currentCase.clientId);
+              let activeInstance = currentCase.workflowInstance;
+
+              if (!activeInstance) {
+                const defaultTpl = INITIAL_WORKFLOWS[0];
+                activeInstance = instantiateWorkflow(defaultTpl, currentCase, clientObj);
+              }
+
+              return (
+                <WorkflowExecutionPanel
+                  instance={activeInstance}
+                  legalCase={currentCase}
+                  client={clientObj}
+                  workflowTemplate={INITIAL_WORKFLOWS.find((w) => w.id === activeInstance?.templateId) || INITIAL_WORKFLOWS[0]}
+                  onUpdateInstance={(updatedInst) => {
+                    if (onUpdateCase) {
+                      onUpdateCase({
+                        ...currentCase,
+                        workflowInstance: updatedInst,
+                        workflowInstanceId: updatedInst.id,
+                      });
+                    }
+                  }}
+                />
+              );
+            })()}
+          </div>
+        )}
 
         {/* Tab 0: Ficha Completa do Processo (5 Sections View) */}
         {activeTab === 'ficha' && (
@@ -909,41 +970,136 @@ export const CasesView: React.FC<CasesViewProps> = ({
 
         {/* Tab 2: Prazos */}
         {activeTab === 'prazos' && (
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900 mb-2">Prazos e Audiências Vinculadas</h3>
-            
-            {currentCase.nextDeadlineDate && (
-              <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 flex items-center justify-between">
+          <div className="space-y-6">
+            {/* Calculadora Jurídica de Prazos (CPC Art. 219 vs INSS) */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
                 <div>
-                  <p className="font-bold text-slate-900 text-sm">{currentCase.nextDeadlineType || 'Compromisso Agendado'}</p>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Data: {new Date(currentCase.nextDeadlineDate + 'T00:00:00').toLocaleDateString('pt-BR')} • {currentCase.court}
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-blue-900 text-base">calculate</span>
+                    <span>Calculadora Oficial de Prazos Processuais & Administrativos</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Contagem automática com exclusão do dia de início, cômputo de feriados nacionais e recesso forense (Art. 220 CPC).
                   </p>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-blue-900 text-white text-xs font-bold shadow-xs">
-                  Agendado
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-900 text-[11px] font-bold border border-blue-200">
+                  Horário de Brasília (Oficial)
                 </span>
               </div>
-            )}
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div>
-                <p className="font-bold text-slate-900 text-sm">Réplica / Cumprimento de Exigência</p>
-                <p className="text-xs text-slate-500 mt-0.5">Vencimento em 15 dias úteis</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Data da Intimação / Início</label>
+                  <input
+                    type="date"
+                    value={calcStartDate}
+                    onChange={(e) => handleRecalculate(e.target.value, calcDays, calcType)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Quantidade de Dias</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={calcDays}
+                    onChange={(e) => handleRecalculate(calcStartDate, parseInt(e.target.value) || 1, calcType)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tipo de Regra Aplicável</label>
+                  <select
+                    value={calcType}
+                    onChange={(e) => handleRecalculate(calcStartDate, calcDays, e.target.value as DeadlineType)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  >
+                    <option value="judicial_cpc">Judicial CPC (Dias Úteis - Art. 219)</option>
+                    <option value="administrative_inss">Administrativo INSS (Dias Corridos c/ Prorrogação)</option>
+                    <option value="corridos">Contagem Simples (Dias Corridos)</option>
+                  </select>
+                </div>
               </div>
-              <span className="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold border border-red-200">
-                Pendente
-              </span>
+
+              {/* Resultado do Cálculo */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-950 to-slate-900 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+                <div>
+                  <p className="text-[11px] text-blue-200 uppercase font-bold tracking-wider">
+                    Data Fatal do Vencimento:
+                  </p>
+                  <p className="text-xl font-black text-white mt-0.5">
+                    {calcResult.finalDateFormatted}
+                  </p>
+                  <p className="text-xs text-blue-200/80 mt-0.5">
+                    {calcType === 'judicial_cpc'
+                      ? `Contados ${calcResult.businessDaysCounted} dias úteis (exclui finais de semana, feriados e recesso)`
+                      : `Contados ${calcResult.businessDaysCounted} dias ${calcResult.isProrogated ? '(prorrogado para o 1º dia útil seguinte)' : ''}`}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentCase && onUpdateCase) {
+                      const updated: LegalCase = {
+                        ...currentCase,
+                        nextDeadlineDate: calcResult.finalDateIso,
+                        nextDeadlineType: calcType === 'judicial_cpc' ? 'Prazo Judicial (CPC)' : 'Prazo Administrativo INSS',
+                        lastMovementDate: getBrasiliaISO(),
+                      };
+                      onUpdateCase(updated);
+                      alert(`Prazo fatal ${calcResult.finalDateFormatted} vinculado com sucesso à ficha do processo!`);
+                    }
+                  }}
+                  className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 shrink-0"
+                >
+                  <span className="material-symbols-outlined text-sm">event_available</span>
+                  <span>Vincular Prazo a Este Caso</span>
+                </button>
+              </div>
             </div>
-            
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div>
-                <p className="font-bold text-slate-900 text-sm">Apresentação de Procuração e Quesitos</p>
-                <p className="text-xs text-slate-500 mt-0.5">Concluído e protocolo confirmado</p>
+
+            {/* Prazos e Audiências Vinculadas */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+              <h3 className="text-base font-bold text-slate-900 mb-2">Prazos e Audiências Vinculadas</h3>
+              
+              {currentCase.nextDeadlineDate && (
+                <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-slate-900 text-sm">{currentCase.nextDeadlineType || 'Compromisso Agendado'}</p>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Data Fatal: {formatToPtBR(currentCase.nextDeadlineDate)} • {currentCase.agencyOrCourt || currentCase.court || 'Justiça Federal / INSS'}
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-blue-900 text-white text-xs font-bold shadow-xs">
+                    Agendado
+                  </span>
+                </div>
+              )}
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">Réplica / Cumprimento de Exigência</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Vencimento em 15 dias úteis (CPC Art. 219)</p>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold border border-red-200">
+                  Pendente
+                </span>
               </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
-                Cumprido
-              </span>
+              
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">Apresentação de Procuração e Quesitos</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Concluído e protocolo confirmado</p>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                  Cumprido
+                </span>
+              </div>
             </div>
           </div>
         )}

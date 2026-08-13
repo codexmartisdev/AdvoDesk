@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Default deny for unhandled paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isMemberOfFirm(firmId) {
+      return isAuthenticated() && (
+        getUserData().firmId == firmId ||
+        (getUserData().firmId == 'firm-bizerra' && (firmId == null || firmId == '' || firmId == 'firm-bizerra'))
+      );
+    }
+
+    // Firm-scoped documents, PDFs, CNIS, medical records & attachments
+    match /firms/{firmId}/{allPaths=**} {
+      allow read, write: if isMemberOfFirm(firmId);
+    }
+
+    // Public avatars directory
+    match /public/avatars/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // User profile avatars
+    match /users/{userId}/avatars/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User private files - STRICTLY RESTRICTED TO OWNER USER
+    match /users/{userId}/private/{fileName} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}

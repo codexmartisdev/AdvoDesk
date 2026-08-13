@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { NavigationTab, Client, LegalCase, DocumentTemplate, ScheduledEvent, FirmSettings } from './types';
+import { NavigationTab, Client, LegalCase, DocumentTemplate, ScheduledEvent, FirmSettings, UserProfile } from './types';
 import {
   INITIAL_CLIENTS,
   INITIAL_CASES,
@@ -17,6 +17,9 @@ import {
   subscribeToTemplates,
   subscribeToEvents,
   subscribeToSettings,
+  subscribeToWorkflowTemplates,
+  ensureUserProfileInFirestore,
+  subscribeToUserProfile,
   saveClientInFirestore,
   deleteClientFromFirestore,
   saveCaseInFirestore,
@@ -27,7 +30,9 @@ import {
   deleteEventFromFirestore,
   saveSettingsInFirestore,
 } from './services/firestoreService';
+import { INITIAL_WORKFLOWS } from './data/defaultWorkflows';
 import { Navigation } from './components/Navigation';
+import { RegisterCaseWizard } from './components/RegisterCaseWizard';
 import { DashboardView } from './components/DashboardView';
 import { ClientsView } from './components/ClientsView';
 import { CasesView } from './components/CasesView';
@@ -42,17 +47,42 @@ import { VariablesGuideModal } from './components/VariablesGuideModal';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Firebase Auth State Listener
+  // Firebase Auth State Listener & User Profile Initialization
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let unsubProfile: (() => void) | null = null;
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // Ensure user profile document exists in Firestore /users/{uid}
+        const profile = await ensureUserProfileInFirestore(currentUser);
+        setUserProfile(profile);
+
+        // Subscribe to real-time updates on user profile
+        unsubProfile = subscribeToUserProfile(currentUser.uid, (updatedProfile) => {
+          if (updatedProfile) {
+            setUserProfile(updatedProfile);
+          }
+        });
+      } else {
+        setUserProfile(null);
+        if (unsubProfile) {
+          unsubProfile();
+          unsubProfile = null;
+        }
+      }
       setAuthLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+      if (unsubProfile) unsubProfile();
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -97,36 +127,68 @@ export default function App() {
   const [cases, setCases] = useState<LegalCase[]>(INITIAL_CASES);
   const [events, setEvents] = useState<ScheduledEvent[]>(SCHEDULED_EVENTS);
   const [templates, setTemplates] = useState<DocumentTemplate[]>(TEMPLATES);
+  const [workflows, setWorkflows] = useState<any[]>(INITIAL_WORKFLOWS);
 
-  // Initialize and Sync Firebase Firestore
+  // Initialize and Sync Firebase Firestore only after User Profile & Firm ID are fully resolved
   useEffect(() => {
-    testConnection();
-    seedInitialFirestoreData().then(() => {
-      const unsubClients = subscribeToClients((remoteClients) => {
-        setClients(remoteClients);
-      });
-      const unsubCases = subscribeToCases((remoteCases) => {
-        setCases(remoteCases);
-      });
-      const unsubTemplates = subscribeToTemplates((remoteTemplates) => {
-        setTemplates(remoteTemplates);
-      });
-      const unsubEvents = subscribeToEvents((remoteEvents) => {
-        setEvents(remoteEvents);
-      });
-      const unsubSettings = subscribeToSettings((remoteSettings) => {
-        if (remoteSettings && remoteSettings.firmName) setSettings(remoteSettings);
-      });
+    if (!user || !userProfile || !userProfile.firmId) return;
 
-      return () => {
-        unsubClients();
-        unsubCases();
-        unsubTemplates();
-        unsubEvents();
-        unsubSettings();
-      };
+    const firmId = userProfile.firmId;
+    let isMounted = true;
+    let unsubClients: (() => void) | null = null;
+    let unsubCases: (() => void) | null = null;
+    let unsubTemplates: (() => void) | null = null;
+    let unsubEvents: (() => void) | null = null;
+    let unsubSettings: (() => void) | null = null;
+    let unsubWorkflows: (() => void) | null = null;
+
+    async function initDataPipeline() {
+      testConnection();
+
+      // Conditional administrative seeding check
+      if (userProfile?.role === 'admin' || userProfile?.permissions?.canManageWorkflows) {
+        await seedInitialFirestoreData(userProfile);
+      }
+
+      if (!isMounted) return;
+
+      // Start private multitenant real-time subscriptions with explicit firmId filtering
+      unsubClients = subscribeToClients(firmId, (remoteClients) => {
+        if (isMounted) setClients(remoteClients);
+      });
+      unsubCases = subscribeToCases(firmId, (remoteCases) => {
+        if (isMounted) setCases(remoteCases);
+      });
+      unsubTemplates = subscribeToTemplates(firmId, (remoteTemplates) => {
+        if (isMounted) setTemplates(remoteTemplates);
+      });
+      unsubEvents = subscribeToEvents(firmId, (remoteEvents) => {
+        if (isMounted) setEvents(remoteEvents);
+      });
+      unsubSettings = subscribeToSettings(firmId, (remoteSettings) => {
+        if (isMounted && remoteSettings && remoteSettings.firmName) setSettings(remoteSettings);
+      });
+      unsubWorkflows = subscribeToWorkflowTemplates(firmId, (remoteWorkflows) => {
+        if (isMounted && remoteWorkflows && remoteWorkflows.length > 0) {
+          setWorkflows(remoteWorkflows);
+        }
+      });
+    }
+
+    initDataPipeline().catch((err) => {
+      console.warn('Multitenant data initialization skipped or handled gracefully:', err);
     });
-  }, []);
+
+    return () => {
+      isMounted = false;
+      if (unsubClients) unsubClients();
+      if (unsubCases) unsubCases();
+      if (unsubTemplates) unsubTemplates();
+      if (unsubEvents) unsubEvents();
+      if (unsubSettings) unsubSettings();
+      if (unsubWorkflows) unsubWorkflows();
+    };
+  }, [user, userProfile?.uid, userProfile?.firmId]);
 
   // Document Categories & Formats
   const [docCategories, setDocCategories] = useState<string[]>([
@@ -344,8 +406,7 @@ export default function App() {
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         onOpenNewCaseModal={() => {
-          setModalMode('case');
-          setNewCaseModalOpen(true);
+          setCurrentTab('create-case');
         }}
         onOpenAddEntryModal={() => {
           setModalMode('client');
@@ -368,8 +429,7 @@ export default function App() {
           onNavigateToTab={setCurrentTab}
           onSelectCase={setSelectedCaseId}
           onOpenNewCaseModal={() => {
-            setModalMode('case');
-            setNewCaseModalOpen(true);
+            setCurrentTab('create-case');
           }}
           onOpenNewClientModal={() => {
             setModalMode('client');
@@ -380,6 +440,22 @@ export default function App() {
             setDocModalOpen(true);
           }}
         />
+      )}
+
+      {currentTab === 'create-case' && (
+        <main className="pl-0 md:pl-64 pt-16 md:pt-6 pb-12 transition-all">
+          <RegisterCaseWizard
+            clients={clients}
+            onCaseCreated={handleCaseCreated}
+            onNavigateToTab={setCurrentTab}
+            onSelectCaseId={setSelectedCaseId}
+            onOpenDocModalForCase={(caseItem) => {
+              setSelectedTemplateForDoc(TEMPLATES[0]);
+              setDocModalOpen(true);
+            }}
+            settings={{ ...settings, workflows }}
+          />
+        </main>
       )}
 
       {currentTab === 'clients' && (
@@ -447,7 +523,7 @@ export default function App() {
       {/* Settings View */}
       {currentTab === 'settings' && (
         <SettingsView
-          settings={settings}
+          settings={{ ...settings, workflows }}
           onUpdateSettings={handleSaveSettings}
         />
       )}
