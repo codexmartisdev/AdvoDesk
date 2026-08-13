@@ -12,6 +12,7 @@ import {
 import { auth, testConnection } from './lib/firebase';
 import {
   seedInitialFirestoreData,
+  createDefaultUserProfile,
   subscribeToClients,
   subscribeToCases,
   subscribeToTemplates,
@@ -52,16 +53,26 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Firebase Auth State Listener & User Profile Initialization
+  // Firebase Auth State Listener & Fast Profile Setup
   useEffect(() => {
     let unsubProfile: (() => void) | null = null;
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Ensure user profile document exists in Firestore /users/{uid}
-        const profile = await ensureUserProfileInFirestore(currentUser);
-        setUserProfile(profile);
+        // Immediately set fast default profile synchronously for zero-delay UI render
+        const initialProfile = createDefaultUserProfile(currentUser);
+        setUserProfile((prev) => prev || initialProfile);
+        setAuthLoading(false);
+
+        // Asynchronously ensure profile persistence in the background
+        ensureUserProfileInFirestore(currentUser)
+          .then((persistedProfile) => {
+            if (persistedProfile) {
+              setUserProfile(persistedProfile);
+            }
+          })
+          .catch((err) => console.warn('User profile sync notice:', err));
 
         // Subscribe to real-time updates on user profile
         unsubProfile = subscribeToUserProfile(currentUser.uid, (updatedProfile) => {
@@ -75,8 +86,8 @@ export default function App() {
           unsubProfile();
           unsubProfile = null;
         }
+        setAuthLoading(false);
       }
-      setAuthLoading(false);
     });
 
     return () => {
@@ -142,42 +153,34 @@ export default function App() {
     let unsubSettings: (() => void) | null = null;
     let unsubWorkflows: (() => void) | null = null;
 
-    async function initDataPipeline() {
-      testConnection();
-
-      // Conditional administrative seeding check
-      if (userProfile?.role === 'admin' || userProfile?.permissions?.canManageWorkflows) {
-        await seedInitialFirestoreData(userProfile);
+    // 1. Immediately launch private multitenant real-time subscriptions in parallel
+    unsubClients = subscribeToClients(firmId, (remoteClients) => {
+      if (isMounted) setClients(remoteClients);
+    });
+    unsubCases = subscribeToCases(firmId, (remoteCases) => {
+      if (isMounted) setCases(remoteCases);
+    });
+    unsubTemplates = subscribeToTemplates(firmId, (remoteTemplates) => {
+      if (isMounted) setTemplates(remoteTemplates);
+    });
+    unsubEvents = subscribeToEvents(firmId, (remoteEvents) => {
+      if (isMounted) setEvents(remoteEvents);
+    });
+    unsubSettings = subscribeToSettings(firmId, (remoteSettings) => {
+      if (isMounted && remoteSettings && remoteSettings.firmName) setSettings(remoteSettings);
+    });
+    unsubWorkflows = subscribeToWorkflowTemplates(firmId, (remoteWorkflows) => {
+      if (isMounted && remoteWorkflows && remoteWorkflows.length > 0) {
+        setWorkflows(remoteWorkflows);
       }
+    });
 
-      if (!isMounted) return;
-
-      // Start private multitenant real-time subscriptions with explicit firmId filtering
-      unsubClients = subscribeToClients(firmId, (remoteClients) => {
-        if (isMounted) setClients(remoteClients);
-      });
-      unsubCases = subscribeToCases(firmId, (remoteCases) => {
-        if (isMounted) setCases(remoteCases);
-      });
-      unsubTemplates = subscribeToTemplates(firmId, (remoteTemplates) => {
-        if (isMounted) setTemplates(remoteTemplates);
-      });
-      unsubEvents = subscribeToEvents(firmId, (remoteEvents) => {
-        if (isMounted) setEvents(remoteEvents);
-      });
-      unsubSettings = subscribeToSettings(firmId, (remoteSettings) => {
-        if (isMounted && remoteSettings && remoteSettings.firmName) setSettings(remoteSettings);
-      });
-      unsubWorkflows = subscribeToWorkflowTemplates(firmId, (remoteWorkflows) => {
-        if (isMounted && remoteWorkflows && remoteWorkflows.length > 0) {
-          setWorkflows(remoteWorkflows);
-        }
+    // 2. Perform administrative data seed asynchronously in the background without blocking render
+    if (userProfile?.role === 'admin' || userProfile?.permissions?.canManageWorkflows) {
+      seedInitialFirestoreData(userProfile).catch((err) => {
+        console.warn('Background seed check notice:', err);
       });
     }
-
-    initDataPipeline().catch((err) => {
-      console.warn('Multitenant data initialization skipped or handled gracefully:', err);
-    });
 
     return () => {
       isMounted = false;

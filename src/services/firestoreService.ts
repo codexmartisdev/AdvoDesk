@@ -87,17 +87,48 @@ function sanitizeForFirestore<T>(data: T): T {
   return data;
 }
 
+export function createDefaultUserProfile(authUser: User): UserProfile {
+  const isOwner = authUser.email === 'codex.martis.dev@gmail.com' || authUser.uid === 'usr-1';
+
+  return {
+    uid: authUser.uid,
+    email: authUser.email || '',
+    name: authUser.displayName || authUser.email?.split('@')[0] || (isOwner ? 'Dr. Bizerra Neto' : 'Advogado Associado'),
+    avatarUrl: authUser.photoURL || USER_AVATAR_URL,
+    firmId: DEFAULT_FIRM_ID,
+    firmName: 'Bizerra Neto Advocacia',
+    role: isOwner ? 'admin' : 'advogado',
+    permissions: {
+      canManageWorkflows: isOwner,
+      canEditCases: true,
+      canDeleteCases: isOwner,
+      canManageUsers: isOwner,
+      canEditSettings: isOwner,
+    },
+    createdAt: getBrasiliaISO(),
+    updatedAt: getBrasiliaISO(),
+  };
+}
+
 /**
- * Seed initial data if Firestore collections are empty & auto-migrate old workflow storage
+ * Seed initial data if Firestore collections are empty & auto-migrate old workflow storage (cached per session)
  */
 export async function seedInitialFirestoreData(userProfile?: UserProfile | null) {
+  // Check if already executed in this session to prevent repeated queries
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage?.getItem('bizerra_db_seeded_v1')) {
+      return;
+    }
+  } catch {
+    // Ignore storage restrictions
+  }
+
   // Only proceed if user has administrative rights or is system owner
   const isAuthorized = userProfile?.role === 'admin' ||
     userProfile?.permissions?.canManageWorkflows === true ||
     userProfile?.email === 'codex.martis.dev@gmail.com';
 
   if (!isAuthorized) {
-    console.log('Seeding skipped: User does not have administrative seed privileges.');
     return;
   }
 
@@ -112,7 +143,7 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
     }
 
     // 2. Clients
-    const clientsSnap = await getDocs(query(collection(db, 'clients'), where('firmId', '==', firmId)));
+    const clientsSnap = await getDocs(query(collection(db, 'clients'), where('firmId', '==', firmId), limit(1)));
     if (clientsSnap.empty) {
       for (const client of INITIAL_CLIENTS) {
         await setDoc(doc(db, 'clients', client.id), sanitizeForFirestore({ firmId, ...client }));
@@ -120,7 +151,7 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
     }
 
     // 3. Cases
-    const casesSnap = await getDocs(query(collection(db, 'cases'), where('firmId', '==', firmId)));
+    const casesSnap = await getDocs(query(collection(db, 'cases'), where('firmId', '==', firmId), limit(1)));
     if (casesSnap.empty) {
       for (const c of INITIAL_CASES) {
         await setDoc(doc(db, 'cases', c.id), sanitizeForFirestore({ firmId, ...c }));
@@ -128,7 +159,7 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
     }
 
     // 4. Templates
-    const templatesSnap = await getDocs(query(collection(db, 'templates'), where('firmId', '==', firmId)));
+    const templatesSnap = await getDocs(query(collection(db, 'templates'), where('firmId', '==', firmId), limit(1)));
     if (templatesSnap.empty) {
       for (const t of TEMPLATES) {
         await setDoc(doc(db, 'templates', t.id), sanitizeForFirestore({ firmId, ...t }));
@@ -136,29 +167,27 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
     }
 
     // 5. Events
-    const eventsSnap = await getDocs(query(collection(db, 'events'), where('firmId', '==', firmId)));
+    const eventsSnap = await getDocs(query(collection(db, 'events'), where('firmId', '==', firmId), limit(1)));
     if (eventsSnap.empty) {
       for (const ev of SCHEDULED_EVENTS) {
         await setDoc(doc(db, 'events', ev.id), sanitizeForFirestore({ firmId, ...ev }));
       }
     }
 
-    // 6. Workflow Templates Subcollection Seed & Auto-Migration
-    const wfTemplatesSnap = await getDocs(query(collection(db, 'workflowTemplates'), where('firmId', '==', firmId)));
+    // 6. Workflow Templates Subcollection Seed
+    const wfTemplatesSnap = await getDocs(query(collection(db, 'workflowTemplates'), where('firmId', '==', firmId), limit(1)));
     if (wfTemplatesSnap.empty) {
       for (const wf of INITIAL_WORKFLOWS) {
         await saveWorkflowTemplateInFirestore(wf, firmId);
       }
     }
 
-    // 7. Auto-migration for Cases with embedded WorkflowInstances & AuditLogs
-    if (!casesSnap.empty) {
-      for (const caseDoc of casesSnap.docs) {
-        const cData = caseDoc.data() as LegalCase;
-        if (cData.workflowInstance && cData.workflowInstance.id) {
-          await saveWorkflowInstanceInFirestore(cData.workflowInstance, firmId);
-        }
+    try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage?.setItem('bizerra_db_seeded_v1', 'true');
       }
+    } catch {
+      // Ignore
     }
   } catch (error) {
     console.warn('Error or skipped seeding initial Firestore data:', error);
