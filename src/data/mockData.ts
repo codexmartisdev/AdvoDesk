@@ -26,6 +26,7 @@ export const INITIAL_CLIENTS: Client[] = [
     gender: 'Feminino',
     motherName: 'Francisca Maria dos Santos',
     fatherName: 'José Ribeiro dos Santos',
+    meuInssPassword: 'Maria@Inss2025',
     maritalStatus: 'Solteira',
     propertyRegime: 'Nenhum',
     spouseName: '',

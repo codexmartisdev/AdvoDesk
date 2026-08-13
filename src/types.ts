@@ -65,6 +65,7 @@ export interface Client {
   gender?: string;
   motherName?: string;
   fatherName?: string;
+  meuInssPassword?: string; // Senha de Acesso Meu INSS (Portal gov.br)
 
   // 2. Estado civil e família
   maritalStatus?: string;

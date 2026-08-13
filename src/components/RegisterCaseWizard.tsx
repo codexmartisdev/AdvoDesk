@@ -60,6 +60,15 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
 
   // Modal full client detail view state
   const [viewingClientFullDetail, setViewingClientFullDetail] = useState<boolean>(false);
+  const [showModalInssPassword, setShowModalInssPassword] = useState<boolean>(false);
+  const [modalInssPasswordCopied, setModalInssPasswordCopied] = useState<boolean>(false);
+
+  const handleCopyModalInssPassword = (pwd?: string) => {
+    if (!pwd) return;
+    navigator.clipboard.writeText(pwd);
+    setModalInssPasswordCopied(true);
+    setTimeout(() => setModalInssPasswordCopied(false), 2000);
+  };
 
   // --- Step 1: Cliente Selection ---
   const [clientSearch, setClientSearch] = useState<string>('');
@@ -1856,6 +1865,53 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                     <strong className="text-slate-900">{selectedClient.occupation || 'Não informado'}</strong>
                   </div>
                 </div>
+
+                {/* Senha Meu INSS (gov.br) no Modal de Consulta Rápida */}
+                {selectedClient.meuInssPassword && (
+                  <div className="p-3 bg-amber-50/80 rounded-xl border border-[#C9A227]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[#8c6e14] text-base">vpn_key</span>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                          Senha do Meu INSS (gov.br):
+                        </span>
+                        <span className="font-mono text-xs font-bold text-slate-900">
+                          {showModalInssPassword ? selectedClient.meuInssPassword : '••••••••••••'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setShowModalInssPassword(!showModalInssPassword)}
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-slate-200"
+                        title={showModalInssPassword ? 'Ocultar Senha' : 'Ver Senha'}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {showModalInssPassword ? 'visibility_off' : 'visibility'}
+                        </span>
+                        <span>{showModalInssPassword ? 'Ocultar' : 'Ver'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyModalInssPassword(selectedClient.meuInssPassword)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all ${
+                          modalInssPasswordCopied
+                            ? 'bg-emerald-700 text-white'
+                            : 'bg-[#0D0D0D] hover:bg-slate-800 text-[#C9A227]'
+                        }`}
+                        title="Copiar senha"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {modalInssPasswordCopied ? 'check' : 'content_copy'}
+                        </span>
+                        <span>{modalInssPasswordCopied ? 'Copiada' : 'Copiar'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 2. Endereço */}
