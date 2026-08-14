@@ -15,6 +15,17 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.email == 'codex.martis.dev@gmail.com';
     }
 
+    function isSafeSelfUpdate(userId) {
+      return isAuthenticated() &&
+        request.auth.uid == userId &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.firmId == resource.data.firmId &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.permissions == resource.data.permissions &&
+        request.resource.data.createdAt == resource.data.createdAt;
+    }
+
     // ==========================================
     // 1. DEFAULT DENY
     // ==========================================
@@ -26,8 +37,9 @@ service cloud.firestore {
     // 2. USER PROFILES (/users/{userId})
     // ==========================================
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isOwner());
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isOwner());
+      allow create: if isOwner();
+      allow update: if isOwner() || isSafeSelfUpdate(userId);
       allow delete: if isOwner();
     }
 
