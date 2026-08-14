@@ -74,10 +74,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handlePurgeData = async () => {
+    if (!form.firmId) {
+      setPurgeMessage('O escritório não pôde ser identificado. Nenhuma informação foi removida.');
+      setShowPurgeModal(false);
+      setTimeout(() => setPurgeMessage(null), 6000);
+      return;
+    }
+
     setIsPurging(true);
     setPurgeMessage(null);
     try {
-      const firmId = form.firmId || 'firm-bizerra';
+      const firmId = form.firmId;
       // First purge known simulation IDs
       await purgeSimulatedDataFromFirestore(firmId);
       // Then clear all clients, cases and events if requested
@@ -103,6 +110,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleResetDefaults = () => {
     const defaults: FirmSettings = {
+      firmId: form.firmId,
       firmName: 'Bizerra Neto',
       firmSubtitle: 'Advocacia',
       logoUrl: LOGO_IMAGE_URL,

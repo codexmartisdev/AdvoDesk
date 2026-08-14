@@ -207,7 +207,7 @@ const KNOWN_MOCK_EVENT_IDS = ['ev-1', 'ev-2', 'ev-3', 'ev-4', 'ev-5'];
 /**
  * Purge mock/simulated data automatically from Firestore
  */
-export async function purgeSimulatedDataFromFirestore(firmId: string = DEFAULT_FIRM_ID): Promise<number> {
+export async function purgeSimulatedDataFromFirestore(firmId: string): Promise<number> {
   try {
     const batch = writeBatch(db);
     let count = 0;
@@ -257,7 +257,7 @@ export async function purgeSimulatedDataFromFirestore(firmId: string = DEFAULT_F
  * Clear all records of a specific collection or all operational data for a fresh production start
  */
 export async function clearFirmData(
-  firmId: string = DEFAULT_FIRM_ID,
+  firmId: string,
   options: { clients?: boolean; cases?: boolean; events?: boolean } = { clients: true, cases: true, events: true }
 ): Promise<number> {
   try {
