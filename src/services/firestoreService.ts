@@ -301,7 +301,7 @@ export async function clearFirmData(
 /**
  * Seed initial structure (settings, templates, workflows) without populating fake clients or cases
  */
-export async function seedInitialFirestoreData(userProfile?: UserProfile | null) {
+export async function seedInitialFirestoreData(userProfile: UserProfile) {
   // Check if already executed in this session to prevent repeated queries
   try {
     if (typeof window !== 'undefined' && window.sessionStorage?.getItem('bizerra_db_seeded_v2')) {
@@ -312,15 +312,20 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
   }
 
   // Only proceed if user has administrative rights or is system owner
-  const isAuthorized = userProfile?.role === 'admin' ||
-    userProfile?.permissions?.canManageWorkflows === true ||
-    userProfile?.email === 'codex.martis.dev@gmail.com';
+  const isAuthorized = userProfile.role === 'admin' ||
+    userProfile.permissions?.canManageWorkflows === true ||
+    userProfile.email === 'codex.martis.dev@gmail.com';
 
   if (!isAuthorized) {
     return;
   }
 
-  const firmId = userProfile?.firmId || DEFAULT_FIRM_ID;
+  if (!userProfile.firmId) {
+    console.error('[Firestore Seed Error] Cannot seed data without userProfile.firmId.');
+    return;
+  }
+
+  const firmId = userProfile.firmId;
 
   try {
     // Purge any legacy simulated data that might have been seeded previously
@@ -348,7 +353,7 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
     const templatesSnap = await getDocs(query(collection(db, 'templates'), where('firmId', '==', firmId), limit(1)));
     if (templatesSnap.empty) {
       for (const t of TEMPLATES) {
-        await setDoc(doc(db, 'templates', t.id), sanitizeForFirestore({ firmId, ...t }));
+        await setDoc(doc(db, 'templates', t.id), sanitizeForFirestore({ ...t, firmId }));
       }
     }
 
