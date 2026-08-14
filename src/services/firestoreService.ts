@@ -327,10 +327,21 @@ export async function seedInitialFirestoreData(userProfile?: UserProfile | null)
     await purgeSimulatedDataFromFirestore(firmId);
 
     // 1. Settings (Office settings and branding)
-    const settingsRef = doc(db, 'settings', 'firmSettings');
+    const settingsRef = doc(db, 'settings', firmId);
     const settingsSnap = await getDoc(settingsRef);
     if (!settingsSnap.exists()) {
-      await setDoc(settingsRef, sanitizeForFirestore({ firmId, ...DEFAULT_SETTINGS }));
+      const legacyRef = doc(db, 'settings', 'firmSettings');
+      const legacySnap = await getDoc(legacyRef);
+      if (legacySnap.exists()) {
+        const legacyData = legacySnap.data() as FirmSettings;
+        if (legacyData.firmId === firmId || (!legacyData.firmId && firmId === DEFAULT_FIRM_ID)) {
+          await setDoc(settingsRef, sanitizeForFirestore({ ...legacyData, firmId }));
+        } else {
+          await setDoc(settingsRef, sanitizeForFirestore({ ...DEFAULT_SETTINGS, firmId }));
+        }
+      } else {
+        await setDoc(settingsRef, sanitizeForFirestore({ ...DEFAULT_SETTINGS, firmId }));
+      }
     }
 
     // 2. Document Templates (Document generation templates like Procuração, Contrato, etc.)
@@ -435,14 +446,25 @@ export function subscribeToEvents(firmId: string, callback: (events: ScheduledEv
 }
 
 export function subscribeToSettings(firmId: string, callback: (settings: FirmSettings) => void) {
-  const path = 'settings/firmSettings';
+  const path = `settings/${firmId}`;
   return onSnapshot(
-    doc(db, 'settings', 'firmSettings'),
-    (docSnap) => {
+    doc(db, 'settings', firmId),
+    async (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as FirmSettings;
-        if (data.firmId === firmId || (!data.firmId && firmId === DEFAULT_FIRM_ID)) {
-          callback(data);
+        callback({ ...data, firmId });
+      } else {
+        // Fallback compatibility with legacy settings/firmSettings
+        try {
+          const legacySnap = await getDoc(doc(db, 'settings', 'firmSettings'));
+          if (legacySnap.exists()) {
+            const legacyData = legacySnap.data() as FirmSettings;
+            if (legacyData.firmId === firmId || (!legacyData.firmId && firmId === DEFAULT_FIRM_ID)) {
+              callback({ ...legacyData, firmId });
+            }
+          }
+        } catch (err) {
+          console.warn('Could not read legacy settings fallback:', err);
         }
       }
     },
@@ -861,10 +883,10 @@ export async function deleteEventFromFirestore(eventId: string) {
 }
 
 export async function saveSettingsInFirestore(settings: FirmSettings, firmId: string) {
-  const path = 'settings/firmSettings';
+  const path = `settings/${firmId}`;
   try {
     const dataWithFirm = { ...settings, firmId };
-    await setDoc(doc(db, 'settings', 'firmSettings'), sanitizeForFirestore(dataWithFirm), { merge: true });
+    await setDoc(doc(db, 'settings', firmId), sanitizeForFirestore(dataWithFirm), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
