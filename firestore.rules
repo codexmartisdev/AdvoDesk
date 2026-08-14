@@ -67,7 +67,14 @@ service cloud.firestore {
     // 4. CASES (/cases/{caseId})
     // ==========================================
     match /cases/{caseId} {
-      allow read, write: if isAuthenticated();
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if hasFirmAccess(resource.data.firmId);
     }
 
     // ==========================================
