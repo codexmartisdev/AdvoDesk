@@ -704,27 +704,8 @@ export async function getUserProfileInFirestore(uid: string): Promise<UserProfil
   }
 }
 
-export async function ensureUserProfileInFirestore(authUser: User): Promise<UserProfile> {
-  const isOwner = authUser.email === 'codex.martis.dev@gmail.com' || authUser.uid === 'usr-1';
-
-  const defaultProfile: UserProfile = {
-    uid: authUser.uid,
-    email: authUser.email || '',
-    name: authUser.displayName || authUser.email?.split('@')[0] || (isOwner ? 'Dr. Bizerra Neto' : 'Advogado Associado'),
-    avatarUrl: authUser.photoURL || USER_AVATAR_URL,
-    firmId: DEFAULT_FIRM_ID,
-    firmName: 'Bizerra Neto Advocacia',
-    role: isOwner ? 'admin' : 'advogado',
-    permissions: {
-      canManageWorkflows: isOwner,
-      canEditCases: true,
-      canDeleteCases: isOwner,
-      canManageUsers: isOwner,
-      canEditSettings: isOwner,
-    },
-    createdAt: getBrasiliaISO(),
-    updatedAt: getBrasiliaISO(),
-  };
+export async function ensureUserProfileInFirestore(authUser: User): Promise<UserProfile | null> {
+  const isOwner = authUser.email === 'codex.martis.dev@gmail.com';
 
   const userRef = doc(db, 'users', authUser.uid);
   try {
@@ -733,18 +714,36 @@ export async function ensureUserProfileInFirestore(authUser: User): Promise<User
       return existing;
     }
 
-    await setDoc(userRef, sanitizeForFirestore(defaultProfile), { merge: true });
-    return defaultProfile;
-  } catch (error: any) {
-    const isOffline = error?.message?.includes('the client is offline') ||
-      error?.message?.includes('offline') ||
-      error?.code === 'unavailable';
-    if (isOffline) {
-      console.warn('[Firestore Offline] User profile initialized in local session mode.');
-    } else {
-      console.warn('Handled user profile initialization fallback:', error);
+    // Temporary bootstrap exception: only the owner account is auto-created if profile doesn't exist
+    if (isOwner) {
+      const ownerProfile: UserProfile = {
+        uid: authUser.uid,
+        email: authUser.email || 'codex.martis.dev@gmail.com',
+        name: authUser.displayName || 'Dr. Bizerra Neto',
+        avatarUrl: authUser.photoURL || USER_AVATAR_URL,
+        firmId: DEFAULT_FIRM_ID,
+        firmName: 'Bizerra Neto Advocacia',
+        role: 'admin',
+        permissions: {
+          canManageWorkflows: true,
+          canEditCases: true,
+          canDeleteCases: true,
+          canManageUsers: true,
+          canEditSettings: true,
+        },
+        createdAt: getBrasiliaISO(),
+        updatedAt: getBrasiliaISO(),
+      };
+
+      await setDoc(userRef, sanitizeForFirestore(ownerProfile), { merge: true });
+      return ownerProfile;
     }
-    return defaultProfile;
+
+    // Common user without existing profile in Firestore: do not auto-create, do not assign DEFAULT_FIRM_ID
+    return null;
+  } catch (error: any) {
+    console.error('Error in ensureUserProfileInFirestore:', error);
+    return null;
   }
 }
 

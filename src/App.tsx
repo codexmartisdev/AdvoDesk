@@ -445,6 +445,32 @@ export default function App() {
     );
   }
 
+  if (!userProfile) {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 border border-slate-200 shadow-xl text-center space-y-6">
+          <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 mx-auto flex items-center justify-center">
+            <span className="material-symbols-outlined text-2xl">lock_person</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-lg font-extrabold text-slate-900">Acesso Não Provisionado</h2>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Seu usuário foi autenticado, mas ainda não possui acesso a um escritório no AdvoDesk. Solicite ao administrador que cadastre ou autorize seu perfil.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center justify-center space-x-1.5"
+          >
+            <span className="material-symbols-outlined text-base">logout</span>
+            <span>Sair</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#0D0D0D] font-body-md text-sm relative overflow-x-hidden">
       {/* Background Ambient Glow */}
