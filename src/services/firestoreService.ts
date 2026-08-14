@@ -542,7 +542,7 @@ export function subscribeToWorkflowTemplates(firmId: string, callback: (workflow
   );
 }
 
-export async function saveWorkflowTemplateInFirestore(template: WorkflowTemplate, customFirmId?: string) {
+export async function saveWorkflowTemplateInFirestore(template: WorkflowTemplate, firmId: string) {
   const templatePath = `workflowTemplates/${template.id}`;
   const versionId = `v${template.version || 1}`;
   const versionPath = `workflowTemplates/${template.id}/versions/${versionId}`;
@@ -551,7 +551,7 @@ export async function saveWorkflowTemplateInFirestore(template: WorkflowTemplate
     // 1. Save metadata in main document workflowTemplates/{templateId}
     const metadata = {
       id: template.id,
-      firmId: template.firmId || customFirmId || DEFAULT_FIRM_ID,
+      firmId,
       code: template.code,
       title: template.title,
       category: template.category,
@@ -598,7 +598,7 @@ export async function deleteWorkflowTemplateFromFirestore(templateId: string) {
 
 // --- WORKFLOW INSTANCES & AUDIT LOGS (MODULAR SUBCOLLECTIONS) ---
 
-export async function saveWorkflowInstanceInFirestore(instance: WorkflowInstance, customFirmId?: string) {
+export async function saveWorkflowInstanceInFirestore(instance: WorkflowInstance, firmId: string) {
   const instancePath = `workflowInstances/${instance.id}`;
 
   try {
@@ -608,7 +608,7 @@ export async function saveWorkflowInstanceInFirestore(instance: WorkflowInstance
     const instanceRef = doc(db, 'workflowInstances', instance.id);
     const instanceMeta = {
       id: instance.id,
-      firmId: instance.firmId || customFirmId || DEFAULT_FIRM_ID,
+      firmId,
       caseId: instance.caseId,
       clientId: instance.clientId,
       templateId: instance.templateId,
@@ -651,7 +651,7 @@ export async function saveWorkflowInstanceInFirestore(instance: WorkflowInstance
         workflowVersion: instance.version,
         currentStepId: instance.currentStepId,
         workflowStatus: instance.status,
-        workflowInstance: sanitizeForFirestore(instance),
+        workflowInstance: sanitizeForFirestore({ ...instance, firmId }),
       });
     }
 
