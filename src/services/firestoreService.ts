@@ -781,10 +781,10 @@ export async function saveUserProfileInFirestore(profile: UserProfile) {
 }
 
 // Write/Mutation functions
-export async function saveClientInFirestore(client: Client) {
+export async function saveClientInFirestore(client: Client, firmId: string) {
   const path = `clients/${client.id}`;
   try {
-    const dataWithFirm = { firmId: DEFAULT_FIRM_ID, ...client };
+    const dataWithFirm = { ...client, firmId };
     await setDoc(doc(db, 'clients', client.id), sanitizeForFirestore(dataWithFirm), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -800,14 +800,14 @@ export async function deleteClientFromFirestore(clientId: string) {
   }
 }
 
-export async function saveCaseInFirestore(legalCase: LegalCase) {
+export async function saveCaseInFirestore(legalCase: LegalCase, firmId: string) {
   const path = `cases/${legalCase.id}`;
   try {
-    const dataWithFirm = { firmId: DEFAULT_FIRM_ID, ...legalCase };
+    const dataWithFirm = { ...legalCase, firmId };
     await setDoc(doc(db, 'cases', legalCase.id), sanitizeForFirestore(dataWithFirm), { merge: true });
     // Also sync workflowInstance subcollection if embedded
     if (legalCase.workflowInstance) {
-      await saveWorkflowInstanceInFirestore(legalCase.workflowInstance);
+      await saveWorkflowInstanceInFirestore(legalCase.workflowInstance, firmId);
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -823,10 +823,10 @@ export async function deleteCaseFromFirestore(caseId: string) {
   }
 }
 
-export async function saveTemplateInFirestore(template: DocumentTemplate) {
+export async function saveTemplateInFirestore(template: DocumentTemplate, firmId: string) {
   const path = `templates/${template.id}`;
   try {
-    const dataWithFirm = { firmId: DEFAULT_FIRM_ID, ...template };
+    const dataWithFirm = { ...template, firmId };
     await setDoc(doc(db, 'templates', template.id), sanitizeForFirestore(dataWithFirm), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -842,10 +842,10 @@ export async function deleteTemplateFromFirestore(templateId: string) {
   }
 }
 
-export async function saveEventInFirestore(event: ScheduledEvent) {
+export async function saveEventInFirestore(event: ScheduledEvent, firmId: string) {
   const path = `events/${event.id}`;
   try {
-    const dataWithFirm = { firmId: DEFAULT_FIRM_ID, ...event };
+    const dataWithFirm = { ...event, firmId };
     await setDoc(doc(db, 'events', event.id), sanitizeForFirestore(dataWithFirm), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -861,10 +861,10 @@ export async function deleteEventFromFirestore(eventId: string) {
   }
 }
 
-export async function saveSettingsInFirestore(settings: FirmSettings) {
+export async function saveSettingsInFirestore(settings: FirmSettings, firmId: string) {
   const path = 'settings/firmSettings';
   try {
-    const dataWithFirm = { firmId: DEFAULT_FIRM_ID, ...settings };
+    const dataWithFirm = { ...settings, firmId };
     await setDoc(doc(db, 'settings', 'firmSettings'), sanitizeForFirestore(dataWithFirm), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);

@@ -239,7 +239,11 @@ export default function App() {
   // Handlers with Firestore Persistence
   const handleSaveSettings = (newSettings: FirmSettings) => {
     setSettings(newSettings);
-    saveSettingsInFirestore(newSettings);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save settings: userProfile.firmId is not defined.');
+      return;
+    }
+    saveSettingsInFirestore(newSettings, userProfile.firmId);
   };
 
   const handleSaveTemplate = (tpl: DocumentTemplate) => {
@@ -249,7 +253,11 @@ export default function App() {
     } else {
       setTemplates([tpl, ...templates]);
     }
-    saveTemplateInFirestore(tpl);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save template: userProfile.firmId is not defined.');
+      return;
+    }
+    saveTemplateInFirestore(tpl, userProfile.firmId);
   };
 
   const handleDeleteTemplate = (id: string) => {
@@ -267,7 +275,12 @@ export default function App() {
     setDocCategories(docCategories.map((c) => (c === oldCat ? newCat : c)));
     const updated = templates.map((t) => (t.category === oldCat ? { ...t, category: newCat } : t));
     setTemplates(updated);
-    updated.filter((t) => t.category === newCat).forEach(saveTemplateInFirestore);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save templates for updated category: userProfile.firmId is not defined.');
+      return;
+    }
+    const firmId = userProfile.firmId;
+    updated.filter((t) => t.category === newCat).forEach((t) => saveTemplateInFirestore(t, firmId));
   };
 
   const handleDeleteCategory = (cat: string) => {
@@ -284,7 +297,12 @@ export default function App() {
     setDocFormats(docFormats.map((f) => (f === oldFmt ? newFmt : f)));
     const updated = templates.map((t) => (t.format === oldFmt ? { ...t, format: newFmt } : t));
     setTemplates(updated);
-    updated.filter((t) => t.format === newFmt).forEach(saveTemplateInFirestore);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save templates for updated format: userProfile.firmId is not defined.');
+      return;
+    }
+    const firmId = userProfile.firmId;
+    updated.filter((t) => t.format === newFmt).forEach((t) => saveTemplateInFirestore(t, firmId));
   };
 
   const handleDeleteFormat = (fmt: string) => {
@@ -296,12 +314,20 @@ export default function App() {
     setCases([newCase, ...cases]);
     setSelectedCaseId(newCase.id);
     setCurrentTab('cases');
-    saveCaseInFirestore(newCase);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save new case: userProfile.firmId is not defined.');
+      return;
+    }
+    saveCaseInFirestore(newCase, userProfile.firmId);
   };
 
   const handleUpdateCase = (updatedCase: LegalCase) => {
     setCases(cases.map((c) => (c.id === updatedCase.id ? updatedCase : c)));
-    saveCaseInFirestore(updatedCase);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save updated case: userProfile.firmId is not defined.');
+      return;
+    }
+    saveCaseInFirestore(updatedCase, userProfile.firmId);
   };
 
   const handleDeleteCase = (caseId: string) => {
@@ -316,12 +342,20 @@ export default function App() {
   const handleClientCreated = (newClient: Client) => {
     setClients([newClient, ...clients]);
     setCurrentTab('clients');
-    saveClientInFirestore(newClient);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save new client: userProfile.firmId is not defined.');
+      return;
+    }
+    saveClientInFirestore(newClient, userProfile.firmId);
   };
 
   const handleSaveClient = (updatedClient: Client) => {
     setClients(clients.map((c) => (c.id === updatedClient.id ? updatedClient : c)));
-    saveClientInFirestore(updatedClient);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save client: userProfile.firmId is not defined.');
+      return;
+    }
+    saveClientInFirestore(updatedClient, userProfile.firmId);
   };
 
   const handleDeleteClient = (clientId: string) => {
@@ -331,12 +365,20 @@ export default function App() {
 
   const handleAddEvent = (newEv: ScheduledEvent) => {
     setEvents([newEv, ...events]);
-    saveEventInFirestore(newEv);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save new event: userProfile.firmId is not defined.');
+      return;
+    }
+    saveEventInFirestore(newEv, userProfile.firmId);
   };
 
   const handleUpdateEvent = (updatedEv: ScheduledEvent) => {
     setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e)));
-    saveEventInFirestore(updatedEv);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save updated event: userProfile.firmId is not defined.');
+      return;
+    }
+    saveEventInFirestore(updatedEv, userProfile.firmId);
   };
 
   const handleDeleteEvent = (eventId: string) => {
@@ -367,7 +409,11 @@ export default function App() {
       const updated = prev.map((c) => (c.id === clientId ? { ...c, [fieldKey]: value } : c));
       const target = updated.find((c) => c.id === clientId);
       if (target) {
-        saveClientInFirestore(target);
+        if (!userProfile?.firmId) {
+          console.error('[Firestore Write Error] Cannot update client field: userProfile.firmId is not defined.');
+        } else {
+          saveClientInFirestore(target, userProfile.firmId);
+        }
       }
       return updated;
     });
