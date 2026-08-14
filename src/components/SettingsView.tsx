@@ -1,9 +1,7 @@
 import React, { useState, ChangeEvent } from 'react';
-import { FirmSettings, ProcessWorkflow } from '../types';
+import { FirmSettings } from '../types';
 import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
-import { INITIAL_WORKFLOWS } from '../data/defaultWorkflows';
-import { WorkflowAdminPanel } from './WorkflowAdminPanel';
-import { saveWorkflowTemplateInFirestore, purgeSimulatedDataFromFirestore, clearFirmData } from '../services/firestoreService';
+import { purgeSimulatedDataFromFirestore, clearFirmData } from '../services/firestoreService';
 
 export type { FirmSettings };
 
@@ -18,7 +16,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const [form, setForm] = useState<FirmSettings>({ ...settings });
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'workflows'>('general');
   const [isPurging, setIsPurging] = useState(false);
   const [purgeMessage, setPurgeMessage] = useState<string | null>(null);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
@@ -28,16 +25,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleChange = (field: keyof FirmSettings, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveWorkflows = (updatedWorkflows: ProcessWorkflow[]) => {
-    const updatedSettings = { ...form, workflows: updatedWorkflows };
-    setForm(updatedSettings);
-    onUpdateSettings(updatedSettings);
-    // Save each workflow directly to modular Firestore collections
-    updatedWorkflows.forEach((wf) => {
-      saveWorkflowTemplateInFirestore(wf as any);
-    });
   };
 
   // Practice Areas handlers
@@ -158,40 +145,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Configurações do Sistema
           </h1>
           <p className="text-slate-500 text-xs md:text-sm">
-            Personalize a identidade da banca, dados cadastrais, e gerencie os workflows e etapas padronizadas dos processos.
+            Personalize a identidade da banca, dados cadastrais e parâmetros operacionais do escritório.
           </p>
-        </div>
-
-        {/* Top Tab Controls */}
-        <div className="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab('general')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              activeTab === 'general'
-                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">tune</span>
-            <span>Identidade & Geral</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('workflows')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              activeTab === 'workflows'
-                ? 'bg-[#0D0D0D] text-white border border-[#C9A227]/60 shadow-sm'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base text-[#C9A227]">account_tree</span>
-            <span>Painel de Workflows</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-[#C9A227] text-slate-950">
-              Admin
-            </span>
-          </button>
         </div>
       </div>
 
@@ -208,9 +163,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* Tab 1: General Settings Form */}
-      {activeTab === 'general' && (
-        <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
+      {/* General Settings Form */}
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
           {/* Section 1: System Logo & Firm Name */}
         <section className="glass-panel rounded-2xl p-6 bg-white border border-slate-200/90 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
@@ -609,16 +563,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
       </form>
-      )}
-
-      {/* Tab 2: Workflow Administrative Panel */}
-      {activeTab === 'workflows' && (
-        <WorkflowAdminPanel
-          workflows={form.workflows || INITIAL_WORKFLOWS}
-          onSaveWorkflows={handleSaveWorkflows}
-          practiceAreas={form.practiceAreas}
-        />
-      )}
 
       {/* Modal Confirmation for Data Purge */}
       {showPurgeModal && (
