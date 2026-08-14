@@ -1,5 +1,8 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
-  }
+  "firestore": [
+    {
+      "database": "ai-studio-bizerranetoadvoc-3ceabbf7-259b-4a9e-b48e-0ede91e287be",
+      "rules": "firestore.rules"
+    }
+  ]
 }
