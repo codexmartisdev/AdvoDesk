@@ -12,7 +12,6 @@ import {
 import { auth, testConnection } from './lib/firebase';
 import {
   seedInitialFirestoreData,
-  createDefaultUserProfile,
   subscribeToClients,
   subscribeToCases,
   subscribeToTemplates,
@@ -54,33 +53,38 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Firebase Auth State Listener & Fast Profile Setup
+  // Firebase Auth State Listener & Profile Resolution
   useEffect(() => {
     let unsubProfile: (() => void) | null = null;
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Immediately set fast default profile synchronously for zero-delay UI render
-        const initialProfile = createDefaultUserProfile(currentUser);
-        setUserProfile((prev) => prev || initialProfile);
-        setAuthLoading(false);
-
-        // Asynchronously ensure profile persistence in the background
-        ensureUserProfileInFirestore(currentUser)
-          .then((persistedProfile) => {
-            if (persistedProfile) {
-              setUserProfile(persistedProfile);
-            }
-          })
-          .catch((err) => console.warn('User profile sync notice:', err));
+        setAuthLoading(true);
+        setUserProfile(null);
 
         // Subscribe to real-time updates on user profile
+        if (unsubProfile) {
+          unsubProfile();
+          unsubProfile = null;
+        }
         unsubProfile = subscribeToUserProfile(currentUser.uid, (updatedProfile) => {
           if (updatedProfile) {
             setUserProfile(updatedProfile);
           }
         });
+
+        // Ensure and resolve persisted user profile in Firestore
+        try {
+          const persistedProfile = await ensureUserProfileInFirestore(currentUser);
+          if (persistedProfile) {
+            setUserProfile(persistedProfile);
+          }
+        } catch (err) {
+          console.error('Error resolving user profile in Firestore:', err);
+        } finally {
+          setAuthLoading(false);
+        }
       } else {
         setUserProfile(null);
         if (unsubProfile) {
