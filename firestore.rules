@@ -26,6 +26,12 @@ service cloud.firestore {
         request.resource.data.createdAt == resource.data.createdAt;
     }
 
+    function hasFirmAccess(firmId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.firmId == firmId;
+    }
+
     // ==========================================
     // 1. DEFAULT DENY
     // ==========================================
@@ -47,7 +53,14 @@ service cloud.firestore {
     // 3. CLIENTS (/clients/{clientId})
     // ==========================================
     match /clients/{clientId} {
-      allow read, write: if isAuthenticated();
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if hasFirmAccess(resource.data.firmId);
     }
 
     // ==========================================
