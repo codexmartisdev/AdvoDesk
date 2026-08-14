@@ -53,7 +53,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       case 'auth/popup-closed-by-user':
         return 'A janela de autenticação do Google foi fechada antes da conclusão.';
       case 'auth/unauthorized-domain':
-        return 'Atenção: O domínio deste site precisa ser liberado no Firebase Console (Authentication > Configurações > Domínios Autorizados). Para testar imediatamente, utilize o "Acesso Rápido de Demonstração" ou login por E-mail.';
+        return 'Atenção: O domínio deste site precisa ser liberado no Firebase Console (Authentication > Configurações > Domínios Autorizados) ou utilize o login por E-mail e Senha.';
       case 'auth/operation-not-allowed':
         return 'O login com Google não está habilitado no Firebase Console. Ative o provedor Google no painel do Firebase.';
       case 'auth/popup-blocked':
@@ -107,27 +107,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       } else {
         setError(getPortugueseErrorMessage(code));
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Demo 1-Click Access for instant evaluation/testing
-  const handleDemoAccess = async () => {
-    setEmail('advogado@bizerraneto.com.br');
-    setPassword('123456');
-    setError(null);
-    setLoading(true);
-    try {
-      try {
-        await signInWithEmailAndPassword(auth, 'advogado@bizerraneto.com.br', '123456');
-      } catch {
-        // Fallback for demo setup
-        await signInWithEmailAndPassword(auth, 'demo@bizerraneto.com.br', '123456');
-      }
-    } catch (err: any) {
-      console.error('Demo auth error:', err);
-      setError('Acesso de demonstração ativado. Utilize seu e-mail cadastrado ou Google.');
     } finally {
       setLoading(false);
     }
@@ -188,7 +167,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="advogado@bizerraneto.com.br"
+                placeholder="seu.email@exemplo.com.br"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 transition-all placeholder:text-slate-400"
               />
             </div>
@@ -264,18 +243,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               />
             </svg>
             <span>Conta Google</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDemoAccess}
-            disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center space-x-1.5"
-          >
-            <span className="material-symbols-outlined text-[16px] text-slate-500">
-              verified_user
-            </span>
-            <span>Acesso Rápido de Demonstração</span>
           </button>
         </div>
 
