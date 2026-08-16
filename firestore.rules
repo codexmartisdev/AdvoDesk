@@ -108,7 +108,18 @@ service cloud.firestore {
     // 7. FIRM SETTINGS (/settings/{settingId})
     // ==========================================
     match /settings/{settingId} {
-      allow read, write: if isAuthenticated();
+      allow read: if hasFirmAccess(settingId)
+        && resource.data.firmId == settingId;
+
+      allow create: if hasFirmAccess(settingId)
+        && request.resource.data.firmId == settingId;
+
+      allow update: if hasFirmAccess(settingId)
+        && resource.data.firmId == settingId
+        && request.resource.data.firmId == settingId;
+
+      allow delete: if hasFirmAccess(settingId)
+        && resource.data.firmId == settingId;
     }
 
     // ==========================================
