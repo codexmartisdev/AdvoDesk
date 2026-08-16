@@ -193,14 +193,11 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // 9. CONNECTION TEST (/test/{docId} or /_connection_test_/{docId})
+    // 9. CONNECTION TEST (/_connection_test_/{docId})
     // ==========================================
     match /_connection_test_/{docId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    match /test/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
   }
 }
