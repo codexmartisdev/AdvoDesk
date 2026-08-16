@@ -335,18 +335,10 @@ export async function seedInitialFirestoreData(userProfile: UserProfile) {
     const settingsRef = doc(db, 'settings', firmId);
     const settingsSnap = await getDoc(settingsRef);
     if (!settingsSnap.exists()) {
-      const legacyRef = doc(db, 'settings', 'firmSettings');
-      const legacySnap = await getDoc(legacyRef);
-      if (legacySnap.exists()) {
-        const legacyData = legacySnap.data() as FirmSettings;
-        if (legacyData.firmId === firmId || (!legacyData.firmId && firmId === DEFAULT_FIRM_ID)) {
-          await setDoc(settingsRef, sanitizeForFirestore({ ...legacyData, firmId }));
-        } else {
-          await setDoc(settingsRef, sanitizeForFirestore({ ...DEFAULT_SETTINGS, firmId }));
-        }
-      } else {
-        await setDoc(settingsRef, sanitizeForFirestore({ ...DEFAULT_SETTINGS, firmId }));
-      }
+      await setDoc(
+        settingsRef,
+        sanitizeForFirestore({ ...DEFAULT_SETTINGS, firmId })
+      );
     }
 
     // 2. Document Templates (Document generation templates like Procuração, Contrato, etc.)
@@ -454,23 +446,12 @@ export function subscribeToSettings(firmId: string, callback: (settings: FirmSet
   const path = `settings/${firmId}`;
   return onSnapshot(
     doc(db, 'settings', firmId),
-    async (docSnap) => {
+    (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as FirmSettings;
         callback({ ...data, firmId });
       } else {
-        // Fallback compatibility with legacy settings/firmSettings
-        try {
-          const legacySnap = await getDoc(doc(db, 'settings', 'firmSettings'));
-          if (legacySnap.exists()) {
-            const legacyData = legacySnap.data() as FirmSettings;
-            if (legacyData.firmId === firmId || (!legacyData.firmId && firmId === DEFAULT_FIRM_ID)) {
-              callback({ ...legacyData, firmId });
-            }
-          }
-        } catch (err) {
-          console.warn('Could not read legacy settings fallback:', err);
-        }
+        callback({ ...DEFAULT_SETTINGS, firmId });
       }
     },
     (error) => {
