@@ -103,14 +103,48 @@ service cloud.firestore {
     // 6. WORKFLOW INSTANCES, STEPS & AUDIT LOGS
     // ==========================================
     match /workflowInstances/{instanceId} {
-      allow read, write: if isAuthenticated();
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if hasFirmAccess(resource.data.firmId);
 
       match /steps/{stepId} {
-        allow read, write: if isAuthenticated();
+        allow read: if
+          exists(/databases/$(database)/documents/workflowInstances/$(instanceId))
+          && hasFirmAccess(
+            get(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
+          );
+
+        allow create, update: if
+          existsAfter(/databases/$(database)/documents/workflowInstances/$(instanceId))
+          && hasFirmAccess(
+            getAfter(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
+          );
+
+        allow delete: if
+          exists(/databases/$(database)/documents/workflowInstances/$(instanceId))
+          && hasFirmAccess(
+            get(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
+          );
       }
 
       match /auditLogs/{eventId} {
-        allow read, create: if isAuthenticated();
+        allow read: if
+          exists(/databases/$(database)/documents/workflowInstances/$(instanceId))
+          && hasFirmAccess(
+            get(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
+          );
+
+        allow create: if
+          existsAfter(/databases/$(database)/documents/workflowInstances/$(instanceId))
+          && hasFirmAccess(
+            getAfter(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
+          );
+
         allow update, delete: if false;
       }
     }
