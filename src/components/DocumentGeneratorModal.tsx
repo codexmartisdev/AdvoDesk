@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { DocumentTemplate, Client, FirmSettings } from '../types';
 import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
+import { auth } from '../lib/firebase';
 import {
   getDriveAccessToken,
   loginGoogleDrive,
@@ -101,9 +102,20 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
     setGeneratedDoc(null);
 
     try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setGeneratedDoc('Sua sessão expirou. Faça login novamente para gerar o documento.');
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken();
+
       const res = await fetch('/api/generate-document', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           templateTitle: template.title,
           templateContent: template.contentPattern,
