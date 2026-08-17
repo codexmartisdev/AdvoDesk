@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import { getServiceAccountAccessToken, WifAuthError } from './_lib/gcp-wif';
 
 interface VercelResponse extends ServerResponse {
   status?: (statusCode: number) => VercelResponse;
@@ -14,12 +15,6 @@ function sendResponse(res: VercelResponse, statusCode: number, body: unknown) {
   return res.end(JSON.stringify(body));
 }
 
-const AUDIENCE =
-  '//iam.googleapis.com/projects/157712620388/locations/global/workloadIdentityPools/advodesk-vercel/providers/vercel';
-const STS_URL = 'https://sts.googleapis.com/v1/token';
-const SERVICE_ACCOUNT_URL =
-  'https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/advodesk-backend@gen-lang-client-0365371352.iam.gserviceaccount.com:generateAccessToken';
-
 export default async function handler(
   req: IncomingMessage,
   res: VercelResponse
@@ -31,133 +26,36 @@ export default async function handler(
     });
   }
 
-  const oidcHeader = req.headers['x-vercel-oidc-token'];
-  const oidcToken = Array.isArray(oidcHeader) ? oidcHeader[0] : oidcHeader;
-
-  if (!oidcToken || typeof oidcToken !== 'string' || oidcToken.trim() === '') {
-    return sendResponse(res, 500, {
-      ok: false,
-      stage: 'vercel_oidc',
-    });
-  }
-
-  // 1. Google Security Token Service (STS) exchange
-  let stsRes: Response;
   try {
-    const stsParams = new URLSearchParams();
-    stsParams.append('audience', AUDIENCE);
-    stsParams.append('grant_type', 'urn:ietf:params:oauth:grant-type:token-exchange');
-    stsParams.append('requested_token_type', 'urn:ietf:params:oauth:token-type:access_token');
-    stsParams.append('scope', 'https://www.googleapis.com/auth/cloud-platform');
-    stsParams.append('subject_token_type', 'urn:ietf:params:oauth:token-type:jwt');
-    stsParams.append('subject_token', oidcToken);
+    await getServiceAccountAccessToken(req);
 
-    stsRes = await fetch(STS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: stsParams.toString(),
+    return sendResponse(res, 200, {
+      ok: true,
+      oidcTokenPresent: true,
+      stsExchange: true,
+      serviceAccountImpersonation: true,
     });
-  } catch (_err) {
-    console.error('[gcp-wif-check] Failed to connect to Google STS endpoint.');
-    return sendResponse(res, 502, {
-      ok: false,
-      stage: 'google_sts',
-      status: 502,
-    });
-  }
+  } catch (err) {
+    if (err instanceof WifAuthError) {
+      if (err.stage === 'vercel_oidc') {
+        return sendResponse(res, 500, {
+          ok: false,
+          stage: 'vercel_oidc',
+        });
+      }
 
-  if (!stsRes.ok) {
-    console.error(`[gcp-wif-check] Google STS exchange failed with status ${stsRes.status}`);
-    return sendResponse(res, 502, {
-      ok: false,
-      stage: 'google_sts',
-      status: stsRes.status,
-    });
-  }
+      return sendResponse(res, 502, {
+        ok: false,
+        stage: err.stage,
+        ...(err.status ? { status: err.status } : {}),
+      });
+    }
 
-  let stsData: { access_token?: string };
-  try {
-    stsData = (await stsRes.json()) as { access_token?: string };
-  } catch (_jsonErr) {
-    console.error('[gcp-wif-check] Failed to parse Google STS response as JSON.');
-    return sendResponse(res, 502, {
-      ok: false,
-      stage: 'google_sts',
-      status: stsRes.status,
-    });
-  }
-
-  if (!stsData.access_token) {
-    console.error('[gcp-wif-check] Google STS returned 200 but no access_token found.');
-    return sendResponse(res, 502, {
-      ok: false,
-      stage: 'google_sts',
-      status: stsRes.status,
-    });
-  }
-
-  // 2. Service Account impersonation via IAM Credentials API
-  let impersonateRes: Response;
-  try {
-    impersonateRes = await fetch(SERVICE_ACCOUNT_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${stsData.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        scope: ['https://www.googleapis.com/auth/cloud-platform'],
-      }),
-    });
-  } catch (_err) {
-    console.error('[gcp-wif-check] Failed to connect to IAM Credentials endpoint.');
     return sendResponse(res, 502, {
       ok: false,
       stage: 'service_account_impersonation',
       status: 502,
     });
   }
-
-  if (!impersonateRes.ok) {
-    console.error(
-      `[gcp-wif-check] Service account impersonation failed with status ${impersonateRes.status}`
-    );
-    return sendResponse(res, 502, {
-      ok: false,
-      stage: 'service_account_impersonation',
-      status: impersonateRes.status,
-    });
-  }
-
-  let impersonateData: { accessToken?: string };
-  try {
-    impersonateData = (await impersonateRes.json()) as { accessToken?: string };
-  } catch (_jsonErr) {
-    console.error('[gcp-wif-check] Failed to parse IAM Credentials response as JSON.');
-    return sendResponse(res, 502, {
-      ok: false,
-      stage: 'service_account_impersonation',
-      status: impersonateRes.status,
-    });
-  }
-
-  if (!impersonateData.accessToken) {
-    console.error(
-      '[gcp-wif-check] IAM Credentials returned 200 but no accessToken found.'
-    );
-    return sendResponse(res, 502, {
-      ok: false,
-      stage: 'service_account_impersonation',
-      status: impersonateRes.status,
-    });
-  }
-
-  return sendResponse(res, 200, {
-    ok: true,
-    oidcTokenPresent: true,
-    stsExchange: true,
-    serviceAccountImpersonation: true,
-  });
 }
+
