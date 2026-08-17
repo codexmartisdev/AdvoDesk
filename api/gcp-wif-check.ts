@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { getServiceAccountAccessToken, WifAuthError } from './_lib/gcp-wif';
+import { getServiceAccountAccessToken, WifAuthError } from './_lib/gcp-wif.js';
 
 interface VercelResponse extends ServerResponse {
   status?: (statusCode: number) => VercelResponse;
