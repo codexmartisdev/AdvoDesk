@@ -24,17 +24,28 @@ async function parseJsonBody(req: IncomingMessage): Promise<{
   data?: unknown;
   error?: 'too_large' | 'invalid_json';
 }> {
+  const MAX_BYTES = 256 * 1024; // 256 KiB
+
   const reqWithBody = req as IncomingMessage & { body?: unknown };
   if (
     reqWithBody.body !== undefined &&
     reqWithBody.body !== null &&
     typeof reqWithBody.body === 'object'
   ) {
-    return { data: reqWithBody.body };
+    try {
+      const serialized = JSON.stringify(reqWithBody.body);
+      const byteLength = Buffer.byteLength(serialized, 'utf8');
+      if (byteLength > MAX_BYTES) {
+        return { error: 'too_large' };
+      }
+      return { data: reqWithBody.body };
+    } catch (_err) {
+      return { error: 'invalid_json' };
+    }
   }
 
-  const MAX_BYTES = 256 * 1024; // 256 KiB
   let receivedBytes = 0;
+  let tooLarge = false;
   const chunks: Buffer[] = [];
 
   return new Promise((resolve) => {
@@ -44,14 +55,20 @@ async function parseJsonBody(req: IncomingMessage): Promise<{
         : Buffer.from(chunk);
       receivedBytes += bufferChunk.length;
       if (receivedBytes > MAX_BYTES) {
-        req.destroy();
-        resolve({ error: 'too_large' });
+        tooLarge = true;
         return;
       }
-      chunks.push(bufferChunk);
+      if (!tooLarge) {
+        chunks.push(bufferChunk);
+      }
     });
 
     req.on('end', () => {
+      if (tooLarge) {
+        resolve({ error: 'too_large' });
+        return;
+      }
+
       const raw = Buffer.concat(chunks).toString('utf-8');
       if (!raw || raw.trim() === '') {
         resolve({ data: {} });
