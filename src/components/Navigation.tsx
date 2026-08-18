@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { User } from 'firebase/auth';
 import { NavigationTab, FirmSettings } from '../types';
-import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
 
 interface NavigationProps {
   currentTab: NavigationTab;
@@ -22,21 +21,18 @@ export const Navigation: React.FC<NavigationProps> = ({
   onOpenAddEntryModal,
   searchQuery,
   onSearchChange,
-  settings = {
-    firmName: 'Bizerra Neto',
-    firmSubtitle: 'Advocacia',
-    logoUrl: LOGO_IMAGE_URL,
-    lawyerName: 'Dr. Bizerra Neto',
-    lawyerTitle: 'Advogado Sócio • OAB/SP',
-    lawyerAvatarUrl: USER_AVATAR_URL,
-    oabNumber: 'OAB/SP 412.001',
-  },
+  settings,
   user,
   onLogout,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const firmName = settings?.firmName?.trim() || 'AdvoDesk';
+  const firmSubtitle = settings?.firmSubtitle?.trim() || 'Gestão Jurídica';
+  const logoUrl = settings?.logoUrl?.trim() || '';
+  const avatarUrl = user?.photoURL?.trim() || settings?.lawyerAvatarUrl?.trim() || '';
 
 
   const getSearchPlaceholder = () => {
@@ -65,13 +61,19 @@ export const Navigation: React.FC<NavigationProps> = ({
           className="flex items-center space-x-2.5 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200/90 shadow-md text-slate-800 hover:bg-slate-50 transition-all active:scale-95"
         >
           <span className="material-symbols-outlined text-[20px] text-slate-700">menu</span>
-          <img
-            src={settings.logoUrl}
-            alt="Logo"
-            className="w-6 h-6 rounded-md object-contain bg-white p-0.5 border border-slate-200"
-          />
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="w-6 h-6 rounded-md object-contain bg-white p-0.5 border border-slate-200"
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-md bg-slate-900 text-white flex items-center justify-center">
+              <span className="material-symbols-outlined text-[14px]">account_balance</span>
+            </div>
+          )}
           <span className="font-title-md font-extrabold text-slate-900 text-xs tracking-tight">
-            {settings.firmName}
+            {firmName}
           </span>
         </button>
       </div>
@@ -84,18 +86,24 @@ export const Navigation: React.FC<NavigationProps> = ({
           onClick={() => onTabChange('dashboard')}
         >
           <div className="w-10 h-10 rounded-xl overflow-hidden bg-white flex items-center justify-center shrink-0 border border-slate-200 shadow-xs group-hover:scale-105 transition-transform p-1">
-            <img
-              src={settings.logoUrl}
-              alt={`${settings.firmName} Logo`}
-              className="w-full h-full object-contain"
-            />
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={`${firmName} Logo`}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full rounded-lg bg-slate-900 text-[#C9A227] flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">account_balance</span>
+              </div>
+            )}
           </div>
           <div>
             <h1 className="font-title-md text-xs font-black text-slate-900 tracking-tight group-hover:text-blue-900 transition-colors leading-tight uppercase">
-              {settings.firmName}
+              {firmName}
             </h1>
             <p className="font-label-sm text-[9px] text-slate-500 font-extrabold uppercase tracking-widest mt-0.5">
-              {settings.firmSubtitle}
+              {firmSubtitle}
             </p>
           </div>
         </div>
@@ -311,17 +319,23 @@ export const Navigation: React.FC<NavigationProps> = ({
                 onClick={() => onTabChange('settings')}
                 className="flex items-center space-x-2.5 min-w-0 cursor-pointer flex-1"
               >
-                <img
-                  src={user?.photoURL || settings.lawyerAvatarUrl}
-                  alt="Avatar"
-                  className="w-8 h-8 rounded-full object-cover border border-slate-300 shrink-0"
-                />
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full object-cover border border-slate-300 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 border border-slate-300">
+                    <span className="material-symbols-outlined text-[18px]">person</span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-slate-900 text-[11px] truncate leading-tight">
-                    {user?.displayName || settings.lawyerName}
+                    {user?.displayName || settings?.lawyerName}
                   </p>
                   <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
-                    {user?.email || settings.oabNumber}
+                    {user?.email || settings?.oabNumber}
                   </p>
                 </div>
               </div>
@@ -350,14 +364,20 @@ export const Navigation: React.FC<NavigationProps> = ({
           <div className="relative w-72 max-w-[80vw] bg-white h-full p-5 flex flex-col space-y-3 border-r border-slate-200 shadow-2xl z-10">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center space-x-2.5">
-                <img
-                  src={settings.logoUrl}
-                  alt="Logo"
-                  className="w-7 h-7 rounded-lg object-contain bg-white p-0.5 border border-slate-200"
-                />
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logo"
+                    className="w-7 h-7 rounded-lg object-contain bg-white p-0.5 border border-slate-200"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-lg bg-slate-900 text-[#C9A227] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[16px]">account_balance</span>
+                  </div>
+                )}
                 <div>
-                  <h2 className="font-bold text-slate-900 text-xs">{settings.firmName}</h2>
-                  <p className="text-[10px] text-slate-500 font-semibold">{settings.firmSubtitle}</p>
+                  <h2 className="font-bold text-slate-900 text-xs">{firmName}</h2>
+                  <p className="text-[10px] text-slate-500 font-semibold">{firmSubtitle}</p>
                 </div>
               </div>
               <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-slate-700">
@@ -491,14 +511,20 @@ export const Navigation: React.FC<NavigationProps> = ({
             <div className="pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
                 <div className="flex items-center space-x-2.5 min-w-0 flex-1">
-                  <img
-                    src={user?.photoURL || settings.lawyerAvatarUrl}
-                    alt="Avatar"
-                    className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                  />
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 border border-slate-200">
+                      <span className="material-symbols-outlined text-[18px]">person</span>
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-900 text-[11px] truncate">{user?.displayName || settings.lawyerName}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{user?.email || settings.oabNumber}</p>
+                    <p className="font-bold text-slate-900 text-[11px] truncate">{user?.displayName || settings?.lawyerName}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{user?.email || settings?.oabNumber}</p>
                   </div>
                 </div>
                 {onLogout && (

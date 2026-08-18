@@ -6,7 +6,6 @@ import {
   getRedirectResult,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
-import { LOGO_IMAGE_URL } from '../data/mockData';
 
 interface LoginScreenProps {
   firmName?: string;
@@ -15,14 +14,18 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
-  firmName = 'Bizerra Neto',
-  firmSubtitle = 'Advocacia',
-  logoUrl = LOGO_IMAGE_URL,
+  firmName,
+  firmSubtitle,
+  logoUrl,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const displayName = firmName?.trim() || 'AdvoDesk';
+  const displaySubtitle = firmSubtitle?.trim() || 'Gestão Jurídica';
+  const displayLogo = logoUrl?.trim() || '';
 
   // Check redirect login results on mount
   useEffect(() => {
@@ -122,17 +125,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         {/* Header Branding */}
         <div className="text-center flex flex-col items-center">
           <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-[#C9A227]/40 p-2.5 shadow-sm mb-4 flex items-center justify-center">
-            <img
-              src={logoUrl}
-              alt={firmName}
-              className="w-full h-full object-contain"
-            />
+            {displayLogo ? (
+              <img
+                src={displayLogo}
+                alt={displayName}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full rounded-xl bg-slate-900 text-[#C9A227] flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl">account_balance</span>
+              </div>
+            )}
           </div>
           <h1 className="font-display-lg text-2xl font-black text-[#0D0D0D] tracking-tight uppercase">
-            {firmName}
+            {displayName}
           </h1>
           <p className="text-xs text-slate-500 font-extrabold uppercase tracking-widest mt-0.5">
-            {firmSubtitle} • Painel Restrito
+            {displaySubtitle} • Painel Restrito
           </p>
         </div>
 

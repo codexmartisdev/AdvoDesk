@@ -164,15 +164,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pré-visualização</span>
               <div className="w-24 h-24 rounded-xl bg-white p-2 border border-slate-300 shadow-xs flex items-center justify-center overflow-hidden">
-                <img
-                  src={form.logoUrl}
-                  alt="Logo Preview"
-                  className="max-w-full max-h-full object-contain"
-                  onError={(e) => {
-                    // Fallback visual if broken image
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
+                {form.logoUrl?.trim() ? (
+                  <img
+                    src={form.logoUrl.trim()}
+                    alt="Logo Preview"
+                    className="max-w-full max-h-full object-contain"
+                    onError={(e) => {
+                      // Fallback visual if broken image
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-3xl text-slate-400">image</span>
+                )}
               </div>
               <span className="text-[10px] text-slate-400 font-medium text-center">Tamanho recomendado: PNG/SVG quadrado</span>
             </div>
@@ -243,11 +247,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Foto de Perfil</span>
               <div className="w-24 h-24 rounded-full bg-slate-200 border-2 border-slate-300 shadow-xs flex items-center justify-center overflow-hidden">
-                <img
-                  src={form.lawyerAvatarUrl}
-                  alt="Lawyer Avatar Preview"
-                  className="w-full h-full object-cover"
-                />
+                {form.lawyerAvatarUrl?.trim() ? (
+                  <img
+                    src={form.lawyerAvatarUrl.trim()}
+                    alt="Lawyer Avatar Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-4xl text-slate-400">person</span>
+                )}
               </div>
               <span className="text-[10px] text-slate-400 font-medium text-center">Foto formal / corporativa</span>
             </div>
