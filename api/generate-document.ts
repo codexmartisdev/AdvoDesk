@@ -297,11 +297,18 @@ Ao final do documento, inclua espaço adequado para data e assinatura física.`;
       });
     }
 
+    console.error('[generate-document] gemini_empty_response');
     return sendResponse(res, 200, {
       documentText: fallbackText,
       source: 'template',
     });
-  } catch (_err) {
+  } catch (err) {
+    const errObj = typeof err === 'object' && err !== null ? (err as Record<string, unknown>) : {};
+    console.error('[generate-document] gemini_generation_failed', {
+      name: typeof errObj.name === 'string' ? errObj.name : undefined,
+      status: typeof errObj.status === 'number' || typeof errObj.status === 'string' ? errObj.status : undefined,
+      code: typeof errObj.code === 'number' || typeof errObj.code === 'string' ? errObj.code : undefined,
+    });
     return sendResponse(res, 200, {
       documentText: fallbackText,
       source: 'template',
