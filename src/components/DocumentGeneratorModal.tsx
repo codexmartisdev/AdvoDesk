@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { DocumentTemplate, Client, FirmSettings } from '../types';
-import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
 import { auth } from '../lib/firebase';
 import { replaceVariablesInTemplateText } from '../utils/documentReplacer';
 import {
@@ -33,17 +32,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   initialClientName,
   initialClientCpf,
   initialGeneratedText,
-  settings = {
-    firmName: 'BIZERRA NETO ADVOCACIA',
-    firmSubtitle: 'Direito Previdenciário',
-    logoUrl: LOGO_IMAGE_URL,
-    lawyerName: 'Dr. Francisco Bizerra Neto',
-    lawyerTitle: 'Advogado Sócio • OAB-PI nº 24.334',
-    lawyerAvatarUrl: USER_AVATAR_URL,
-    oabNumber: 'OAB-PI nº 24.334',
-    practiceAreas: [],
-    clientCategories: [],
-  },
+  settings,
   onSaveTemplate,
 }) => {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -232,7 +221,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
       };
 
       // 1. Header Logo
-      const logoSrc = settings?.logoUrl || LOGO_IMAGE_URL;
+      const logoSrc = settings?.logoUrl;
       if (logoSrc) {
         try {
           const logoDataUrl = await new Promise<string | null>((resolve) => {
@@ -275,25 +264,30 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
         }
       }
 
-      // 2. Firm Title
-      pdf.setFont('times', 'bold');
-      pdf.setFontSize(14);
-      pdf.setTextColor(10, 31, 68); // #0A1F44
-      pdf.text(settings?.firmName || 'BIZERRA NETO ADVOCACIA', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 5;
+      // 2. Firm Title & Subtitle
+      if (settings?.firmName?.trim()) {
+        pdf.setFont('times', 'bold');
+        pdf.setFontSize(14);
+        pdf.setTextColor(10, 31, 68); // #0A1F44
+        pdf.text(settings.firmName.trim(), pageWidth / 2, currentY, { align: 'center' });
+        currentY += 5;
 
-      // Header Divider Line
-      pdf.setDrawColor(10, 31, 68);
-      pdf.setLineWidth(0.4);
-      pdf.line(marginLeft, currentY, pageWidth - marginRight, currentY);
-      currentY += 4.5;
+        // Header Divider Line
+        pdf.setDrawColor(10, 31, 68);
+        pdf.setLineWidth(0.4);
+        pdf.line(marginLeft, currentY, pageWidth - marginRight, currentY);
+        currentY += 4.5;
+      }
 
-      // Firm Subtitle
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(100, 116, 139); // slate-500
-      pdf.text((settings?.firmSubtitle || 'Direito Previdenciário').toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-      currentY += 10;
+      if (settings?.firmSubtitle?.trim()) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(100, 116, 139); // slate-500
+        pdf.text(settings.firmSubtitle.trim().toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+        currentY += 10;
+      } else if (settings?.firmName?.trim()) {
+        currentY += 5.5;
+      }
 
       // 3. Document Body Text
       const lines = generatedDoc.split('\n');
@@ -352,18 +346,21 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
       pdf.line(col2X, currentY, col2X + colWidth, currentY);
       currentY += 5;
 
+      const exportLawyerName = settings?.lawyerName?.trim() || '[Não informado]';
+      const exportLawyerOab = settings?.oabNumber?.trim() || '[Não informado]';
+
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(9);
       pdf.setTextColor(15, 23, 42);
       pdf.text((clientName || 'CLIENTE').toUpperCase(), col1X + colWidth / 2, currentY, { align: 'center' });
-      pdf.text((settings.lawyerName || 'Dr. Francisco Bizerra Neto').toUpperCase(), col2X + colWidth / 2, currentY, { align: 'center' });
+      pdf.text(exportLawyerName.toUpperCase(), col2X + colWidth / 2, currentY, { align: 'center' });
       currentY += 4;
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
       pdf.setTextColor(71, 85, 105);
-      pdf.text(`CPF: ${clientCpf}`, col1X + colWidth / 2, currentY, { align: 'center' });
-      pdf.text(settings.oabNumber || 'OAB-PI nº 24.334', col2X + colWidth / 2, currentY, { align: 'center' });
+      pdf.text(`CPF: ${clientCpf || '[Não informado]'}`, col1X + colWidth / 2, currentY, { align: 'center' });
+      pdf.text(exportLawyerOab, col2X + colWidth / 2, currentY, { align: 'center' });
       currentY += 4;
 
       pdf.setFont('helvetica', 'italic');
@@ -374,22 +371,18 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
       currentY += 14;
 
       // 5. Footer
-      checkAddPage(15);
-      pdf.setDrawColor(10, 31, 68);
-      pdf.setLineWidth(0.3);
-      pdf.line(marginLeft, currentY, pageWidth - marginRight, currentY);
-      currentY += 4;
+      if (settings?.oabNumber?.trim()) {
+        checkAddPage(15);
+        pdf.setDrawColor(10, 31, 68);
+        pdf.setLineWidth(0.3);
+        pdf.line(marginLeft, currentY, pageWidth - marginRight, currentY);
+        currentY += 4;
 
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
-      pdf.setTextColor(51, 65, 85);
-      pdf.text('Rua dos Araújos, 150, Bairro Frei Higino — Parnaíba/PI', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 3.5;
-
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(8);
-      pdf.setTextColor(10, 31, 68);
-      pdf.text(settings.oabNumber || 'OAB-PI nº 24.334', pageWidth / 2, currentY, { align: 'center' });
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(10, 31, 68);
+        pdf.text(settings.oabNumber.trim(), pageWidth / 2, currentY, { align: 'center' });
+      }
 
       // Save PDF
       const title = template?.title || 'Documento';
@@ -443,23 +436,29 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
         return false;
       };
 
-      // Header Firm Title
-      pdf.setFont('times', 'bold');
-      pdf.setFontSize(14);
-      pdf.setTextColor(10, 31, 68);
-      pdf.text(settings?.firmName || 'BIZERRA NETO ADVOCACIA', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 5;
+      // Header Firm Title & Subtitle
+      if (settings?.firmName?.trim()) {
+        pdf.setFont('times', 'bold');
+        pdf.setFontSize(14);
+        pdf.setTextColor(10, 31, 68);
+        pdf.text(settings.firmName.trim(), pageWidth / 2, currentY, { align: 'center' });
+        currentY += 5;
 
-      pdf.setDrawColor(10, 31, 68);
-      pdf.setLineWidth(0.4);
-      pdf.line(marginLeft, currentY, pageWidth - marginRight, currentY);
-      currentY += 4.5;
+        pdf.setDrawColor(10, 31, 68);
+        pdf.setLineWidth(0.4);
+        pdf.line(marginLeft, currentY, pageWidth - marginRight, currentY);
+        currentY += 4.5;
+      }
 
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(9);
-      pdf.setTextColor(100, 116, 139);
-      pdf.text((settings?.firmSubtitle || 'DIREITO PREVIDENCIÁRIO').toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-      currentY += 10;
+      if (settings?.firmSubtitle?.trim()) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(settings.firmSubtitle.trim().toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+        currentY += 10;
+      } else if (settings?.firmName?.trim()) {
+        currentY += 5.5;
+      }
 
       // Document Title
       pdf.setFont('times', 'bold');
@@ -516,18 +515,21 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
       pdf.line(col2X, currentY, col2X + colWidth, currentY);
       currentY += 4;
 
+      const driveLawyerName = settings?.lawyerName?.trim() || '[Não informado]';
+      const driveLawyerOab = settings?.oabNumber?.trim() || '[Não informado]';
+
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(8.5);
       pdf.setTextColor(15, 23, 42);
-      pdf.text(clientName.toUpperCase(), col1X + colWidth / 2, currentY, { align: 'center' });
-      pdf.text((settings.lawyerName || 'Dr. Francisco Bizerra Neto').toUpperCase(), col2X + colWidth / 2, currentY, { align: 'center' });
+      pdf.text((clientName || 'CLIENTE').toUpperCase(), col1X + colWidth / 2, currentY, { align: 'center' });
+      pdf.text(driveLawyerName.toUpperCase(), col2X + colWidth / 2, currentY, { align: 'center' });
       currentY += 3.5;
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(100, 116, 139);
-      pdf.text(`CPF: ${clientCpf}`, col1X + colWidth / 2, currentY, { align: 'center' });
-      pdf.text(settings.oabNumber || 'OAB-PI nº 24.334', col2X + colWidth / 2, currentY, { align: 'center' });
+      pdf.text(`CPF: ${clientCpf || '[Não informado]'}`, col1X + colWidth / 2, currentY, { align: 'center' });
+      pdf.text(driveLawyerOab, col2X + colWidth / 2, currentY, { align: 'center' });
 
       const pdfBlob = pdf.output('blob');
       const cleanTitle = (template.title || 'Documento').replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -641,7 +643,9 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
           <div>
             <h2 className="font-display-lg text-xl font-extrabold text-slate-900">Gerar {template.title}</h2>
             <p className="text-xs text-slate-500">
-              Inclusão automática da marca {settings.firmName} {settings.firmSubtitle} e exportação oficial em PDF.
+              {settings?.firmName
+                ? `Inclusão automática da marca ${settings.firmName}${settings.firmSubtitle ? ` • ${settings.firmSubtitle}` : ''} e exportação oficial em PDF.`
+                : 'Visualização e exportação do documento.'}
             </p>
           </div>
         </div>
@@ -887,31 +891,41 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                   {/* Document Container */}
                   <div className="relative z-10 min-h-[860px] flex flex-col justify-between space-y-8">
                     {/* HEADER */}
-                    <div className="text-center space-y-2">
-                      {/* Centered Office Logo Image */}
-                      <div className="flex justify-center mb-2">
-                        <img
-                          src={settings?.logoUrl || LOGO_IMAGE_URL}
-                          alt={settings?.firmName || 'Logo do Escritório'}
-                          className="h-16 md:h-20 w-auto object-contain mx-auto"
-                          referrerPolicy="no-referrer"
-                        />
+                    {(settings?.logoUrl || settings?.firmName || settings?.firmSubtitle) && (
+                      <div className="text-center space-y-2">
+                        {/* Centered Office Logo Image */}
+                        {settings?.logoUrl && (
+                          <div className="flex justify-center mb-2">
+                            <img
+                              src={settings.logoUrl}
+                              alt={settings?.firmName || 'Logo do Escritório'}
+                              className="h-16 md:h-20 w-auto object-contain mx-auto"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                        )}
+
+                        {settings?.firmName && (
+                          <h1
+                            className="text-2xl md:text-3xl font-black tracking-widest uppercase font-serif"
+                            style={{ color: '#0A1F44' }}
+                          >
+                            {settings.firmName}
+                          </h1>
+                        )}
+
+                        {/* Header Divider Line (Dark Blue Accent Line) */}
+                        {settings?.firmName && (
+                          <div className="w-full h-[1.5px] my-2" style={{ backgroundColor: '#0A1F44' }} />
+                        )}
+
+                        {settings?.firmSubtitle && (
+                          <p className="text-xs md:text-sm font-sans font-semibold tracking-wider uppercase text-slate-600">
+                            {settings.firmSubtitle}
+                          </p>
+                        )}
                       </div>
-
-                      <h1
-                        className="text-2xl md:text-3xl font-black tracking-widest uppercase font-serif"
-                        style={{ color: '#0A1F44' }}
-                      >
-                        {settings?.firmName || 'BIZERRA NETO ADVOCACIA'}
-                      </h1>
-
-                      {/* Header Divider Line (Dark Blue Accent Line) */}
-                      <div className="w-full h-[1.5px] my-2" style={{ backgroundColor: '#0A1F44' }} />
-
-                      <p className="text-xs md:text-sm font-sans font-semibold tracking-wider uppercase text-slate-600">
-                        {settings?.firmSubtitle || 'Direito Previdenciário'}
-                      </p>
-                    </div>
+                    )}
 
                     {/* BODY AREA */}
                     <div className="font-serif text-slate-900 space-y-3 text-xs md:text-sm leading-relaxed tracking-normal font-normal flex-1 py-4">
@@ -924,35 +938,34 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-center text-xs font-sans pt-8">
                         <div className="space-y-2">
                           <div className="w-52 md:w-64 mx-auto border-b-2 border-slate-900 pb-1" />
-                          <p className="font-bold text-slate-900 uppercase text-[11px]">{clientName}</p>
-                          <p className="text-[10px] text-slate-600">CPF: {clientCpf}</p>
+                          <p className="font-bold text-slate-900 uppercase text-[11px]">{clientName || 'Cliente'}</p>
+                          <p className="text-[10px] text-slate-600">CPF: {clientCpf || '[Não informado]'}</p>
                           <p className="text-[9px] text-slate-400 italic">Contratante / Outorgante</p>
                         </div>
 
                         <div className="space-y-2">
                           <div className="w-52 md:w-64 mx-auto border-b-2 border-slate-900 pb-1" />
                           <p className="font-bold uppercase text-[11px]" style={{ color: '#0A1F44' }}>
-                            {settings.lawyerName || 'Dr. Francisco Bizerra Neto'}
+                            {settings?.lawyerName?.trim() || '[Não informado]'}
                           </p>
                           <p className="text-[10px] font-bold" style={{ color: '#0A1F44' }}>
-                            OAB-PI nº 24.334
+                            {settings?.oabNumber?.trim() || '[Não informado]'}
                           </p>
                           <p className="text-[9px] text-slate-400 italic">Advogado Sócio / Outorgado</p>
                         </div>
                       </div>
 
                       {/* Footer Section */}
-                      <div className="pt-2 text-center space-y-1">
-                        {/* Footer Divider Line */}
-                        <div className="w-full h-[1px] mb-2" style={{ backgroundColor: '#0A1F44' }} />
+                      {settings?.oabNumber?.trim() && (
+                        <div className="pt-2 text-center space-y-1">
+                          {/* Footer Divider Line */}
+                          <div className="w-full h-[1px] mb-2" style={{ backgroundColor: '#0A1F44' }} />
 
-                        <p className="text-[10px] md:text-[11px] font-sans font-medium text-slate-700">
-                          Rua dos Araújos, 150, Bairro Frei Higino — Parnaíba/PI
-                        </p>
-                        <p className="text-[10px] font-sans font-bold tracking-wider" style={{ color: '#0A1F44' }}>
-                          OAB-PI nº 24.334
-                        </p>
-                      </div>
+                          <p className="text-[10px] font-sans font-bold tracking-wider" style={{ color: '#0A1F44' }}>
+                            {settings.oabNumber.trim()}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
