@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import { DocumentTemplate, Client, FirmSettings } from '../types';
 import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
 import { auth } from '../lib/firebase';
+import { replaceVariablesInTemplateText } from '../utils/documentReplacer';
 import {
   getDriveAccessToken,
   loginGoogleDrive,
@@ -46,8 +47,8 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   onSaveTemplate,
 }) => {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [clientName, setClientName] = useState(initialClientName || 'João Silva e Oliveira');
-  const [clientCpf, setClientCpf] = useState(initialClientCpf || '123.456.789-00');
+  const [clientName, setClientName] = useState(initialClientName || '');
+  const [clientCpf, setClientCpf] = useState(initialClientCpf || '');
   const [caseDetails, setCaseDetails] = useState('');
   const [customClauses, setCustomClauses] = useState('');
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(initialGeneratedText || null);
@@ -79,8 +80,9 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    if (initialClientName) setClientName(initialClientName);
-    if (initialClientCpf) setClientCpf(initialClientCpf);
+    setClientName(initialClientName || '');
+    setClientCpf(initialClientCpf || '');
+    setSelectedClientId('');
 
     if (initialGeneratedText) {
       setGeneratedDoc(initialGeneratedText);
@@ -111,6 +113,40 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
     setDocSource(null);
 
     try {
+      let registeredClient: Client | undefined;
+
+      if (selectedClientId) {
+        registeredClient = clients.find((c) => c.id === selectedClientId);
+      }
+
+      if (!registeredClient && clientName && clientCpf) {
+        registeredClient = clients.find(
+          (c) => c.name === clientName && c.cpf === clientCpf
+        );
+      }
+
+      if (!registeredClient) {
+        setGeneratedDoc('Selecione um cliente cadastrado antes de gerar a minuta.');
+        setDocSource(null);
+        setViewMode('preview');
+        setLoading(false);
+        return;
+      }
+
+      const effectiveClient: Client = {
+        ...registeredClient,
+        name: clientName || registeredClient.name,
+        cpf: clientCpf || registeredClient.cpf,
+      };
+
+      const resolvedTemplate = replaceVariablesInTemplateText(
+        template.contentPattern || '',
+        effectiveClient,
+        settings,
+        'placeholder',
+        '[Não informado]'
+      );
+
       const currentUser = auth.currentUser;
       if (!currentUser) {
         setGeneratedDoc('Sua sessão expirou. Faça login novamente para gerar o documento.');
@@ -127,7 +163,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
         },
         body: JSON.stringify({
           templateTitle: template.title,
-          templateContent: template.contentPattern,
+          templateContent: resolvedTemplate.replacedText,
           clientName,
           clientCpf,
           caseDetails,
