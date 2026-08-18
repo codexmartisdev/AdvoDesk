@@ -78,7 +78,7 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     label: 'Nacionalidade',
     category: 'Identificação',
     example: 'Brasileira',
-    getValue: (c) => c?.nationality || 'brasileiro(a)',
+    getValue: (c) => c?.nationality || null,
   },
   {
     key: '{CLIENTE_NATURALIDADE}',
@@ -138,14 +138,14 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     example: 'Tabela com Nome, CPF, Parentesco e Renda dos Dependentes',
     getValue: (c) => {
       if (!c?.familyMembers || c.familyMembers.length === 0) {
-        return 'Não possui dependentes cadastrados no grupo familiar.';
+        return null;
       }
       let table = 'COMPOSIÇÃO DO GRUPO FAMILIAR:\n';
       table += '----------------------------------------------------------------------------------\n';
       table += 'NOME | CPF | PARENTESCO | RENDA MENSAL\n';
       table += '----------------------------------------------------------------------------------\n';
       c.familyMembers.forEach((fm) => {
-        table += `${fm.name} | CPF: ${fm.cpf || 'N/I'} | Parentesco: ${fm.kinship || 'Dependente'} | Renda: ${fm.income || 'R$ 0,00'}\n`;
+        table += `${fm.name} | CPF: ${fm.cpf || '[Não informado]'} | Parentesco: ${fm.kinship || '[Não informado]'} | Renda: ${fm.income || '[Não informado]'}\n`;
       });
       table += '----------------------------------------------------------------------------------';
       return table;
@@ -306,10 +306,10 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     category: 'Geral & Advogado',
     example: 'Parnaíba/PI, 06 de agosto de 2026',
     getValue: (c) => {
-      const city = c?.addressCityUf || 'Parnaíba/PI';
+      if (!c?.addressCityUf) return null;
       const now = new Date();
       const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-      return `${city}, ${dateStr}`;
+      return `${c.addressCityUf}, ${dateStr}`;
     },
   },
   {
@@ -317,21 +317,21 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     label: 'Nome do Advogado',
     category: 'Geral & Advogado',
     example: 'Dr. Francisco Bizerra Neto',
-    getValue: (_, s) => s?.lawyerName || 'Dr. Francisco Bizerra Neto',
+    getValue: (_, s) => s?.lawyerName || null,
   },
   {
     key: '{ADVOGADO_OAB}',
     label: 'OAB do Advogado',
     category: 'Geral & Advogado',
     example: 'OAB-PI nº 24.334',
-    getValue: (_, s) => s?.oabNumber || 'OAB-PI nº 24.334',
+    getValue: (_, s) => s?.oabNumber || null,
   },
   {
     key: '{NOME_ESCRITORIO}',
     label: 'Nome do Escritório',
     category: 'Geral & Advogado',
     example: 'BIZERRA NETO ADVOCACIA',
-    getValue: (_, s) => s?.firmName || 'BIZERRA NETO ADVOCACIA',
+    getValue: (_, s) => s?.firmName || null,
   },
 ];
 
