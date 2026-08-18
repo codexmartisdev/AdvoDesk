@@ -51,7 +51,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   const [caseDetails, setCaseDetails] = useState('');
   const [customClauses, setCustomClauses] = useState('');
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(initialGeneratedText || null);
-  const [docSource, setDocSource] = useState<'ai' | 'template'>('ai');
+  const [docSource, setDocSource] = useState<'ai' | 'template' | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -77,10 +77,18 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (initialClientName) setClientName(initialClientName);
     if (initialClientCpf) setClientCpf(initialClientCpf);
+
     if (initialGeneratedText) {
       setGeneratedDoc(initialGeneratedText);
+      setDocSource('template');
+      setViewMode('preview');
+    } else {
+      setGeneratedDoc(null);
+      setDocSource(null);
       setViewMode('preview');
     }
   }, [initialClientName, initialClientCpf, initialGeneratedText, isOpen]);
@@ -100,6 +108,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   const handleGenerate = async () => {
     setLoading(true);
     setGeneratedDoc(null);
+    setDocSource(null);
 
     try {
       const currentUser = auth.currentUser;
@@ -128,8 +137,10 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
 
       const data = await res.json();
       setGeneratedDoc(data.documentText || 'Não foi possível gerar a minuta.');
-      if (data.source) {
+      if (data.source === 'ai' || data.source === 'template') {
         setDocSource(data.source);
+      } else {
+        setDocSource(null);
       }
       setViewMode('preview');
     } catch (err) {
@@ -720,16 +731,20 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                   </button>
                 </div>
 
-                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
-                  docSource === 'ai'
-                    ? 'bg-amber-50 text-amber-900 border-amber-200'
-                    : 'bg-slate-100 text-slate-700 border-slate-200'
-                }`}>
-                  <span className="material-symbols-outlined text-xs">
-                    {docSource === 'ai' ? 'auto_awesome' : 'description'}
+                {docSource && (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                      docSource === 'ai'
+                        ? 'bg-amber-50 text-amber-900 border-amber-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-xs">
+                      {docSource === 'ai' ? 'auto_awesome' : 'description'}
+                    </span>
+                    <span>{docSource === 'ai' ? 'Redigido com IA Gemini' : 'Modelo Paramétrico Padrão'}</span>
                   </span>
-                  <span>{docSource === 'ai' ? 'Redigido com IA Gemini' : 'Modelo Paramétrico Padrão'}</span>
-                </span>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2 justify-end">
