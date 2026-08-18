@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { DocumentTemplate, Client, FirmSettings } from '../types';
-import { auth } from '../lib/firebase';
 import { replaceVariablesInTemplateText } from '../utils/documentReplacer';
 import {
   getDriveAccessToken,
@@ -38,11 +37,8 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [clientName, setClientName] = useState(initialClientName || '');
   const [clientCpf, setClientCpf] = useState(initialClientCpf || '');
-  const [caseDetails, setCaseDetails] = useState('');
-  const [customClauses, setCustomClauses] = useState('');
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(initialGeneratedText || null);
-  const [docSource, setDocSource] = useState<'ai' | 'template' | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [docSource, setDocSource] = useState<'template' | null>(null);
   const [copied, setCopied] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [savingToDrive, setSavingToDrive] = useState(false);
@@ -96,11 +92,7 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
 
   if (!isOpen || !template) return null;
 
-  const handleGenerate = async () => {
-    setLoading(true);
-    setGeneratedDoc(null);
-    setDocSource(null);
-
+  const handleGenerate = () => {
     try {
       let registeredClient: Client | undefined;
 
@@ -118,7 +110,6 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
         setGeneratedDoc('Selecione um cliente cadastrado antes de gerar a minuta.');
         setDocSource(null);
         setViewMode('preview');
-        setLoading(false);
         return;
       }
 
@@ -136,43 +127,14 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
         '[Não informado]'
       );
 
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        setGeneratedDoc('Sua sessão expirou. Faça login novamente para gerar o documento.');
-        return;
-      }
-
-      const idToken = await currentUser.getIdToken();
-
-      const res = await fetch('/api/generate-document', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          templateTitle: template.title,
-          templateContent: resolvedTemplate.replacedText,
-          clientName,
-          clientCpf,
-          caseDetails,
-          customClauses,
-        }),
-      });
-
-      const data = await res.json();
-      setGeneratedDoc(data.documentText || 'Não foi possível gerar a minuta.');
-      if (data.source === 'ai' || data.source === 'template') {
-        setDocSource(data.source);
-      } else {
-        setDocSource(null);
-      }
+      setGeneratedDoc(resolvedTemplate.replacedText);
+      setDocSource('template');
       setViewMode('preview');
     } catch (err) {
       console.error(err);
-      setGeneratedDoc('Erro na conexão com o servidor de minutas.');
-    } finally {
-      setLoading(false);
+      setGeneratedDoc('Erro ao processar modelo paramétrico.');
+      setDocSource(null);
+      setViewMode('preview');
     }
   };
 
@@ -692,28 +654,6 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Detalhes do Objeto do Caso / Escopo</label>
-              <textarea
-                rows={2}
-                value={caseDetails}
-                onChange={(e) => setCaseDetails(e.target.value)}
-                placeholder="Ex: Ação previdenciária de concessão de Auxílio-Acidente perante o INSS..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-900"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Cláusulas Especiais / Observações Adicionais</label>
-              <textarea
-                rows={2}
-                value={customClauses}
-                onChange={(e) => setCustomClauses(e.target.value)}
-                placeholder="Ex: Honorários de 35%, autorização para levantamento de RPVs e requisição perante Caixa e BB..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-900"
-              />
-            </div>
-
             <div className="pt-4 flex gap-3">
               <button
                 type="button"
@@ -725,20 +665,10 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={loading}
                 className="flex-1 glass-btn-primary py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                    <span>Redigindo Documento com IA...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    <span>Gerar Documento com Logo</span>
-                  </>
-                )}
+                <span className="material-symbols-outlined text-sm">description</span>
+                <span>Gerar Documento</span>
               </button>
             </div>
           </div>
@@ -772,17 +702,9 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                 </div>
 
                 {docSource && (
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
-                      docSource === 'ai'
-                        ? 'bg-amber-50 text-amber-900 border-amber-200'
-                        : 'bg-slate-100 text-slate-700 border-slate-200'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-xs">
-                      {docSource === 'ai' ? 'auto_awesome' : 'description'}
-                    </span>
-                    <span>{docSource === 'ai' ? 'Redigido com IA Gemini' : 'Modelo Paramétrico Padrão'}</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border bg-slate-100 text-slate-700 border-slate-200">
+                    <span className="material-symbols-outlined text-xs">description</span>
+                    <span>Modelo Paramétrico Padrão</span>
                   </span>
                 )}
               </div>
