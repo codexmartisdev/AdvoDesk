@@ -1,66 +1,12 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
-
-  // API endpoint for AI Legal Document generation with cross-tenant authorization check
-  app.post('/api/generate-document', async (req, res) => {
-    try {
-      const { templateTitle, templateContent, clientName, clientCpf, caseDetails, customClauses, caseFirmId, userFirmId } = req.body;
-      
-      // Strict Cross-Tenant Authorization Check if caseFirmId is supplied
-      if (caseFirmId && userFirmId && caseFirmId !== userFirmId) {
-        return res.status(403).json({ error: 'FORBIDDEN: Acesso negado. O recurso pertence a outro escritório.' });
-      }
-
-      const apiKey = process.env.GEMINI_API_KEY;
-
-      if (!apiKey) {
-        // Fallback structured generation when key is missing
-        const fallbackDoc = generateFallbackText(templateTitle, clientName, clientCpf, caseDetails, customClauses, templateContent);
-        return res.json({ documentText: fallbackDoc, source: 'template' });
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Você é um advogado especialista brasileiro. Redija o documento jurídico formal "${templateTitle}".
-Se for uma Procuração, siga estritamente a seguinte estrutura oficial da banca Bizerra Neto Advocacia:
-
-OUTORGANTE: ${clientName ? clientName.toUpperCase() : 'QUALIFICAÇÃO DO CLIENTE'}, CPF/MF sob o nº ${clientCpf || '000.000.000-00'}, endereço completo, profissão, estado civil.
-
-OUTORGADO: FRANCISCO DAS CHAGAS BIZERRA DE ARAUJO NETO, brasileiro, solteiro, advogado inscrito no quadro da OAB-PI sob nº 24.334, CPF nº 063.008.273-13 com endereço profissional na rua dos Araujos, 150, bairro Frei Higino, em Parnaíba-PI e VERÔNICA LÍLIAN COSTA GUIMARÃES, advogada inscrita na OAB/PI sob o nº 24.148.
-
-PODERES: O(S) OUTORGANTE(S) acima qualificado(s) nomeia(m) seu bastante procurador e advogado o OUTORGADO supra identificado para, com os poderes de cláusula AD JUDICIA ET EXTRA, representá-lo(s), dentro e fora do foro em geral, com amplos poderes junto a qualquer juízo, instância ou Tribunal, inclusive em qualquer esfera administrativa, seja ela qual for, podendo propor contra terceiros as ações que se fizerem necessárias, ou defendê-lo(s) nas que lhes sejam propostas, seguindo, umas e outras, até decisão final, usando de todos os recursos aplicáveis à espécie, e ainda conferindo-lhe PODERES ESPECIAIS para confessar, reconhecer a procedência do pedido, desistir, renunciar direitos sobre o qual se funda a ação, receber e dar quitação, transigir, firmar compromissos ou acordos, propor Execução, requerer Falências, Alvarás Liberativos, habilitar créditos, Ação Ordinária, Procedimento Sumaríssimo, Ações Rescisórias, Embargos, Agravos, Habeas Corpus, Mandado de Segurança, requerer, ainda, a Concessão dos Benefícios da Gratuidade da Justiça, conforme artigo 105 do Código de Processo Civil. Confere, ainda, poderes específicos para representar o(s) OUTORGANTE(S) perante o INSS – Instituto Nacional do Seguro Social, podendo requerer, acompanhar, interpor recursos administrativos e judiciais, cumprir exigências e praticar todos os atos necessários à concessão, manutenção e revisão de benefícios previdenciários, especialmente de auxílio-acidente, bem como receber valores, assinar declarações, formulários e documentos necessários. Podendo, ainda, assinar formulários de isenção de imposto de renda, formulários de RPV e precatórios e sacar eventuais RPVs junto à Caixa Econômica Federal, Banco do Brasil ou qualquer outra instituição bancária, bem como levantar Alvarás. Fica estabelecido que seus honorários serão de 35%, podendo também receber cartões de benefício previdenciário, agindo em conjunto ou isoladamente, podendo, inclusive, substabelecer esta a outrem, de igual forma e com ou sem reserva de poderes, dando, ao fim, tudo por bom, firme e valioso, sempre no interesse do(s) OUTORGANTE(S).
-
-${caseDetails ? `DETALHES/PROCESSO: ${caseDetails}\n` : ''}${customClauses ? `OBSERVAÇÕES: ${customClauses}\n` : ''}
-
-INSTRUÇÃO OBRIGATÓRIA DE ESPAÇAMENTO DE ASSINATURA:
-No final do documento, inclua o local e data (ex: Parnaíba - PI, [Data atual]). Antes das linhas para assinatura física (Outorgante / Contratante), inclua pelo menos 6 linhas em branco de espaçamento vertical amplo, garantindo espaço em branco generoso para a assinatura física manuscrita.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-
-      const text = response.text || generateFallbackText(templateTitle, clientName, clientCpf, caseDetails, customClauses);
-      return res.json({ documentText: text, source: 'ai' });
-    } catch (err: any) {
-      console.error('Error generating document:', err);
-      const fallbackDoc = generateFallbackText(
-        req.body?.templateTitle,
-        req.body?.clientName,
-        req.body?.clientCpf,
-        req.body?.caseDetails,
-        req.body?.customClauses
-      );
-      return res.json({ documentText: fallbackDoc, source: 'template', error: err?.message });
-    }
-  });
 
   // API endpoint for backend case actions with strict authorization check
   app.post('/api/cases/:caseId/action', async (req, res) => {
