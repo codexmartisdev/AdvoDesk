@@ -1,7 +1,6 @@
 import React, { useState, ChangeEvent } from 'react';
 import { FirmSettings } from '../types';
-import { LOGO_IMAGE_URL, USER_AVATAR_URL } from '../data/mockData';
-import { purgeSimulatedDataFromFirestore, clearFirmData } from '../services/firestoreService';
+import { purgeSimulatedDataFromFirestore, clearFirmData, DEFAULT_SETTINGS } from '../services/firestoreService';
 
 export type { FirmSettings };
 
@@ -110,33 +109,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleResetDefaults = () => {
     const defaults: FirmSettings = {
+      ...DEFAULT_SETTINGS,
       firmId: form.firmId,
-      firmName: 'Bizerra Neto',
-      firmSubtitle: 'Advocacia',
-      logoUrl: LOGO_IMAGE_URL,
-      lawyerName: 'Dr. Bizerra Neto',
-      lawyerTitle: 'Advogado Sócio • OAB/SP',
-      lawyerAvatarUrl: USER_AVATAR_URL,
-      oabNumber: 'OAB/SP 412.001',
-      notificationEmail: 'codex.martis.dev@gmail.com',
-      practiceAreas: [
-        'Contencioso Cível',
-        'Direito Trabalhista',
-        'Direito Previdenciário',
-        'Direito de Família',
-        'Direito Empresarial',
-        'Direito Tributário',
-        'Direito Penal',
-      ],
-      clientCategories: [
-        'BPC Loas',
-        'Auxílio Doença',
-        'Aposentadoria',
-        'Trabalhista',
-        'Cível',
-        'Empresarial',
-        'Família / Sucessões',
-      ],
+      practiceAreas: [...DEFAULT_SETTINGS.practiceAreas],
+      clientCategories: [...DEFAULT_SETTINGS.clientCategories],
     };
     setForm(defaults);
     onUpdateSettings(defaults);

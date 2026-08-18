@@ -6,11 +6,10 @@ import {
   INITIAL_CASES,
   TEMPLATES,
   SCHEDULED_EVENTS,
-  LOGO_IMAGE_URL,
-  USER_AVATAR_URL,
 } from './data/mockData';
 import { auth, testConnection } from './lib/firebase';
 import {
+  DEFAULT_SETTINGS,
   seedInitialFirestoreData,
   subscribeToClients,
   subscribeToCases,
@@ -110,33 +109,11 @@ export default function App() {
   };
 
   // Branding & Lawyer settings state
-  const [settings, setSettings] = useState<FirmSettings>({
-    firmName: 'Bizerra Neto',
-    firmSubtitle: 'Advocacia',
-    logoUrl: LOGO_IMAGE_URL,
-    lawyerName: 'Dr. Bizerra Neto',
-    lawyerTitle: 'Advogado Sócio • OAB/SP',
-    lawyerAvatarUrl: USER_AVATAR_URL,
-    oabNumber: 'OAB/SP 412.001',
-    practiceAreas: [
-      'Contencioso Cível',
-      'Direito Trabalhista',
-      'Direito Previdenciário',
-      'Direito de Família',
-      'Direito Empresarial',
-      'Direito Tributário',
-      'Direito Penal',
-    ],
-    clientCategories: [
-      'BPC Loas',
-      'Auxílio Doença',
-      'Aposentadoria',
-      'Trabalhista',
-      'Cível',
-      'Empresarial',
-      'Família / Sucessões',
-    ],
-  });
+  const [settings, setSettings] = useState<FirmSettings>(() => ({
+    ...DEFAULT_SETTINGS,
+    practiceAreas: [...DEFAULT_SETTINGS.practiceAreas],
+    clientCategories: [...DEFAULT_SETTINGS.clientCategories],
+  }));
 
   // Data state
   const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
@@ -172,7 +149,7 @@ export default function App() {
       if (isMounted) setEvents(remoteEvents);
     });
     unsubSettings = subscribeToSettings(firmId, (remoteSettings) => {
-      if (isMounted && remoteSettings && remoteSettings.firmName) setSettings(remoteSettings);
+      if (isMounted && remoteSettings) setSettings(remoteSettings);
     });
     unsubWorkflows = subscribeToWorkflowTemplates(firmId, (remoteWorkflows) => {
       if (isMounted && remoteWorkflows && remoteWorkflows.length > 0) {

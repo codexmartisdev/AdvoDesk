@@ -32,7 +32,6 @@ import {
   INITIAL_CASES,
   TEMPLATES,
   SCHEDULED_EVENTS,
-  LOGO_IMAGE_URL,
   USER_AVATAR_URL,
 } from '../data/mockData';
 import { INITIAL_WORKFLOWS } from '../data/defaultWorkflows';
@@ -128,15 +127,14 @@ export function removeLocalEvent(eventId: string): void {
 }
 
 export const DEFAULT_SETTINGS: FirmSettings = {
-  firmId: DEFAULT_FIRM_ID,
-  firmName: 'Bizerra Neto',
-  firmSubtitle: 'Advocacia',
-  logoUrl: LOGO_IMAGE_URL,
-  lawyerName: 'Dr. Bizerra Neto',
-  lawyerTitle: 'Advogado Sócio • OAB/SP',
-  lawyerAvatarUrl: USER_AVATAR_URL,
-  oabNumber: 'OAB/SP 412.001',
-  notificationEmail: 'codex.martis.dev@gmail.com',
+  firmName: '',
+  firmSubtitle: '',
+  logoUrl: '',
+  lawyerName: '',
+  lawyerTitle: '',
+  lawyerAvatarUrl: '',
+  oabNumber: '',
+  notificationEmail: '',
   practiceAreas: [
     'Contencioso Cível',
     'Direito Trabalhista',
