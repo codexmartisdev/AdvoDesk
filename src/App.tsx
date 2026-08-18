@@ -4,7 +4,6 @@ import { NavigationTab, Client, LegalCase, DocumentTemplate, ScheduledEvent, Fir
 import {
   INITIAL_CLIENTS,
   INITIAL_CASES,
-  TEMPLATES,
   SCHEDULED_EVENTS,
 } from './data/mockData';
 import { auth, testConnection } from './lib/firebase';
@@ -119,7 +118,7 @@ export default function App() {
   const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
   const [cases, setCases] = useState<LegalCase[]>(INITIAL_CASES);
   const [events, setEvents] = useState<ScheduledEvent[]>(SCHEDULED_EVENTS);
-  const [templates, setTemplates] = useState<DocumentTemplate[]>(TEMPLATES);
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [workflows, setWorkflows] = useState<any[]>(INITIAL_WORKFLOWS);
 
   // Initialize and Sync Firebase Firestore only after User Profile & Firm ID are fully resolved
@@ -208,10 +207,37 @@ export default function App() {
   const [clientSelectorModalOpen, setClientSelectorModalOpen] = useState(false);
   const [variablesGuideModalOpen, setVariablesGuideModalOpen] = useState(false);
 
-  const [selectedTemplateForDoc, setSelectedTemplateForDoc] = useState<DocumentTemplate | null>(TEMPLATES[0] || null);
+  const [selectedTemplateForDoc, setSelectedTemplateForDoc] = useState<DocumentTemplate | null>(null);
   const [docClientName, setDocClientName] = useState('');
   const [docClientCpf, setDocClientCpf] = useState('');
   const [prefilledGeneratedText, setPrefilledGeneratedText] = useState<string | null>(null);
+
+  const openDefaultTenantTemplate = (
+    clientName?: string,
+    clientCpf?: string
+  ) => {
+    const tenantTemplate = templates[0];
+
+    if (!tenantTemplate) {
+      console.warn(
+        '[Documents] No tenant template available. Redirecting to Documents.'
+      );
+
+      setSelectedTemplateForDoc(null);
+      setPrefilledGeneratedText(null);
+      setDocClientName('');
+      setDocClientCpf('');
+      setDocModalOpen(false);
+      setCurrentTab('documents');
+      return;
+    }
+
+    setSelectedTemplateForDoc(tenantTemplate);
+    setPrefilledGeneratedText(null);
+    setDocClientName(clientName || '');
+    setDocClientCpf(clientCpf || '');
+    setDocModalOpen(true);
+  };
 
   // Handlers with Firestore Persistence
   const handleSaveSettings = (newSettings: FirmSettings) => {
@@ -397,10 +423,7 @@ export default function App() {
   };
 
   const handleSelectClientForDoc = (clientName: string, clientCpf: string) => {
-    setDocClientName(clientName);
-    setDocClientCpf(clientCpf);
-    setSelectedTemplateForDoc(TEMPLATES[0]);
-    setDocModalOpen(true);
+    openDefaultTenantTemplate(clientName, clientCpf);
   };
 
   if (authLoading) {
@@ -493,8 +516,7 @@ export default function App() {
             setNewCaseModalOpen(true);
           }}
           onOpenDocModal={() => {
-            setSelectedTemplateForDoc(TEMPLATES[0]);
-            setDocModalOpen(true);
+            openDefaultTenantTemplate();
           }}
         />
       )}
@@ -507,8 +529,7 @@ export default function App() {
             onNavigateToTab={setCurrentTab}
             onSelectCaseId={setSelectedCaseId}
             onOpenDocModalForCase={(caseItem) => {
-              setSelectedTemplateForDoc(TEMPLATES[0]);
-              setDocModalOpen(true);
+              openDefaultTenantTemplate();
             }}
             settings={{ ...settings, workflows }}
           />
@@ -537,8 +558,7 @@ export default function App() {
           selectedCaseId={selectedCaseId}
           onSelectCaseId={setSelectedCaseId}
           onOpenDocModal={() => {
-            setSelectedTemplateForDoc(TEMPLATES[0]);
-            setDocModalOpen(true);
+            openDefaultTenantTemplate();
           }}
           onUpdateCase={handleUpdateCase}
           onDeleteCase={handleDeleteCase}
