@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { NavigationTab, Client, LegalCase, DocumentTemplate, ScheduledEvent, FirmSettings, UserProfile } from './types';
 import {
@@ -30,19 +30,19 @@ import {
 } from './services/firestoreService';
 import { INITIAL_WORKFLOWS } from './data/defaultWorkflows';
 import { Navigation } from './components/Navigation';
-import { RegisterCaseWizard } from './components/RegisterCaseWizard';
-import { DashboardView } from './components/DashboardView';
-import { ClientsView } from './components/ClientsView';
-import { CasesView } from './components/CasesView';
-import { DocumentsView } from './components/DocumentsView';
-import { CalendarView } from './components/CalendarView';
-import { DriveView } from './components/DriveView';
-import { SettingsView } from './components/SettingsView';
+const RegisterCaseWizard = lazy(() => import('./components/RegisterCaseWizard').then((module) => ({ default: module.RegisterCaseWizard })));
+const DashboardView = lazy(() => import('./components/DashboardView').then((module) => ({ default: module.DashboardView })));
+const ClientsView = lazy(() => import('./components/ClientsView').then((module) => ({ default: module.ClientsView })));
+const CasesView = lazy(() => import('./components/CasesView').then((module) => ({ default: module.CasesView })));
+const DocumentsView = lazy(() => import('./components/DocumentsView').then((module) => ({ default: module.DocumentsView })));
+const CalendarView = lazy(() => import('./components/CalendarView').then((module) => ({ default: module.CalendarView })));
+const DriveView = lazy(() => import('./components/DriveView').then((module) => ({ default: module.DriveView })));
+const SettingsView = lazy(() => import('./components/SettingsView').then((module) => ({ default: module.SettingsView })));
 import { LoginScreen } from './components/LoginScreen';
-import { NewCaseModal } from './components/NewCaseModal';
-import { DocumentGeneratorModal } from './components/DocumentGeneratorModal';
-import { ClientSelectorDocumentModal } from './components/ClientSelectorDocumentModal';
-import { VariablesGuideModal } from './components/VariablesGuideModal';
+const NewCaseModal = lazy(() => import('./components/NewCaseModal').then((module) => ({ default: module.NewCaseModal })));
+const DocumentGeneratorModal = lazy(() => import('./components/DocumentGeneratorModal').then((module) => ({ default: module.DocumentGeneratorModal })));
+const ClientSelectorDocumentModal = lazy(() => import('./components/ClientSelectorDocumentModal').then((module) => ({ default: module.ClientSelectorDocumentModal })));
+const VariablesGuideModal = lazy(() => import('./components/VariablesGuideModal').then((module) => ({ default: module.VariablesGuideModal })));
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -500,6 +500,7 @@ export default function App() {
       />
 
       {/* Main View Router */}
+      <Suspense fallback={<main className="md:ml-64 pt-24 text-center text-sm text-slate-500">Carregando...</main>}>
       {currentTab === 'dashboard' && (
         <DashboardView
           cases={cases}
@@ -668,7 +669,10 @@ export default function App() {
       )}
 
 
+      </Suspense>
       {/* Modals */}
+      <Suspense fallback={null}>
+      {newCaseModalOpen && (
       <NewCaseModal
         isOpen={newCaseModalOpen}
         onClose={() => setNewCaseModalOpen(false)}
@@ -679,7 +683,9 @@ export default function App() {
         practiceAreas={settings.practiceAreas}
         clientCategories={settings.clientCategories}
       />
+      )}
 
+      {clientSelectorModalOpen && (
       <ClientSelectorDocumentModal
         isOpen={clientSelectorModalOpen}
         onClose={() => setClientSelectorModalOpen(false)}
@@ -689,12 +695,16 @@ export default function App() {
         onConfirmGenerate={handleConfirmGenerateFromClientSelector}
         onUpdateClientField={handleUpdateClientField}
       />
+      )}
 
+      {variablesGuideModalOpen && (
       <VariablesGuideModal
         isOpen={variablesGuideModalOpen}
         onClose={() => setVariablesGuideModalOpen(false)}
       />
+      )}
 
+      {docModalOpen && (
       <DocumentGeneratorModal
         isOpen={docModalOpen}
         onClose={() => {
@@ -709,6 +719,8 @@ export default function App() {
         settings={settings}
         onSaveTemplate={handleSaveTemplate}
       />
+      )}
+      </Suspense>
     </div>
   );
 }
