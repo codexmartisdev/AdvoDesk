@@ -474,8 +474,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Section 5: Extra Firm Details */}
         <section className="glass-panel rounded-2xl p-6 bg-white border border-slate-200/90 shadow-sm space-y-4">
-          <h3 className="text-base font-extrabold text-slate-900">Registro & Chaves de API</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <h3 className="text-base font-extrabold text-slate-900">Registro Profissional</h3>
+          <div className="grid grid-cols-1 gap-4 text-xs">
             <div>
               <label className="block font-bold text-slate-700 mb-1">Número de Registro na OAB</label>
               <input
@@ -483,15 +483,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 value={form.oabNumber}
                 onChange={(e) => handleChange('oabNumber', e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-900"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Servidor de Inteligência Artificial</label>
-              <input
-                type="text"
-                disabled
-                value="Gemini API - Servidor Seguro Cloud Run"
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-500 font-semibold cursor-not-allowed"
               />
             </div>
           </div>
