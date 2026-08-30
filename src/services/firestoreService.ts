@@ -72,21 +72,34 @@ export function setLocalCache<T>(key: string, data: T): void {
   }
 }
 
+/**
+ * Sanitiza objetos Client removendo propriedades legadas de credenciais (como meuInssPassword).
+ * Impede que senhas legadas circulem na aplicação, sejam cacheadas ou regravadas no Firestore.
+ */
+export function sanitizeClient(client: Client | Record<string, unknown>): Client {
+  if (!client || typeof client !== 'object') {
+    return client as unknown as Client;
+  }
+  const { meuInssPassword: _legacyPassword, ...safeClient } = client as Record<string, unknown>;
+  return safeClient as unknown as Client;
+}
+
 export function saveLocalClient(client: Client): void {
-  const current = getLocalCache<Client[]>(STORAGE_KEYS.CLIENTS, []);
-  const index = current.findIndex((c) => c.id === client.id);
+  const safe = sanitizeClient(client);
+  const current = getLocalCache<Client[]>(STORAGE_KEYS.CLIENTS, []).map(sanitizeClient);
+  const index = current.findIndex((c) => c.id === safe.id);
   let updated: Client[];
   if (index >= 0) {
     updated = [...current];
-    updated[index] = client;
+    updated[index] = safe;
   } else {
-    updated = [client, ...current];
+    updated = [safe, ...current];
   }
   setLocalCache(STORAGE_KEYS.CLIENTS, updated);
 }
 
 export function removeLocalClient(clientId: string): void {
-  const current = getLocalCache<Client[]>(STORAGE_KEYS.CLIENTS, []);
+  const current = getLocalCache<Client[]>(STORAGE_KEYS.CLIENTS, []).map(sanitizeClient);
   setLocalCache(STORAGE_KEYS.CLIENTS, current.filter((c) => c.id !== clientId));
 }
 
@@ -376,7 +389,8 @@ export function subscribeToClients(firmId: string, callback: (clients: Client[])
     (snapshot) => {
       const items: Client[] = [];
       snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as Client);
+        const raw = { id: docSnap.id, ...docSnap.data() };
+        items.push(sanitizeClient(raw));
       });
       callback(items);
     },
@@ -787,10 +801,11 @@ export async function saveUserProfileInFirestore(profile: UserProfile) {
 
 // Write/Mutation functions
 export async function saveClientInFirestore(client: Client, firmId: string) {
-  const path = `clients/${client.id}`;
+  const safeClient = sanitizeClient(client);
+  const path = `clients/${safeClient.id}`;
   try {
-    const dataWithFirm = { ...client, firmId };
-    await setDoc(doc(db, 'clients', client.id), sanitizeForFirestore(dataWithFirm), { merge: true });
+    const dataWithFirm = { ...safeClient, firmId };
+    await setDoc(doc(db, 'clients', safeClient.id), sanitizeForFirestore(dataWithFirm), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }

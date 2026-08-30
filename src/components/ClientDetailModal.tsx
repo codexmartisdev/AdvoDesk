@@ -43,16 +43,6 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const [newFmKinship, setNewFmKinship] = useState('Filho(a)');
   const [newFmIncome, setNewFmIncome] = useState('R$ 0,00');
 
-  // Senha Meu INSS (gov.br) State
-  const [showInssPassword, setShowInssPassword] = useState(false);
-  const [passwordCopied, setPasswordCopied] = useState(false);
-
-  const handleCopyInssPassword = () => {
-    if (!formData.meuInssPassword) return;
-    navigator.clipboard.writeText(formData.meuInssPassword);
-    setPasswordCopied(true);
-    setTimeout(() => setPasswordCopied(false), 2000);
-  };
 
   useEffect(() => {
     if (client) {
@@ -536,112 +526,6 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Área Útil ao Advogado: Senha do Meu INSS / gov.br */}
-              <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-50/50 to-slate-50 border border-[#C9A227]/40 shadow-xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#C9A227]/20 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-xl bg-[#0D0D0D] text-[#C9A227] flex items-center justify-center font-bold">
-                      <span className="material-symbols-outlined text-base">vpn_key</span>
-                    </span>
-                    <div>
-                      <h4 className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
-                        <span>Acesso Meu INSS (Portal gov.br)</span>
-                        <span className="px-2 py-0.5 rounded-md bg-[#0D0D0D] text-[#C9A227] text-[10px] font-bold uppercase tracking-wider">
-                          Uso do Advogado
-                        </span>
-                      </h4>
-                      <p className="text-[11px] text-slate-600">
-                        Credencial de acesso do cliente para consulta de extratos (CNIS, HISCRE, Laudos SABI).
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  {isEditing ? (
-                    <div className="space-y-1.5">
-                      <label className="block font-bold text-slate-700 text-xs">
-                        Senha de Acesso Cadastrada (gov.br / Meu INSS)
-                      </label>
-                      <div className="relative max-w-md">
-                        <input
-                          type={showInssPassword ? 'text' : 'password'}
-                          value={formData.meuInssPassword || ''}
-                          onChange={(e) => handleChange('meuInssPassword', e.target.value)}
-                          placeholder="Digite ou altere a senha do Meu INSS"
-                          className="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-11 py-2.5 text-slate-900 font-mono text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowInssPassword(!showInssPassword)}
-                          className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors"
-                          title={showInssPassword ? 'Ocultar senha' : 'Exibir senha'}
-                        >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {showInssPassword ? 'visibility_off' : 'visibility'}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">
-                          Senha do Meu INSS:
-                        </span>
-                        {formData.meuInssPassword ? (
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-bold text-slate-900 tracking-wider bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                              {showInssPassword ? formData.meuInssPassword : '••••••••••••'}
-                            </span>
-                            <span className="text-[11px] text-slate-400">
-                              {showInssPassword ? '(visível)' : '(oculta por segurança)'}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-xs block">
-                            Nenhuma senha cadastrada. Clique em "Editar Ficha" para adicionar a senha do Meu INSS.
-                          </span>
-                        )}
-                      </div>
-
-                      {formData.meuInssPassword && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          {/* Botão de Visualização / Ocultação */}
-                          <button
-                            type="button"
-                            onClick={() => setShowInssPassword(!showInssPassword)}
-                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-200"
-                            title={showInssPassword ? 'Ocultar Senha' : 'Ver Senha'}
-                          >
-                            <span className="material-symbols-outlined text-base">
-                              {showInssPassword ? 'visibility_off' : 'visibility'}
-                            </span>
-                            <span>{showInssPassword ? 'Ocultar' : 'Visualizar'}</span>
-                          </button>
-
-                          {/* Botão de Copiar para a Área de Transferência */}
-                          <button
-                            type="button"
-                            onClick={handleCopyInssPassword}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs ${
-                              passwordCopied
-                                ? 'bg-emerald-700 text-white border border-emerald-800'
-                                : 'bg-[#0D0D0D] hover:bg-slate-800 text-[#C9A227] border border-[#C9A227]/30'
-                            }`}
-                            title="Copiar senha para a área de transferência"
-                          >
-                            <span className="material-symbols-outlined text-base">
-                              {passwordCopied ? 'check' : 'content_copy'}
-                            </span>
-                            <span>{passwordCopied ? 'Copiada!' : 'Copiar Senha'}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
