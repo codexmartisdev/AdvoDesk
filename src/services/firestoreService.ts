@@ -28,10 +28,7 @@ import {
   UserProfile,
 } from '../types';
 import {
-  INITIAL_CLIENTS,
-  INITIAL_CASES,
   TEMPLATES,
-  SCHEDULED_EVENTS,
   USER_AVATAR_URL,
 } from '../data/mockData';
 import { INITIAL_WORKFLOWS } from '../data/defaultWorkflows';
@@ -209,107 +206,6 @@ export function createDefaultUserProfile(authUser: User): UserProfile {
 }
 
 /**
- * Known simulated mock IDs to ensure they are never retained in real operation
- */
-const KNOWN_MOCK_CLIENT_IDS = ['c1', 'c2', 'c3', 'c4'];
-const KNOWN_MOCK_CASE_IDS = ['case-2023-8941', 'case-2024-1022', 'case-2023-7721', 'case-2023-5510', 'case-2023-4109', 'case-2023-1102'];
-const KNOWN_MOCK_EVENT_IDS = ['ev-1', 'ev-2', 'ev-3', 'ev-4', 'ev-5'];
-
-/**
- * Purge mock/simulated data automatically from Firestore
- */
-export async function purgeSimulatedDataFromFirestore(firmId: string): Promise<number> {
-  try {
-    const batch = writeBatch(db);
-    let count = 0;
-
-    // 1. Purge known mock clients
-    for (const cid of KNOWN_MOCK_CLIENT_IDS) {
-      const clientRef = doc(db, 'clients', cid);
-      const snap = await getDoc(clientRef);
-      if (snap.exists()) {
-        batch.delete(clientRef);
-        count++;
-      }
-    }
-
-    // 2. Purge known mock cases
-    for (const caseId of KNOWN_MOCK_CASE_IDS) {
-      const caseRef = doc(db, 'cases', caseId);
-      const snap = await getDoc(caseRef);
-      if (snap.exists()) {
-        batch.delete(caseRef);
-        count++;
-      }
-    }
-
-    // 3. Purge known mock events
-    for (const evId of KNOWN_MOCK_EVENT_IDS) {
-      const evRef = doc(db, 'events', evId);
-      const snap = await getDoc(evRef);
-      if (snap.exists()) {
-        batch.delete(evRef);
-        count++;
-      }
-    }
-
-    if (count > 0) {
-      await batch.commit();
-      console.log(`[Firestore] Successfully purged ${count} simulated items.`);
-    }
-    return count;
-  } catch (error) {
-    console.warn('[Firestore] Error while purging simulated data:', error);
-    return 0;
-  }
-}
-
-/**
- * Clear all records of a specific collection or all operational data for a fresh production start
- */
-export async function clearFirmData(
-  firmId: string,
-  options: { clients?: boolean; cases?: boolean; events?: boolean } = { clients: true, cases: true, events: true }
-): Promise<number> {
-  try {
-    const batch = writeBatch(db);
-    let opCount = 0;
-
-    if (options.clients) {
-      const clientsSnap = await getDocs(query(collection(db, 'clients'), where('firmId', '==', firmId)));
-      clientsSnap.forEach((d) => {
-        batch.delete(d.ref);
-        opCount++;
-      });
-    }
-
-    if (options.cases) {
-      const casesSnap = await getDocs(query(collection(db, 'cases'), where('firmId', '==', firmId)));
-      casesSnap.forEach((d) => {
-        batch.delete(d.ref);
-        opCount++;
-      });
-    }
-
-    if (options.events) {
-      const eventsSnap = await getDocs(query(collection(db, 'events'), where('firmId', '==', firmId)));
-      eventsSnap.forEach((d) => {
-        batch.delete(d.ref);
-        opCount++;
-      });
-    }
-
-    if (opCount > 0) {
-      await batch.commit();
-    }
-    return opCount;
-  } catch (error) {
-    console.error('Error clearing firm data:', error);
-    throw error;
-  }
-}
-
-/**
  * Seed initial structure (settings, templates, workflows) without populating fake clients or cases
  */
 export async function seedInitialFirestoreData(userProfile: UserProfile) {
@@ -339,9 +235,6 @@ export async function seedInitialFirestoreData(userProfile: UserProfile) {
   const firmId = userProfile.firmId;
 
   try {
-    // Purge any legacy simulated data that might have been seeded previously
-    await purgeSimulatedDataFromFirestore(firmId);
-
     // 1. Settings (Office settings and branding)
     const settingsRef = doc(db, 'settings', firmId);
     const settingsSnap = await getDoc(settingsRef);
