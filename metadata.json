@@ -2,5 +2,5 @@
   "name": "AdvoDesk",
   "description": "Sistema de gestão jurídica, acompanhamento de prazos, carteira de clientes e gerador de minutas processuais.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
