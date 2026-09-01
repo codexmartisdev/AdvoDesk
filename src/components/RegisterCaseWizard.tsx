@@ -20,31 +20,10 @@ interface RegisterCaseWizardProps {
 
 // Sample Authorized Office Team Members for Assignment
 const TEAM_MEMBERS = [
-  { id: 'usr-1', name: 'Dr. Bizerra Neto', oab: 'OAB/SP 412.001', role: 'Sócio Principal', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBNfnNa7wyDGqRRvFDh968mhy6P8v8HOaMqFvz2dtr1YDtQgw_-NJaFJH4NCYmU8sEu62L1r8ee1gOuEXYrjPUgUmrLfj7MDZRwEVE0qQ8oJVyS-EB9PyIufUtutFE2-SXNaszPNFgLylY4H0T1VmEgUgheFGDtYiQKfwsyJBoL0igBtO_kP0LhnCvy0pU8uYCSsejtFR-yi6J-3VzRNL1CH-XBkpLDCtaOGcPViYvJ-qrjobOMX1sc6g' },
-  { id: 'usr-2', name: 'Dra. Sofia Lima', oab: 'OAB/PI 18.420', role: 'Advogada Previdenciarista', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
-  { id: 'usr-3', name: 'Dr. Gabriel Fonseca', oab: 'OAB/PI 21.094', role: 'Advogado Associado', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80' },
-];
-
-const DOCUMENT_CATEGORY_OPTIONS = [
-  'documentos pessoais',
-  'procuração',
-  'contrato',
-  'CadÚnico',
-  'documentos médicos',
-  'documentos rurais',
-  'CNIS',
-  'CTPS',
-  'PPP',
-  'LTCAT',
-  'documentos de atividade especial',
-  'comprovantes de contribuição',
-  'comprovantes de renda',
-  'processo administrativo',
-  'decisão administrativa',
-  'carta de concessão',
-  'memória de cálculo',
-  'laudos',
-  'outros',
+  { id: 'u1', name: 'Dra. Luiza Bizerra', role: 'Advogada Titular', oab: 'OAB/PI 12.345' },
+  { id: 'u2', name: 'Dr. Marcos Silva', role: 'Advogado Associado', oab: 'OAB/PI 18.990' },
+  { id: 'u3', name: 'Dra. Beatriz Santos', role: 'Advogada Previdenciarista', oab: 'OAB/PI 21.450' },
+  { id: 'u4', name: 'Lucas Ferreira', role: 'Assistente Jurídico', oab: 'Bacharel em Direito' },
 ];
 
 export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
@@ -55,11 +34,20 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   onOpenDocModalForCase,
   settings,
 }) => {
-  // Step State (1: Cliente, 2: Processo, 3: Informações, 4: Documentos, 5: Revisar, 6: Sucesso)
+  // Step State (1: Cliente, 2: Processo, 3: Informações, 4: Revisar, 5: Sucesso)
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   // Modal full client detail view state
   const [viewingClientFullDetail, setViewingClientFullDetail] = useState<boolean>(false);
+  const [showModalInssPassword, setShowModalInssPassword] = useState<boolean>(false);
+  const [modalInssPasswordCopied, setModalInssPasswordCopied] = useState<boolean>(false);
+
+  const handleCopyModalInssPassword = (pwd?: string) => {
+    if (!pwd) return;
+    navigator.clipboard.writeText(pwd);
+    setModalInssPasswordCopied(true);
+    setTimeout(() => setModalInssPasswordCopied(false), 2000);
+  };
 
   // --- Step 1: Cliente Selection ---
   const [clientSearch, setClientSearch] = useState<string>('');
@@ -145,11 +133,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   const [defendant, setDefendant] = useState<string>('INSS - Instituto Nacional do Seguro Social');
   const [judicialNotes, setJudicialNotes] = useState<string>('');
 
-  // --- Step 4: Documentos ---
-  const [attachedDocs, setAttachedDocs] = useState<{ id: string; name: string; size: string; category: string; source: 'upload' | 'client' }[]>([]);
-  const [selectedDocCategory, setSelectedDocCategory] = useState<string>('documentos pessoais');
-
-  // --- Step 6: Success state ---
+  // --- Step 5: Success state ---
   const [createdCaseResult, setCreatedCaseResult] = useState<LegalCase | null>(null);
   const [workflowToast, setWorkflowToast] = useState<string | null>(null);
 
@@ -248,37 +232,6 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
     return age;
   };
 
-  // File Upload handler (simulated upload attachment)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const fileArray: File[] = Array.from(files);
-    const newDocs = fileArray.map((f: File, i: number) => ({
-      id: `up-${Date.now()}-${i}`,
-      name: f.name,
-      size: `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
-      category: selectedDocCategory,
-      source: 'upload' as const,
-    }));
-    setAttachedDocs([...attachedDocs, ...newDocs]);
-  };
-
-  // Attach document from client checklist
-  const handleAttachClientDoc = (docName: string) => {
-    const exists = attachedDocs.some((d) => d.name === docName);
-    if (exists) return;
-    setAttachedDocs([
-      ...attachedDocs,
-      {
-        id: `client-doc-${Date.now()}`,
-        name: docName,
-        size: '1.2 MB',
-        category: 'documentos pessoais',
-        source: 'client',
-      },
-    ]);
-  };
-
   // Submit & Create Process
   const handleFinalSubmit = () => {
     if (!selectedClient || !selectedProcessType) return;
@@ -373,15 +326,6 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
         { label: 'Decisão / Recurso', completed: false, active: false },
       ],
 
-      documents: attachedDocs.map((d) => ({
-        id: d.id,
-        title: d.name,
-        fileSize: d.size,
-        uploadedAt: `Enviado em ${getBrasiliaFormatted()}`,
-        type: d.name.endsWith('.pdf') ? 'pdf' : d.name.endsWith('.docx') ? 'docx' : 'image',
-        tags: [d.category, 'Inicial'],
-      })),
-
       deadlinesCount: 0,
       costs: [],
     };
@@ -400,7 +344,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
 
     onCaseCreated(generatedCase);
     setCreatedCaseResult(generatedCase);
-    setCurrentStep(6); // Success screen
+    setCurrentStep(5); // Success screen
   };
 
   return (
@@ -420,24 +364,23 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
           </p>
         </div>
 
-        {currentStep <= 5 && (
+        {currentStep <= 4 && (
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs shrink-0">
             <span className="w-2 h-2 rounded-full bg-[#C9A227] animate-pulse" />
-            Etapa <strong className="text-slate-900 font-extrabold">{currentStep}</strong> de 5
+            Etapa <strong className="text-slate-900 font-extrabold">{currentStep}</strong> de 4
           </div>
         )}
       </div>
 
-      {/* Stepper Navigation Bar (Steps 1 to 5) */}
-      {currentStep <= 5 && (
+      {/* Stepper Navigation Bar (Steps 1 to 4) */}
+      {currentStep <= 4 && (
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3 sm:p-4">
-          <div className="grid grid-cols-5 gap-2 sm:gap-4 text-center">
+          <div className="grid grid-cols-4 gap-2 sm:gap-4 text-center">
             {[
               { num: 1, label: '1. Cliente', icon: 'person_search' },
               { num: 2, label: '2. Processo', icon: 'folder_open' },
               { num: 3, label: '3. Informações', icon: 'edit_note' },
-              { num: 4, label: '4. Documentos', icon: 'upload_file' },
-              { num: 5, label: '5. Revisar', icon: 'fact_check' },
+              { num: 4, label: '4. Revisar', icon: 'fact_check' },
             ].map((step) => {
               const isDone = currentStep > step.num;
               const isCurrent = currentStep === step.num;
@@ -1264,7 +1207,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                     rows={2}
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
-                    placeholder="Anotações sobre cumprimento de exigências, agendamentos, etc."
+                    placeholder="Anotações sobre senha Meu INSS, cumprimento de exigências, etc."
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900"
                   />
                 </div>
@@ -1388,149 +1331,6 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
               onClick={() => setCurrentStep(4)}
               className="px-6 py-3 rounded-xl bg-[#0D0D0D] text-white border border-[#C9A227] font-bold text-xs hover:bg-[#1a1a1a] transition-all shadow-xs flex items-center gap-2"
             >
-              <span>Avançar para Documentos</span>
-              <span className="material-symbols-outlined text-[16px] text-[#C9A227]">arrow_forward</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ==================================================================== */}
-      {/* STEP 4: DOCUMENTOS                                                  */}
-      {/* ==================================================================== */}
-      {currentStep === 4 && (
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-6">
-          <div className="border-b border-slate-100 pb-4">
-            <h2 className="font-title-md text-xl font-bold text-[#0D0D0D] flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#C9A227]">upload_file</span>
-              4. Documentos do Processo
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Anexe documentos iniciais ou importe arquivos já cadastrados no perfil do cliente ({selectedClient?.name}).
-            </p>
-          </div>
-
-          {/* File Upload Zone */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-1">
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                  Categoria do Documento
-                </label>
-                <select
-                  value={selectedDocCategory}
-                  onChange={(e) => setSelectedDocCategory(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-[#0D0D0D] text-xs"
-                >
-                  {DOCUMENT_CATEGORY_OPTIONS.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                  Anexar Novos Arquivos
-                </label>
-                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                  />
-                  <span className="material-symbols-outlined text-2xl text-[#C9A227] mb-1">cloud_upload</span>
-                  <p className="text-xs font-bold text-slate-800">Clique para selecionar ou arraste o arquivo aqui</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Formatos suportados: PDF, DOCX, JPG, PNG até 25MB</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Attach from Client Checklist */}
-            <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-2">
-              <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px] text-[#C9A227]">assignment_ind</span>
-                Documentos Cadastrados no Perfil do Cliente
-              </h4>
-              <p className="text-[11px] text-slate-500">Clique para vincular instantaneamente ao processo sem duplicar arquivos:</p>
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                {[
-                  'RG e CPF do Cliente.pdf',
-                  'Comprovante de Residência Atual.pdf',
-                  'Extrato CNIS Atualizado.pdf',
-                  'Carteira de Trabalho (CTPS).pdf',
-                  'Laudo Médico com CID.pdf',
-                  'Comprovante de Cadastro Único (CadÚnico).pdf',
-                ].map((docName) => (
-                  <button
-                    key={docName}
-                    type="button"
-                    onClick={() => handleAttachClientDoc(docName)}
-                    className="px-3 py-1.5 bg-white hover:bg-amber-500/10 border border-slate-300 hover:border-[#C9A227] rounded-xl text-xs font-bold text-slate-800 transition-colors flex items-center gap-1 shadow-2xs"
-                  >
-                    <span className="material-symbols-outlined text-[14px] text-emerald-600">add_circle</span>
-                    {docName}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* List of Attached Documents */}
-            <div className="space-y-2">
-              <h4 className="font-bold text-xs text-slate-900">
-                Documentos Vinculados a Este Processo ({attachedDocs.length})
-              </h4>
-
-              {attachedDocs.length > 0 ? (
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
-                  {attachedDocs.map((doc) => (
-                    <div key={doc.id} className="p-3 flex items-center justify-between text-xs hover:bg-slate-50">
-                      <div className="flex items-center gap-2.5">
-                        <span className="material-symbols-outlined text-slate-500">description</span>
-                        <div>
-                          <p className="font-bold text-slate-900">{doc.name}</p>
-                          <span className="text-[10px] text-slate-500">
-                            Categoria: <strong className="text-slate-700">{doc.category}</strong> • {doc.size}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setAttachedDocs(attachedDocs.filter((d) => d.id !== doc.id))}
-                        className="text-slate-400 hover:text-red-600 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400 italic py-2">
-                  Nenhum documento anexado ainda. Você poderá adicionar mais arquivos a qualquer momento.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Navigation Controls */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setCurrentStep(3)}
-              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-              Voltar para Informações
-            </button>
-
-            <button
-              onClick={() => setCurrentStep(5)}
-              className="px-6 py-3 rounded-xl bg-[#0D0D0D] text-white border border-[#C9A227] font-bold text-xs hover:bg-[#1a1a1a] transition-all shadow-xs flex items-center gap-2"
-            >
               <span>Avançar para Revisar</span>
               <span className="material-symbols-outlined text-[16px] text-[#C9A227]">arrow_forward</span>
             </button>
@@ -1539,14 +1339,14 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* STEP 5: REVISAR PROCESSO                                             */}
+      {/* STEP 4: REVISAR PROCESSO                                             */}
       {/* ==================================================================== */}
-      {currentStep === 5 && (
+      {currentStep === 4 && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-6">
           <div className="border-b border-slate-100 pb-4">
             <h2 className="font-title-md text-xl font-bold text-[#0D0D0D] flex items-center gap-2">
               <span className="material-symbols-outlined text-[#C9A227]">fact_check</span>
-              5. Revisar e Confirmar Criação
+              4. Revisar e Confirmar Criação
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Confira os dados principais antes de confirmar a abertura oficial do processo.
@@ -1588,7 +1388,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
             </div>
 
             {/* Equipe & Prazos */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-4 rounded-2xl border border-slate-200 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white p-4 rounded-2xl border border-slate-200 text-xs">
               <div>
                 <span className="text-slate-400 font-semibold block text-[10px] uppercase">ADVOGADO RESPONSÁVEL</span>
                 <strong className="text-slate-900">{responsibleUser.name}</strong>
@@ -1604,11 +1404,6 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
               <div>
                 <span className="text-slate-400 font-semibold block text-[10px] uppercase">DATA DE ABERTURA</span>
                 <strong className="text-slate-900">{openingDate}</strong>
-              </div>
-
-              <div>
-                <span className="text-slate-400 font-semibold block text-[10px] uppercase">DOCUMENTOS ANEXADOS</span>
-                <strong className="text-slate-900">{attachedDocs.length} arquivo(s)</strong>
               </div>
             </div>
 
@@ -1654,7 +1449,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
           <div className="flex items-center justify-between pt-4 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => setCurrentStep(4)}
+              onClick={() => setCurrentStep(3)}
               className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">arrow_back</span>
@@ -1673,9 +1468,9 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* STEP 6: PROCESSO CRIADO COM SUCESSO                                  */}
+      {/* STEP 5: PROCESSO CRIADO COM SUCESSO                                  */}
       {/* ==================================================================== */}
-      {currentStep === 6 && createdCaseResult && (
+      {currentStep === 5 && createdCaseResult && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-lg p-8 text-center max-w-3xl mx-auto space-y-6 animate-fade-in">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 border-2 border-emerald-300 flex items-center justify-center mx-auto text-3xl shadow-xs">
             ✓
@@ -1694,7 +1489,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
           </div>
 
           {/* Details Pill */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-bold">CÓDIGO INTERNO</span>
               <span className="font-mono font-extrabold text-slate-900">{createdCaseResult.caseNumber}</span>
@@ -1706,10 +1501,6 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-bold">RESPONSÁVEL</span>
               <span className="font-extrabold text-slate-900">{createdCaseResult.responsibleUserName}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">DOCUMENTOS</span>
-              <span className="font-extrabold text-slate-900">{createdCaseResult.documents.length} arquivo(s)</span>
             </div>
           </div>
 
@@ -1857,6 +1648,52 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                   </div>
                 </div>
 
+                {/* Senha Meu INSS (gov.br) no Modal de Consulta Rápida */}
+                {selectedClient.meuInssPassword && (
+                  <div className="p-3 bg-amber-50/80 rounded-xl border border-[#C9A227]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[#8c6e14] text-base">vpn_key</span>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                          Senha do Meu INSS (gov.br):
+                        </span>
+                        <span className="font-mono text-xs font-bold text-slate-900">
+                          {showModalInssPassword ? selectedClient.meuInssPassword : '••••••••••••'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setShowModalInssPassword(!showModalInssPassword)}
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-slate-200"
+                        title={showModalInssPassword ? 'Ocultar Senha' : 'Ver Senha'}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {showModalInssPassword ? 'visibility_off' : 'visibility'}
+                        </span>
+                        <span>{showModalInssPassword ? 'Ocultar' : 'Ver'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyModalInssPassword(selectedClient.meuInssPassword)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all ${
+                          modalInssPasswordCopied
+                            ? 'bg-emerald-700 text-white'
+                            : 'bg-[#0D0D0D] hover:bg-slate-800 text-[#C9A227]'
+                        }`}
+                        title="Copiar senha"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {modalInssPasswordCopied ? 'check' : 'content_copy'}
+                        </span>
+                        <span>{modalInssPasswordCopied ? 'Copiada' : 'Copiar'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 2. Endereço */}

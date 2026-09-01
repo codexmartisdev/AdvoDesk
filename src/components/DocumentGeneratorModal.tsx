@@ -3,13 +3,6 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { DocumentTemplate, Client, FirmSettings } from '../types';
 import { replaceVariablesInTemplateText } from '../utils/documentReplacer';
-import {
-  getDriveAccessToken,
-  loginGoogleDrive,
-  getOrCreateClientFolder,
-  uploadBinaryFileToDrive,
-  uploadTextDocumentToDrive,
-} from '../services/googleDriveService';
 
 interface DocumentGeneratorModalProps {
   isOpen: boolean;
@@ -41,9 +34,6 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   const [docSource, setDocSource] = useState<'template' | null>(null);
   const [copied, setCopied] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [savingToDrive, setSavingToDrive] = useState(false);
-  const [driveSavedLink, setDriveSavedLink] = useState<string | null>(null);
-  const [driveStatusMsg, setDriveStatusMsg] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
   const [templateSaveStatus, setTemplateSaveStatus] = useState<string | null>(null);
   const [isTemplateModified, setIsTemplateModified] = useState(false);
@@ -360,165 +350,6 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
     }
   };
 
-  const handleSaveToGoogleDrive = async () => {
-    if (!generatedDoc || !template) return;
-    setSavingToDrive(true);
-    setDriveStatusMsg('Conectando ao Google Drive...');
-    setDriveSavedLink(null);
-
-    try {
-      let token = getDriveAccessToken();
-      if (!token) {
-        setDriveStatusMsg('Autorize a conexão com o Google...');
-        const authRes = await loginGoogleDrive();
-        token = authRes.accessToken;
-      }
-
-      setDriveStatusMsg('Localizando pasta do cliente no Google Drive...');
-      const clientFolder = await getOrCreateClientFolder(clientName, clientCpf, token);
-
-      setDriveStatusMsg('Gerando documento em alta resolução...');
-      // 1. Gera PDF do documento formatado
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const marginTop = 20;
-      const marginBottom = 20;
-      const marginLeft = 18;
-      const marginRight = 18;
-      const contentWidth = pageWidth - marginLeft - marginRight;
-      let currentY = marginTop;
-
-      const checkAddPage = (neededHeight: number) => {
-        if (currentY + neededHeight > pageHeight - marginBottom) {
-          pdf.addPage();
-          currentY = marginTop;
-          return true;
-        }
-        return false;
-      };
-
-      // Header Firm Title & Subtitle
-      if (settings?.firmName?.trim()) {
-        pdf.setFont('times', 'bold');
-        pdf.setFontSize(14);
-        pdf.setTextColor(10, 31, 68);
-        pdf.text(settings.firmName.trim(), pageWidth / 2, currentY, { align: 'center' });
-        currentY += 5;
-
-        pdf.setDrawColor(10, 31, 68);
-        pdf.setLineWidth(0.4);
-        pdf.line(marginLeft, currentY, pageWidth - marginRight, currentY);
-        currentY += 4.5;
-      }
-
-      if (settings?.firmSubtitle?.trim()) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(9);
-        pdf.setTextColor(100, 116, 139);
-        pdf.text(settings.firmSubtitle.trim().toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-        currentY += 10;
-      } else if (settings?.firmName?.trim()) {
-        currentY += 5.5;
-      }
-
-      // Document Title
-      pdf.setFont('times', 'bold');
-      pdf.setFontSize(12);
-      pdf.setTextColor(10, 31, 68);
-      pdf.text(template.title.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-      currentY += 8;
-
-      // Document Body
-      pdf.setFont('times', 'normal');
-      pdf.setFontSize(10.5);
-      pdf.setTextColor(15, 23, 42);
-
-      const lines = generatedDoc.split('\n');
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed === '') {
-          currentY += 3;
-          continue;
-        }
-
-        if (trimmed.startsWith('#') || trimmed.includes('##')) {
-          checkAddPage(10);
-          currentY += 2;
-          pdf.setFont('times', 'bold');
-          pdf.setFontSize(10.5);
-          pdf.setTextColor(10, 31, 68);
-          const cleanH = line.replace(/#+/g, '').replace(/\*\*/g, '').trim();
-          pdf.text(cleanH.toUpperCase(), marginLeft, currentY);
-          currentY += 5.5;
-          pdf.setFont('times', 'normal');
-          pdf.setTextColor(15, 23, 42);
-          continue;
-        }
-
-        const cleanLine = line.replace(/\*\*/g, '');
-        const splitText = pdf.splitTextToSize(cleanLine, contentWidth);
-        const textHeight = splitText.length * 4.8;
-        checkAddPage(textHeight + 2);
-        pdf.text(splitText, marginLeft, currentY);
-        currentY += textHeight + 1.2;
-      }
-
-      // Signatures
-      checkAddPage(40);
-      currentY += 14;
-      const colWidth = 72;
-      const col1X = marginLeft;
-      const col2X = pageWidth - marginRight - colWidth;
-
-      pdf.setDrawColor(15, 23, 42);
-      pdf.setLineWidth(0.4);
-      pdf.line(col1X, currentY, col1X + colWidth, currentY);
-      pdf.line(col2X, currentY, col2X + colWidth, currentY);
-      currentY += 4;
-
-      const driveLawyerName = settings?.lawyerName?.trim() || '[Não informado]';
-      const driveLawyerOab = settings?.oabNumber?.trim() || '[Não informado]';
-
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(15, 23, 42);
-      pdf.text((clientName || 'CLIENTE').toUpperCase(), col1X + colWidth / 2, currentY, { align: 'center' });
-      pdf.text(driveLawyerName.toUpperCase(), col2X + colWidth / 2, currentY, { align: 'center' });
-      currentY += 3.5;
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(100, 116, 139);
-      pdf.text(`CPF: ${clientCpf || '[Não informado]'}`, col1X + colWidth / 2, currentY, { align: 'center' });
-      pdf.text(driveLawyerOab, col2X + colWidth / 2, currentY, { align: 'center' });
-
-      const pdfBlob = pdf.output('blob');
-      const cleanTitle = (template.title || 'Documento').replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const cleanClient = (clientName || 'Cliente').replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const fileName = `${cleanTitle}_${cleanClient}.pdf`;
-
-      setDriveStatusMsg('Fazendo upload para o Google Drive...');
-      const uploadedFile = await uploadBinaryFileToDrive(
-        {
-          fileName,
-          fileBlob: pdfBlob,
-          mimeType: 'application/pdf',
-          parentFolderId: clientFolder.id,
-        },
-        token
-      );
-
-      setDriveSavedLink(uploadedFile.webViewLink || null);
-      setDriveStatusMsg(`Salvo com sucesso na pasta "${clientFolder.name}" no Google Drive!`);
-    } catch (err: any) {
-      console.error('Erro ao salvar no Google Drive:', err);
-      setDriveStatusMsg(`Erro ao salvar no Drive: ${err.message}`);
-    } finally {
-      setSavingToDrive(false);
-    }
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -754,48 +585,8 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                   <span className="material-symbols-outlined text-sm">print</span>
                   <span>Imprimir</span>
                 </button>
-
-                <button
-                  onClick={handleSaveToGoogleDrive}
-                  disabled={savingToDrive}
-                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
-                  title="Salvar automaticamente na pasta do cliente no Google Drive"
-                >
-                  <svg viewBox="0 0 87.3 78" className="w-3.5 h-3.5 shrink-0">
-                    <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                    <path d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44C.4 49.95 0 51.5 0 53.05h27.5z" fill="#00ac47"/>
-                    <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.15z" fill="#ea4335"/>
-                    <path d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2z" fill="#00832d"/>
-                    <path d="M59.8 53.05H87.3c0-1.55-.4-3.1-1.2-4.5l-25.4-44c-.8-1.4-1.95-2.5-3.3-3.35L43.65 25z" fill="#ffba00"/>
-                    <path d="m73.55 76.8-13.75-23.75H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.9c1.55 0 3.1-.4 4.45-1.2z" fill="#2684fc"/>
-                  </svg>
-                  <span>{savingToDrive ? 'Salvando...' : 'Salvar no Google Drive'}</span>
-                </button>
               </div>
             </div>
-
-            {/* Google Drive Status Notification */}
-            {driveStatusMsg && (
-              <div className="p-3 bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold rounded-2xl flex items-center justify-between animate-in fade-in">
-                <div className="flex items-center space-x-2">
-                  <span className="material-symbols-outlined text-sm text-blue-700">
-                    {savingToDrive ? 'sync' : 'cloud_done'}
-                  </span>
-                  <span>{driveStatusMsg}</span>
-                </div>
-                {driveSavedLink && (
-                  <a
-                    href={driveSavedLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs"
-                  >
-                    <span>Abrir no Google Drive</span>
-                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                  </a>
-                )}
-              </div>
-            )}
 
             {/* Document Content */}
             {viewMode === 'preview' ? (

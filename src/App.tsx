@@ -36,7 +36,6 @@ const ClientsView = lazy(() => import('./components/ClientsView').then((module) 
 const CasesView = lazy(() => import('./components/CasesView').then((module) => ({ default: module.CasesView })));
 const DocumentsView = lazy(() => import('./components/DocumentsView').then((module) => ({ default: module.DocumentsView })));
 const CalendarView = lazy(() => import('./components/CalendarView').then((module) => ({ default: module.CalendarView })));
-const DriveView = lazy(() => import('./components/DriveView').then((module) => ({ default: module.DriveView })));
 const SettingsView = lazy(() => import('./components/SettingsView').then((module) => ({ default: module.SettingsView })));
 import { LoginScreen } from './components/LoginScreen';
 const NewCaseModal = lazy(() => import('./components/NewCaseModal').then((module) => ({ default: module.NewCaseModal })));
@@ -595,14 +594,6 @@ export default function App() {
           onAddEvent={handleAddEvent}
           onUpdateEvent={handleUpdateEvent}
           onDeleteEvent={handleDeleteEvent}
-        />
-      )}
-
-      {/* Google Drive View */}
-      {currentTab === 'drive' && (
-        <DriveView
-          user={user}
-          clients={clients}
         />
       )}
 

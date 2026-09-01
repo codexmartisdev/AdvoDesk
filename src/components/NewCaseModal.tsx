@@ -88,6 +88,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [gender, setGender] = useState('Feminino');
   const [motherName, setMotherName] = useState('');
   const [fatherName, setFatherName] = useState('');
+  const [meuInssPassword, setMeuInssPassword] = useState('');
+  const [showInssPassword, setShowInssPassword] = useState(false);
 
   const [maritalStatus, setMaritalStatus] = useState('Solteiro(a)');
   const [propertyRegime, setPropertyRegime] = useState('');
@@ -180,16 +182,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
         { label: 'Audiência', completed: false, active: false },
         { label: 'Recurso', completed: false, active: false },
       ],
-      documents: [
-        {
-          id: `doc-${Date.now()}`,
-          title: 'Documentos_Iniciais.pdf',
-          fileSize: '1.1 MB',
-          uploadedAt: `Enviado em ${getBrasiliaFormatted()}`,
-          type: 'pdf',
-          tags: ['Novo'],
-        },
-      ],
       deadlinesCount: nextDeadlineDate ? 1 : 0,
       notes: quickNotes.trim() ? [`[Anotação Inicial] ${quickNotes.trim()}`] : ['Abertura de ficha de processo.'],
       costs: [],
@@ -222,6 +214,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       gender,
       motherName,
       fatherName,
+      meuInssPassword: meuInssPassword.trim() || undefined,
       maritalStatus,
       propertyRegime,
       spouseName,
@@ -869,6 +862,45 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
               </div>
 
+              {/* Área Útil ao Advogado: Senha do Meu INSS */}
+              <div className="mt-3 p-3.5 bg-gradient-to-br from-amber-500/10 via-amber-50/60 to-white rounded-xl border border-[#C9A227]/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-[#0D0D0D] text-[#C9A227] flex items-center justify-center font-bold">
+                    <span className="material-symbols-outlined text-sm">vpn_key</span>
+                  </span>
+                  <div>
+                    <h4 className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                      <span>Senha do Meu INSS (Portal gov.br)</span>
+                      <span className="px-1.5 py-0.2 rounded bg-[#0D0D0D] text-[#C9A227] text-[9px] font-bold uppercase tracking-wider">
+                        Útil ao Advogado
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-600">
+                      Preencha a senha para consultar extratos, CNIS e cumprir exigências. Ficará oculta na aba de clientes com opção de visualizar e copiar.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="relative max-w-sm pt-1">
+                  <input
+                    type={showInssPassword ? 'text' : 'password'}
+                    value={meuInssPassword}
+                    onChange={(e) => setMeuInssPassword(e.target.value)}
+                    placeholder="Senha gov.br / Meu INSS do cliente"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-3 pr-10 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowInssPassword(!showInssPassword)}
+                    className="absolute right-2 top-3 text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors"
+                    title={showInssPassword ? 'Ocultar senha' : 'Exibir senha'}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showInssPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* 2. Estado Civil e Família */}

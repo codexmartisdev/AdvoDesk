@@ -191,7 +191,7 @@ export function createDefaultUserProfile(authUser: User): UserProfile {
     name: authUser.displayName || authUser.email?.split('@')[0] || (isOwner ? 'Dr. Bizerra Neto' : 'Advogado Associado'),
     avatarUrl: authUser.photoURL || USER_AVATAR_URL,
     firmId: DEFAULT_FIRM_ID,
-    firmName: 'Bizerra Neto Advocacia',
+    firmName: 'AdvoDesk',
     role: isOwner ? 'admin' : 'advogado',
     permissions: {
       canManageWorkflows: isOwner,
@@ -635,7 +635,7 @@ export async function ensureUserProfileInFirestore(authUser: User): Promise<User
         name: authUser.displayName || 'Dr. Bizerra Neto',
         avatarUrl: authUser.photoURL || USER_AVATAR_URL,
         firmId: DEFAULT_FIRM_ID,
-        firmName: 'Bizerra Neto Advocacia',
+        firmName: 'AdvoDesk',
         role: 'admin',
         permissions: {
           canManageWorkflows: true,

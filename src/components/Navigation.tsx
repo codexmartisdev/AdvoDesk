@@ -45,8 +45,6 @@ export const Navigation: React.FC<NavigationProps> = ({
         return 'Pesquisar processos, partes ou número CNJ...';
       case 'calendar':
         return 'Buscar prazos fatais e audiências...';
-      case 'drive':
-        return 'Pesquisar arquivos e pastas no Google Drive...';
       default:
         return 'Pesquisar em toda a plataforma...';
     }
@@ -261,30 +259,6 @@ export const Navigation: React.FC<NavigationProps> = ({
             </span>
             <span>Agenda & Prazos</span>
           </button>
-
-          {/* Google Drive */}
-          <button
-            onClick={() => {
-              onTabChange('drive');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
-              currentTab === 'drive'
-                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
-                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <span
-              className={`material-symbols-outlined text-[18px] ${currentTab === 'drive' ? 'text-[#C9A227]' : 'text-slate-500'}`}
-              style={{ fontVariationSettings: currentTab === 'drive' ? "'FILL' 1" : "'FILL' 0" }}
-            >
-              add_to_drive
-            </span>
-            <span className="flex-1">Google Drive</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded font-bold">
-              Nuvem
-            </span>
-          </button>
         </div>
 
         {/* Footer Links & Lawyer Profile */}
@@ -481,18 +455,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               >
                 <span className="material-symbols-outlined text-[18px]">calendar_month</span>
                 <span>Agenda & Prazos</span>
-              </button>
-              <button
-                onClick={() => {
-                  onTabChange('drive');
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
-                  currentTab === 'drive' ? 'bg-[#0D0D0D] text-white font-extrabold border border-[#C9A227]/50' : 'text-slate-600'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">add_to_drive</span>
-                <span>Google Drive</span>
               </button>
               <button
                 onClick={() => {

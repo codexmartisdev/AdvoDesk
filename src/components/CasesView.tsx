@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LegalCase, CaseDocument, Client } from '../types';
+import { LegalCase, Client } from '../types';
 import { getBrasiliaISO, getBrasiliaFormatted, formatToPtBR } from '../utils/dateUtils';
 import { calculateLegalDeadline, DeadlineType } from '../utils/legalDeadlines';
 import { WorkflowExecutionPanel } from './WorkflowExecutionPanel';
@@ -31,9 +31,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
 }) => {
   const currentCase = cases.find((c) => c.id === selectedCaseId) || cases[0];
 
-  const [activeTab, setActiveTab] = useState<'workflow' | 'ficha' | 'documentos' | 'prazos' | 'anotacoes' | 'custas'>('workflow');
-  const [dragOver, setDragOver] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<CaseDocument[]>(currentCase?.documents || []);
+  const [activeTab, setActiveTab] = useState<'workflow' | 'ficha' | 'prazos' | 'anotacoes' | 'custas'>('workflow');
   const [newNoteText, setNewNoteText] = useState('');
   const [notes, setNotes] = useState<string[]>(currentCase?.notes || []);
 
@@ -94,7 +92,6 @@ export const CasesView: React.FC<CasesViewProps> = ({
   // Sync when currentCase changes
   useEffect(() => {
     if (currentCase) {
-      setUploadedFiles(currentCase.documents || []);
       setNotes(currentCase.notes || []);
       populateEditForm(currentCase);
     }
@@ -195,29 +192,6 @@ export const CasesView: React.FC<CasesViewProps> = ({
 
     onUpdateCase(updatedCase);
     setIsEditModalOpen(false);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const newDoc: CaseDocument = {
-        id: `doc-${Date.now()}`,
-        title: file.name,
-        fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        uploadedAt: `Enviado em ${getBrasiliaFormatted()}`,
-        type: file.name.endsWith('.pdf') ? 'pdf' : file.name.endsWith('.docx') ? 'docx' : 'image',
-        tags: ['Novo'],
-      };
-      const newDocsList = [newDoc, ...uploadedFiles];
-      setUploadedFiles(newDocsList);
-      if (onUpdateCase && currentCase) {
-        onUpdateCase({
-          ...currentCase,
-          documents: newDocsList,
-          lastMovementDate: getBrasiliaISO(),
-        });
-      }
-    }
   };
 
   const handleAddNote = (e: React.FormEvent) => {
@@ -636,16 +610,6 @@ export const CasesView: React.FC<CasesViewProps> = ({
             <span>Ficha Completa</span>
           </button>
           <button
-            onClick={() => setActiveTab('documentos')}
-            className={`px-5 py-2.5 border-b-2 text-xs md:text-sm font-bold rounded-t-xl transition-all ${
-              activeTab === 'documentos'
-                ? 'border-blue-900 text-blue-900 bg-white'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            Documentos ({uploadedFiles.length})
-          </button>
-          <button
             onClick={() => setActiveTab('prazos')}
             className={`px-5 py-2.5 border-b-2 text-xs md:text-sm font-bold rounded-t-xl transition-all ${
               activeTab === 'prazos'
@@ -957,112 +921,6 @@ export const CasesView: React.FC<CasesViewProps> = ({
               </div>
 
             </div>
-          </div>
-        )}
-
-        {/* Tab 1: Documentos */}
-        {activeTab === 'documentos' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Main Drag & Drop Upload Area */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                  const file = e.dataTransfer.files[0];
-                  const newDoc: CaseDocument = {
-                    id: `doc-${Date.now()}`,
-                    title: file.name,
-                    fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-                    uploadedAt: `Enviado em ${new Date().toLocaleDateString('pt-BR')}`,
-                    type: file.name.endsWith('.pdf') ? 'pdf' : file.name.endsWith('.docx') ? 'docx' : 'image',
-                    tags: ['Novo'],
-                  };
-                  const updatedDocsList = [newDoc, ...uploadedFiles];
-                  setUploadedFiles(updatedDocsList);
-                  if (onUpdateCase && currentCase) {
-                    onUpdateCase({
-                      ...currentCase,
-                      documents: updatedDocsList,
-                      lastMovementDate: new Date().toISOString().split('T')[0],
-                    });
-                  }
-                }
-              }}
-              className={`col-span-1 md:col-span-2 bg-white rounded-2xl p-8 flex flex-col items-center justify-center border-dashed border-2 transition-all cursor-pointer group ${
-                dragOver ? 'border-blue-900 bg-blue-50/50' : 'border-slate-300 hover:border-blue-900'
-              }`}
-            >
-              <div className="w-16 h-16 rounded-full bg-blue-50 border border-blue-100 mb-4 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[32px] text-blue-900">
-                  cloud_upload
-                </span>
-              </div>
-              <h4 className="font-title-md text-base font-bold text-slate-900 mb-1">
-                Arraste arquivos e anexos aqui
-              </h4>
-              <p className="text-xs text-slate-500 text-center max-w-sm mb-6">
-                Suporta PDF, DOCX, JPG até 50MB. Os documentos serão indexados automaticamente ao processo.
-              </p>
-
-              <label className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition-colors cursor-pointer shadow-xs">
-                <span>Procurar Arquivos no Computador</span>
-                <input
-                  type="file"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  accept=".pdf,.docx,.doc,.jpg,.png"
-                />
-              </label>
-            </div>
-
-            {/* Uploaded Documents */}
-            {uploadedFiles.map((doc) => (
-              <div
-                key={doc.id}
-                className="col-span-1 bg-white rounded-2xl p-6 relative border border-slate-200 shadow-xs flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-blue-900">
-                      <span className="material-symbols-outlined text-2xl">
-                        {doc.type === 'pdf' ? 'picture_as_pdf' : doc.type === 'docx' ? 'description' : 'image'}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        alert(`Baixando ${doc.title}...`);
-                      }}
-                      className="text-slate-400 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-100"
-                    >
-                      <span className="material-symbols-outlined text-xl">download</span>
-                    </button>
-                  </div>
-                  <h5 className="font-title-md text-sm text-slate-900 mb-1 truncate font-bold" title={doc.title}>
-                    {doc.title}
-                  </h5>
-                  <p className="text-xs text-slate-500 mb-4 font-medium">
-                    {doc.uploadedAt} • {doc.fileSize}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  {doc.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-bold text-[11px] border border-slate-200"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         )}
 

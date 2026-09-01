@@ -1,35 +1,4 @@
-export type NavigationTab = 'dashboard' | 'clients' | 'cases' | 'documents' | 'calendar' | 'drive' | 'settings' | 'support' | 'create-case';
-
-export interface GoogleDriveFile {
-  id: string;
-  name: string;
-  mimeType: string;
-  webViewLink?: string;
-  webContentLink?: string;
-  iconLink?: string;
-  thumbnailLink?: string;
-  size?: string;
-  modifiedTime?: string;
-  createdTime?: string;
-  parents?: string[];
-  owners?: { displayName: string; emailAddress: string; photoLink?: string }[];
-  shared?: boolean;
-  trashed?: boolean;
-}
-
-export interface GoogleDriveAbout {
-  user?: {
-    displayName: string;
-    emailAddress: string;
-    photoLink?: string;
-  };
-  storageQuota?: {
-    limit?: string;
-    usage?: string;
-    usageInDrive?: string;
-    usageInDriveTrash?: string;
-  };
-}
+export type NavigationTab = 'dashboard' | 'clients' | 'cases' | 'documents' | 'calendar' | 'settings' | 'support' | 'create-case';
 
 export interface UserPermissions {
   canManageWorkflows?: boolean;
@@ -96,6 +65,7 @@ export interface Client {
   gender?: string;
   motherName?: string;
   fatherName?: string;
+  meuInssPassword?: string; // Senha de Acesso Meu INSS (Portal gov.br)
 
   // 2. Estado civil e família
   maritalStatus?: string;
@@ -133,15 +103,6 @@ export interface Client {
   bankAgency?: string;
   bankAccount?: string;
   pixKey?: string;
-}
-
-export interface CaseDocument {
-  id: string;
-  title: string;
-  fileSize: string;
-  uploadedAt: string;
-  type: 'pdf' | 'docx' | 'image';
-  tags: string[]; // e.g. ["Principal", "Assinado"], ["Anexo"], ["Prova"]
 }
 
 export interface LegalCase {
@@ -244,7 +205,6 @@ export interface LegalCase {
     completed: boolean;
     active: boolean;
   }[];
-  documents: CaseDocument[];
   deadlinesCount: number;
   costs: { description: string; value: string; date: string; paid: boolean }[];
 }
