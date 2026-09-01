@@ -708,7 +708,6 @@ export default function App() {
         initialClientCpf={docClientCpf}
         initialGeneratedText={prefilledGeneratedText || undefined}
         settings={settings}
-        onSaveTemplate={handleSaveTemplate}
       />
       )}
       </Suspense>

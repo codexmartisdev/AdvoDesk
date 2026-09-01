@@ -13,7 +13,6 @@ interface DocumentGeneratorModalProps {
   initialClientCpf?: string;
   initialGeneratedText?: string;
   settings?: FirmSettings;
-  onSaveTemplate?: (template: DocumentTemplate) => void;
 }
 
 export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
@@ -25,7 +24,6 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   initialClientCpf,
   initialGeneratedText,
   settings,
-  onSaveTemplate,
 }) => {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [clientName, setClientName] = useState(initialClientName || '');
@@ -35,22 +33,8 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
-  const [templateSaveStatus, setTemplateSaveStatus] = useState<string | null>(null);
-  const [isTemplateModified, setIsTemplateModified] = useState(false);
 
   const docPrintRef = useRef<HTMLDivElement>(null);
-
-  const handleSaveAsTemplatePattern = () => {
-    if (!template || !generatedDoc || !onSaveTemplate) return;
-    const updatedTemplate: DocumentTemplate = {
-      ...template,
-      contentPattern: generatedDoc,
-    };
-    onSaveTemplate(updatedTemplate);
-    setIsTemplateModified(false);
-    setTemplateSaveStatus('Modelo de minuta salvo com sucesso no banco de dados para os próximos usos!');
-    setTimeout(() => setTemplateSaveStatus(null), 5000);
-  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -685,39 +669,20 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
               </div>
             ) : (
               <div className="space-y-3">
-                {templateSaveStatus && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center justify-between animate-in fade-in">
-                    <div className="flex items-center space-x-2">
-                      <span className="material-symbols-outlined text-sm text-emerald-600">check_circle</span>
-                      <span>{templateSaveStatus}</span>
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-slate-100 p-2.5 rounded-xl border border-slate-200">
                   <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm text-slate-500">edit_note</span>
-                    <span>Editando Texto da Minuta</span>
+                    <span>Editando Texto da Minuta Gerada</span>
                   </span>
-
-                  {template && onSaveTemplate && (
-                    <button
-                      onClick={handleSaveAsTemplatePattern}
-                      className="px-3.5 py-1.5 bg-[#0A1F44] hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
-                      title="Salvar estas alterações como padrão oficial do Modelo no banco de dados"
-                    >
-                      <span className="material-symbols-outlined text-xs">save</span>
-                      <span>Salvar Alterações no Modelo (Para Uso Futuro)</span>
-                    </button>
-                  )}
+                  <span className="text-[11px] text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200 font-medium">
+                    Ajuste pontual para impressão/exportação (o modelo reutilizável permanece intacto)
+                  </span>
                 </div>
 
                 <textarea
                   value={generatedDoc || ''}
                   onChange={(e) => {
                     setGeneratedDoc(e.target.value);
-                    setIsTemplateModified(true);
-                    setTemplateSaveStatus(null);
                   }}
                   rows={18}
                   className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-4 font-mono text-xs text-slate-900 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0A1F44] shadow-inner"
@@ -734,19 +699,11 @@ export const DocumentGeneratorModal: React.FC<DocumentGeneratorModalProps> = ({
                 Voltar e Ajustar Parâmetros
               </button>
               <button
-                onClick={() => {
-                  if (isTemplateModified && template && generatedDoc && onSaveTemplate) {
-                    onSaveTemplate({
-                      ...template,
-                      contentPattern: generatedDoc,
-                    });
-                  }
-                  onClose();
-                }}
+                onClick={onClose}
                 className="flex-1 bg-[#0A1F44] hover:bg-slate-900 py-3 rounded-xl text-white text-xs font-extrabold flex items-center justify-center gap-2 transition-all shadow-md"
               >
                 <span className="material-symbols-outlined text-sm">check_circle</span>
-                <span>Concluir e Salvar</span>
+                <span>Concluir</span>
               </button>
             </div>
           </div>
