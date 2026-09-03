@@ -43,7 +43,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [benefitType, setBenefitType] = useState('BPC Loas');
   const [processNumber, setProcessNumber] = useState('');
   const [instance, setInstance] = useState('Administrativo INSS');
-  const [agencyOrCourt, setAgencyOrCourt] = useState('APS Parnaíba / PI');
+  const [agencyOrCourt, setAgencyOrCourt] = useState('');
   const [court, setCourt] = useState('INSS - Instituto Nacional do Seguro Social');
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
   const [customClientName, setCustomClientName] = useState('');
@@ -80,7 +80,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [clientCpf, setClientCpf] = useState('');
   const [rgNumber, setRgNumber] = useState('');
   const [rgIssuer, setRgIssuer] = useState('SSP');
-  const [rgUf, setRgUf] = useState('PI');
+  const [rgUf, setRgUf] = useState('');
   const [rgIssueDate, setRgIssueDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [nationality, setNationality] = useState('Brasileiro(a)');
@@ -101,7 +101,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [addressNumber, setAddressNumber] = useState('');
   const [addressComplement, setAddressComplement] = useState('');
   const [addressNeighborhood, setAddressNeighborhood] = useState('');
-  const [addressCityUf, setAddressCityUf] = useState('Parnaíba/PI');
+  const [addressCityUf, setAddressCityUf] = useState('');
   const [addressZip, setAddressZip] = useState('');
   const [addressZone, setAddressZone] = useState('Urbana');
 
@@ -134,15 +134,15 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
     if (!caseTitle.trim()) return;
 
     const matchedClient = clients.find((c) => c.id === selectedClientId);
-    const finalClientName = matchedClient ? matchedClient.name : customClientName || 'Cliente sem nome';
-    const finalClientCpf = matchedClient ? matchedClient.cpf : customClientCpf || '000.000.000-00';
+    const finalClientName = matchedClient ? matchedClient.name : customClientName.trim() || 'Cliente sem nome';
+    const finalClientCpf = matchedClient ? matchedClient.cpf : customClientCpf.trim();
 
     const newCase: LegalCase = {
       id: `case-${Date.now()}`,
       caseNumber: `Caso #${Math.floor(1000 + Math.random() * 9000)}`,
-      processNumber: processNumber.trim() || `${Math.floor(1000000 + Math.random() * 8999999)}-${Math.floor(10 + Math.random() * 89)}.2024.8.26.0100`,
-      court: court.trim() || 'INSS / Tribunal de Justiça',
-      agencyOrCourt: agencyOrCourt.trim() || 'APS Parnaíba / PI',
+      processNumber: processNumber.trim(),
+      court: court.trim(),
+      agencyOrCourt: agencyOrCourt.trim(),
       category: caseCategory,
       benefitType: benefitType.trim() || 'BPC Loas',
       instance: instance.trim() || 'Administrativo INSS',
@@ -201,7 +201,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       typePill,
       status: 'Ativo',
       updatedAt: 'Criado agora',
-      cpf: clientCpf || '000.000.000-00',
+      cpf: clientCpf.trim(),
       rgNumber,
       rgIssuer,
       rgUf,
@@ -216,8 +216,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       propertyRegime,
       spouseName,
       familyMembers: [],
-      email: clientEmail || 'cliente@email.com',
-      phone: clientPhone || '(86) 90000-0000',
+      email: clientEmail.trim(),
+      phone: clientPhone.trim(),
       phoneSecondary,
       addressStreet,
       addressNumber,
@@ -357,7 +357,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                                 required
                                 value={partnerLawyerName}
                                 onChange={(e) => setPartnerLawyerName(e.target.value)}
-                                placeholder="Ex: Dr. Roberto Guimarães"
+                                placeholder="Ex: Nome do advogado parceiro"
                                 className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold"
                               />
                             </div>
@@ -482,7 +482,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     type="text"
                     value={agencyOrCourt}
                     onChange={(e) => setAgencyOrCourt(e.target.value)}
-                    placeholder="Ex: APS Parnaíba/PI ou 1ª Vara Federal"
+                    placeholder="Ex: Agência da Previdência Social ou Vara Federal"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   />
                 </div>
@@ -779,7 +779,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     />
                     <input
                       type="text"
-                      placeholder="PI"
+                      placeholder="UF"
                       value={rgUf}
                       onChange={(e) => setRgUf(e.target.value)}
                       className="w-1/4 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900 text-center uppercase"
@@ -817,7 +817,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       type="text"
                       value={birthplace}
                       onChange={(e) => setBirthplace(e.target.value)}
-                      placeholder="Parnaíba/PI"
+                      placeholder="Ex: Cidade/UF"
                       className="w-1/2 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900"
                     />
                   </div>
@@ -923,7 +923,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     required
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
-                    placeholder="(86) 98765-4321"
+                    placeholder="(00) 00000-0000"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   />
                 </div>
@@ -934,7 +934,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     type="text"
                     value={phoneSecondary}
                     onChange={(e) => setPhoneSecondary(e.target.value)}
-                    placeholder="(86) 99988-1122"
+                    placeholder="(00) 00000-0000"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   />
                 </div>
@@ -945,7 +945,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     type="email"
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
-                    placeholder="cliente@email.com"
+                    placeholder="nome@email.com"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   />
                 </div>
@@ -1000,7 +1000,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Cidade / UF</label>
                   <input
                     type="text"
-                    placeholder="Parnaíba/PI"
+                    placeholder="Ex: Cidade/UF"
                     value={addressCityUf}
                     onChange={(e) => setAddressCityUf(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
@@ -1011,7 +1011,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">CEP</label>
                   <input
                     type="text"
-                    placeholder="64200-000"
+                    placeholder="00000-000"
                     value={addressZip}
                     onChange={(e) => setAddressZip(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono"

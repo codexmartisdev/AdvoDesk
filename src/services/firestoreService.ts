@@ -188,7 +188,7 @@ export function createDefaultUserProfile(authUser: User): UserProfile {
   return {
     uid: authUser.uid,
     email: authUser.email || '',
-    name: authUser.displayName || authUser.email?.split('@')[0] || (isOwner ? 'Dr. Bizerra Neto' : 'Advogado Associado'),
+    name: authUser.displayName || authUser.email?.split('@')[0] || (isOwner ? 'Advogado Titular' : 'Advogado Associado'),
     avatarUrl: authUser.photoURL || USER_AVATAR_URL,
     firmId: DEFAULT_FIRM_ID,
     firmName: 'AdvoDesk',
@@ -211,7 +211,7 @@ export function createDefaultUserProfile(authUser: User): UserProfile {
 export async function seedInitialFirestoreData(userProfile: UserProfile) {
   // Check if already executed in this session to prevent repeated queries
   try {
-    if (typeof window !== 'undefined' && window.sessionStorage?.getItem('bizerra_db_seeded_v2')) {
+    if (typeof window !== 'undefined' && window.sessionStorage?.getItem('advodesk_db_seeded_v2')) {
       return;
     }
   } catch {
@@ -263,7 +263,7 @@ export async function seedInitialFirestoreData(userProfile: UserProfile) {
 
     try {
       if (typeof window !== 'undefined') {
-        window.sessionStorage?.setItem('bizerra_db_seeded_v2', 'true');
+        window.sessionStorage?.setItem('advodesk_db_seeded_v2', 'true');
       }
     } catch {
       // Ignore
@@ -632,7 +632,7 @@ export async function ensureUserProfileInFirestore(authUser: User): Promise<User
       const ownerProfile: UserProfile = {
         uid: authUser.uid,
         email: authUser.email || 'codex.martis.dev@gmail.com',
-        name: authUser.displayName || 'Dr. Bizerra Neto',
+        name: authUser.displayName || authUser.email?.split('@')[0] || 'Advogado Titular',
         avatarUrl: authUser.photoURL || USER_AVATAR_URL,
         firmId: DEFAULT_FIRM_ID,
         firmName: 'AdvoDesk',

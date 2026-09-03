@@ -84,7 +84,7 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     key: '{CLIENTE_NATURALIDADE}',
     label: 'Naturalidade',
     category: 'Identificação',
-    example: 'Parnaíba/PI',
+    example: 'Cidade/UF',
     getValue: (c) => c?.birthplace || null,
   },
   {
@@ -171,14 +171,14 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     key: '{CLIENTE_EMAIL}',
     label: 'E-mail de Contato',
     category: 'Contato & Endereço',
-    example: 'maria.santos@email.com',
+    example: 'cliente@email.com',
     getValue: (c) => c?.email || null,
   },
   {
     key: '{CLIENTE_ENDERECO_COMPLETO}',
     label: 'Endereço Residencial Completo',
     category: 'Contato & Endereço',
-    example: 'Rua dos Araújos, nº 150, Casa A, Bairro Frei Higino, Parnaíba/PI, CEP 64207-065',
+    example: 'Rua Principal, nº 100, Bairro Centro, Cidade/UF, CEP 00000-000',
     getValue: (c) => {
       if (!c?.addressStreet && !c?.addressCityUf) return null;
       const parts = [];
@@ -199,42 +199,42 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     key: '{CLIENTE_LOGRADOURO}',
     label: 'Rua / Logradouro',
     category: 'Contato & Endereço',
-    example: 'Rua dos Araújos',
+    example: 'Rua Principal',
     getValue: (c) => c?.addressStreet || null,
   },
   {
     key: '{CLIENTE_NUMERO}',
     label: 'Número do Endereço',
     category: 'Contato & Endereço',
-    example: '150',
+    example: '100',
     getValue: (c) => c?.addressNumber || null,
   },
   {
     key: '{CLIENTE_COMPLEMENTO}',
     label: 'Complemento do Endereço',
     category: 'Contato & Endereço',
-    example: 'Casa A',
+    example: 'Apto 101',
     getValue: (c) => c?.addressComplement || null,
   },
   {
     key: '{CLIENTE_BAIRRO}',
     label: 'Bairro',
     category: 'Contato & Endereço',
-    example: 'Frei Higino',
+    example: 'Centro',
     getValue: (c) => c?.addressNeighborhood || null,
   },
   {
     key: '{CLIENTE_CIDADE_UF}',
     label: 'Cidade e UF',
     category: 'Contato & Endereço',
-    example: 'Parnaíba/PI',
+    example: 'Cidade/UF',
     getValue: (c) => c?.addressCityUf || null,
   },
   {
     key: '{CLIENTE_CEP}',
     label: 'CEP',
     category: 'Contato & Endereço',
-    example: '64207-065',
+    example: '00000-000',
     getValue: (c) => c?.addressZip || null,
   },
   {
@@ -304,7 +304,7 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     key: '{CIDADE_DATA_EXTENSO}',
     label: 'Cidade e Data Extenso',
     category: 'Geral & Advogado',
-    example: 'Parnaíba/PI, 06 de agosto de 2026',
+    example: 'Cidade/UF, 01 de janeiro de 2026',
     getValue: (c) => {
       if (!c?.addressCityUf) return null;
       const now = new Date();
@@ -316,14 +316,14 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     key: '{ADVOGADO_NOME}',
     label: 'Nome do Advogado',
     category: 'Geral & Advogado',
-    example: 'Dr. Francisco Bizerra Neto',
+    example: 'Dr(a). Advogado(a) Titular',
     getValue: (_, s) => s?.lawyerName || null,
   },
   {
     key: '{ADVOGADO_OAB}',
     label: 'OAB do Advogado',
     category: 'Geral & Advogado',
-    example: 'OAB-PI nº 24.334',
+    example: 'OAB/UF nº 00.000',
     getValue: (_, s) => s?.oabNumber || null,
   },
   {

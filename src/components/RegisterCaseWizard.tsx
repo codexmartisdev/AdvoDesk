@@ -16,15 +16,15 @@ interface RegisterCaseWizardProps {
   onSelectCaseId: (caseId: string) => void;
   onOpenDocModalForCase?: (caseItem: LegalCase) => void;
   settings?: FirmSettings;
+  currentUser?: { uid?: string; name?: string; role?: string } | null;
 }
 
-// Sample Authorized Office Team Members for Assignment
-const TEAM_MEMBERS = [
-  { id: 'u1', name: 'Dra. Luiza Bizerra', role: 'Advogada Titular', oab: 'OAB/PI 12.345' },
-  { id: 'u2', name: 'Dr. Marcos Silva', role: 'Advogado Associado', oab: 'OAB/PI 18.990' },
-  { id: 'u3', name: 'Dra. Beatriz Santos', role: 'Advogada Previdenciarista', oab: 'OAB/PI 21.450' },
-  { id: 'u4', name: 'Lucas Ferreira', role: 'Assistente Jurídico', oab: 'Bacharel em Direito' },
-];
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  oab: string;
+}
 
 export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   clients,
@@ -33,7 +33,22 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   onSelectCaseId,
   onOpenDocModalForCase,
   settings,
+  currentUser,
 }) => {
+  // Office Team Member definition based on active lawyer / logged user
+  const officeLawyer: TeamMember = useMemo(() => {
+    const name = settings?.lawyerName || currentUser?.name || 'Advogado Responsável';
+    const oab = settings?.oabNumber || '';
+    return {
+      id: currentUser?.uid || 'adv-1',
+      name,
+      role: 'Advogado Titular',
+      oab,
+    };
+  }, [settings?.lawyerName, settings?.oabNumber, currentUser]);
+
+  const teamMembers: TeamMember[] = useMemo(() => [officeLawyer], [officeLawyer]);
+
   // Step State (1: Cliente, 2: Processo, 3: Informações, 4: Revisar, 5: Sucesso)
   const [currentStep, setCurrentStep] = useState<number>(1);
 
@@ -88,7 +103,12 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   // --- Step 3: Informações do Processo ---
   const [actingType, setActingType] = useState<string>('Administrativo');
   const [currentPhase, setCurrentPhase] = useState<string>('Atendimento inicial');
-  const [responsibleUser, setResponsibleUser] = useState<typeof TEAM_MEMBERS[0]>(TEAM_MEMBERS[0]);
+  const [responsibleUser, setResponsibleUser] = useState<TeamMember>(officeLawyer);
+
+  useEffect(() => {
+    setResponsibleUser(officeLawyer);
+  }, [officeLawyer]);
+
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [openingDate, setOpeningDate] = useState<string>(() => getBrasiliaISO().split('T')[0] || new Date().toISOString().split('T')[0]);
   const [priority, setPriority] = useState<string>('Normal');
@@ -103,7 +123,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   const [dip, setDip] = useState<string>('');
   const [protocol, setProtocol] = useState<string>('');
   const [responsibleAgency, setResponsibleAgency] = useState<string>('INSS');
-  const [aps, setAps] = useState<string>('APS Parnaíba / PI');
+  const [aps, setAps] = useState<string>('');
   const [protocolDate, setProtocolDate] = useState<string>('');
   const [adminStatus, setAdminStatus] = useState<string>('Em Análise');
   const [adminNotes, setAdminNotes] = useState<string>('');
@@ -111,13 +131,13 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
   // Collapsible Judicial Data
   const [judicialDataOpen, setJudicialDataOpen] = useState<boolean>(false);
   const [processNumber, setProcessNumber] = useState<string>('');
-  const [court, setCourt] = useState<string>('Justiça Federal - TRF1');
-  const [judicialSection, setJudicialSection] = useState<string>('Seção Judiciária do Piauí');
-  const [subSection, setSubSection] = useState<string>('Subseção Judiciária de Parnaíba');
-  const [county, setCounty] = useState<string>('Parnaíba/PI');
-  const [courtUnitJEF, setCourtUnitJEF] = useState<string>('1ª Vara Federal / JEF');
-  const [processClass, setProcessClass] = useState<string>('Procedimento do Juizado Especial Cível');
-  const [subject, setSubject] = useState<string>('Benefício Assistencial (Art. 203, V, CF/88)');
+  const [court, setCourt] = useState<string>('');
+  const [judicialSection, setJudicialSection] = useState<string>('');
+  const [subSection, setSubSection] = useState<string>('');
+  const [county, setCounty] = useState<string>('');
+  const [courtUnitJEF, setCourtUnitJEF] = useState<string>('');
+  const [processClass, setProcessClass] = useState<string>('');
+  const [subject, setSubject] = useState<string>('');
   const [filingDate, setFilingDate] = useState<string>('');
   const [causeValue, setCauseValue] = useState<string>('');
   const [defendant, setDefendant] = useState<string>('INSS - Instituto Nacional do Seguro Social');
@@ -232,9 +252,9 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
     const generatedCase: LegalCase = {
       id: newCaseId,
       caseNumber: formattedCode,
-      processNumber: processNumber.trim() || requirementNumber.trim() || `${Math.floor(1000000 + Math.random() * 8999999)}-${Math.floor(10 + Math.random() * 89)}.2026.4.01.8000`,
-      court: court || 'Instituto Nacional do Seguro Social',
-      agencyOrCourt: aps || 'APS Parnaíba / PI',
+      processNumber: processNumber.trim() || requirementNumber.trim() || '',
+      court: court.trim() || (actingType === 'Judicial' ? '' : 'Instituto Nacional do Seguro Social'),
+      agencyOrCourt: aps.trim() || '',
       category: 'Direito Previdenciário',
       benefitType: selectedProcessType.name,
       instance: actingType === 'Judicial' ? 'Judicial 1ª Instância' : 'Administrativo INSS',
@@ -540,7 +560,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-400 font-semibold block text-[10px] uppercase">Cidade / UF</span>
-                  <strong className="text-slate-900">{selectedClient.addressCityUf || 'Parnaíba/PI'}</strong>
+                  <strong className="text-slate-900">{selectedClient.addressCityUf || '[Não informado]'}</strong>
                 </div>
                 <div>
                   <span className="text-slate-400 font-semibold block text-[10px] uppercase">NIT / PIS</span>
@@ -604,7 +624,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                         required
                         value={partnerLawyerName}
                         onChange={(e) => setPartnerLawyerName(e.target.value)}
-                        placeholder="Ex: Dr. Roberto Guimarães"
+                        placeholder="Ex: Nome do advogado parceiro"
                         className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
                       />
                     </div>
@@ -616,7 +636,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                           type="text"
                           value={partnerLawyerOab}
                           onChange={(e) => setPartnerLawyerOab(e.target.value)}
-                          placeholder="Ex: OAB/PI 12.345"
+                          placeholder="Ex: OAB/UF 00.000"
                           className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0D0D0D]"
                         />
                       </div>
@@ -1011,14 +1031,14 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
               <select
                 value={responsibleUser.id}
                 onChange={(e) => {
-                  const match = TEAM_MEMBERS.find((m) => m.id === e.target.value);
+                  const match = teamMembers.find((m) => m.id === e.target.value);
                   if (match) setResponsibleUser(match);
                 }}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-[#0D0D0D] text-xs"
               >
-                {TEAM_MEMBERS.map((m) => (
+                {teamMembers.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name} ({m.oab}) - {m.role}
+                    {m.name} {m.oab ? `(${m.oab})` : ''} - {m.role}
                   </option>
                 ))}
               </select>
@@ -1083,23 +1103,27 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                   Colaboradores Adicionais
                 </label>
                 <div className="flex items-center gap-3 pt-1">
-                  {TEAM_MEMBERS.filter((m) => m.id !== responsibleUser.id).map((m) => (
-                    <label key={m.id} className="flex items-center gap-1.5 text-xs text-slate-700 font-medium cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={collaborators.includes(m.name)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setCollaborators([...collaborators, m.name]);
-                          } else {
-                            setCollaborators(collaborators.filter((c) => c !== m.name));
-                          }
-                        }}
-                        className="rounded text-[#0D0D0D] focus:ring-[#C9A227]"
-                      />
-                      {m.name}
-                    </label>
-                  ))}
+                  {teamMembers.filter((m) => m.id !== responsibleUser.id).length > 0 ? (
+                    teamMembers.filter((m) => m.id !== responsibleUser.id).map((m) => (
+                      <label key={m.id} className="flex items-center gap-1.5 text-xs text-slate-700 font-medium cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={collaborators.includes(m.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setCollaborators([...collaborators, m.name]);
+                            } else {
+                              setCollaborators(collaborators.filter((c) => c !== m.name));
+                            }
+                          }}
+                          className="rounded text-[#0D0D0D] focus:ring-[#C9A227]"
+                        />
+                        {m.name}
+                      </label>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">Nenhum colaborador adicional cadastrado</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1185,7 +1209,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                       type="text"
                       value={aps}
                       onChange={(e) => setAps(e.target.value)}
-                      placeholder="Ex: APS Parnaíba / PI"
+                      placeholder="Ex: Agência da Previdência Social (APS)"
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium"
                     />
                   </div>
@@ -1244,7 +1268,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                       type="text"
                       value={court}
                       onChange={(e) => setCourt(e.target.value)}
-                      placeholder="Ex: Justiça Federal - TRF1"
+                      placeholder="Ex: Tribunal / Foro competente"
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium"
                     />
                   </div>
@@ -1255,7 +1279,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                       type="text"
                       value={courtUnitJEF}
                       onChange={(e) => setCourtUnitJEF(e.target.value)}
-                      placeholder="Ex: 1ª Vara Federal / JEF Parnaíba"
+                      placeholder="Ex: 1ª Vara Federal / JEF"
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium"
                     />
                   </div>
@@ -1355,7 +1379,7 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                   <h4 className="font-bold text-slate-900 text-base">{selectedClient?.name}</h4>
                   <p className="text-xs text-slate-500 font-mono">CPF: {selectedClient?.cpf}</p>
                   <p className="text-xs text-slate-500 mt-1">Telefone: {selectedClient?.phone || 'Não inf.'}</p>
-                  <p className="text-xs text-slate-500">Cidade: {selectedClient?.addressCityUf || 'Parnaíba/PI'}</p>
+                  <p className="text-xs text-slate-500">Cidade: {selectedClient?.addressCityUf || '[Não informado]'}</p>
                 </div>
               </div>
 
@@ -1647,10 +1671,21 @@ export const RegisterCaseWizard: React.FC<RegisterCaseWizardProps> = ({
                 </h4>
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
                   <p className="text-slate-900 font-medium">
-                    {selectedClient.addressStreet || 'Rua'}, {selectedClient.addressNumber || 'S/N'}{' '}
-                    {selectedClient.addressComplement ? `(${selectedClient.addressComplement})` : ''} - Bairro:{' '}
-                    {selectedClient.addressNeighborhood || 'Centro'}, {selectedClient.addressCityUf || 'Parnaíba/PI'} - CEP:{' '}
-                    {selectedClient.addressZip || '64200-000'} ({selectedClient.addressZone || 'Zona Urbana'})
+                    {selectedClient.addressStreet
+                      ? `${selectedClient.addressStreet}, ${selectedClient.addressNumber || 'S/N'}${
+                          selectedClient.addressComplement ? ` (${selectedClient.addressComplement})` : ''
+                        }${
+                          selectedClient.addressNeighborhood ? ` - Bairro: ${selectedClient.addressNeighborhood}` : ''
+                        }${
+                          selectedClient.addressCityUf ? `, ${selectedClient.addressCityUf}` : ''
+                        }${
+                          selectedClient.addressZip ? ` - CEP: ${selectedClient.addressZip}` : ''
+                        }${
+                          selectedClient.addressZone ? ` (${selectedClient.addressZone})` : ''
+                        }`
+                      : selectedClient.addressCityUf
+                      ? `${selectedClient.addressCityUf}${selectedClient.addressZip ? ` - CEP: ${selectedClient.addressZip}` : ''}`
+                      : '[Endereço não informado]'}
                   </p>
                 </div>
               </div>

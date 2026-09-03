@@ -462,7 +462,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   {isEditing ? (
                     <input
                       type="text"
-                      placeholder="Ex: Parnaíba/PI"
+                      placeholder="Ex: Cidade/UF"
                       value={formData.birthplace || ''}
                       onChange={(e) => handleChange('birthplace', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
@@ -824,7 +824,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                     {isEditing ? (
                       <input
                         type="text"
-                        placeholder="Parnaíba/PI"
+                        placeholder="Ex: Cidade/UF"
                         value={formData.addressCityUf || ''}
                         onChange={(e) => handleChange('addressCityUf', e.target.value)}
                         className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"

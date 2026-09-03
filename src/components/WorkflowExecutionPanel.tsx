@@ -31,7 +31,7 @@ export const WorkflowExecutionPanel: React.FC<WorkflowExecutionPanelProps> = ({
   client,
   workflowTemplate,
   onUpdateInstance,
-  currentUser = { id: 'usr-1', name: 'Dr. Bizerra Neto', role: 'Advogado Titular' },
+  currentUser = { id: legalCase?.responsibleUserId || 'usr-resp', name: legalCase?.responsibleUserName || 'Advogado Responsável', role: 'Advogado Titular' },
 }) => {
   const [selectedStepId, setSelectedStepId] = useState<string>(
     instance.currentStepId || instance.steps[0]?.id || ''

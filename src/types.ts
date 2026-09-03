@@ -109,8 +109,8 @@ export interface LegalCase {
   firmId?: string;
   caseNumber: string; // e.g. "Caso #2023-8941"
   processNumber: string; // Número do processo/protocolo (administrativo ou judicial)
-  court: string; // e.g. "Tribunal de Justiça de São Paulo"
-  agencyOrCourt?: string; // Vara ou Agência responsável (ex: APS Parnaíba/PI, 1ª Vara Federal)
+  court: string; // e.g. "Tribunal de Justiça"
+  agencyOrCourt?: string; // Vara ou Agência responsável (ex: Agência da Previdência Social, Vara Federal)
   category: string; // Ramo/Categoria (Previdenciário, Trabalhista, Cível)
   benefitType?: string; // Tipo de benefício/ação (BPC Loas, Aux. Doença, Aposentadoria por Invalidez, Rural, etc.)
   instance?: string; // Instância (Administrativo INSS, Judicial 1ª instância, Recurso/2ª instância)

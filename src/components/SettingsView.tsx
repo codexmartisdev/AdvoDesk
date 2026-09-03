@@ -180,7 +180,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     required
                     value={form.firmName}
                     onChange={(e) => handleChange('firmName', e.target.value)}
-                    placeholder="Ex: Bizerra Neto"
+                    placeholder="Ex: Nome da Sociedade ou Escritório"
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-900"
                   />
                 </div>
@@ -262,7 +262,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     required
                     value={form.lawyerName}
                     onChange={(e) => handleChange('lawyerName', e.target.value)}
-                    placeholder="Ex: Dr. Bizerra Neto"
+                    placeholder="Ex: Nome do Advogado Titular"
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-900"
                   />
                 </div>

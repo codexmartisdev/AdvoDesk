@@ -532,6 +532,7 @@ export default function App() {
               openDefaultTenantTemplate();
             }}
             settings={{ ...settings, workflows }}
+            currentUser={userProfile}
           />
         </main>
       )}

@@ -100,23 +100,6 @@ export const PROCESS_CATEGORIES: ProcessTypeCategory[] = [
 ];
 
 export const SOCIAL_SECURITY_PROCESS_TYPES: ProcessType[] = [
-  // 0. PROCESSO DE TESTE DE WORKFLOW (TEMPORÁRIO / AUDITORIA)
-  {
-    id: 'workflow_test',
-    name: 'Workflow Teste',
-    slug: 'workflow-teste',
-    legal_area: 'previdenciario',
-    category: 'especificos',
-    categoryName: 'Teste de Integração',
-    description: 'ProcessType temporário exclusivo para testes e auditoria de ponta a ponta do motor de workflow.',
-    icon: 'science',
-    tags: ['Teste', 'Workflow', 'Auditoria'],
-    active: true,
-    display_order: 0,
-    default_acting_type: 'Administrativo',
-    default_priority: 'Normal',
-  },
-
   // 4. BENEFÍCIOS ASSISTENCIAIS
   {
     id: 'bpc_pcd',

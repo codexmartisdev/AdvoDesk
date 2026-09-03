@@ -1491,7 +1491,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
                             type="text"
                             value={editPartnerLawyerName}
                             onChange={(e) => setEditPartnerLawyerName(e.target.value)}
-                            placeholder="Ex: Dr. Roberto Guimarães"
+                            placeholder="Ex: Nome do advogado parceiro"
                             className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold"
                           />
                         </div>
@@ -1502,7 +1502,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
                               type="text"
                               value={editPartnerLawyerOab}
                               onChange={(e) => setEditPartnerLawyerOab(e.target.value)}
-                              placeholder="OAB/PI 12.345"
+                              placeholder="Ex: OAB/UF 00.000"
                               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
                             />
                           </div>
