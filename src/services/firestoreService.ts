@@ -12,8 +12,8 @@ import {
   orderBy,
   limit,
   writeBatch,
-} from 'firebase/firestore';
-import { User } from 'firebase/auth';
+} from '@firebase/firestore';
+import { User } from '@firebase/auth';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   Client,

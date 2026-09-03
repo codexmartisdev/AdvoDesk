@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, User } from '@firebase/auth';
 import { NavigationTab, Client, LegalCase, DocumentTemplate, ScheduledEvent, FirmSettings, UserProfile } from './types';
 import {
   INITIAL_CLIENTS,

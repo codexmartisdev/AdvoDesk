@@ -9,9 +9,12 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'firebase/app': '@firebase/app',
+        'firebase/auth': '@firebase/auth',
+        'firebase/firestore': '@firebase/firestore',
       },
     },
-    build: { rollupOptions: { output: { manualChunks: { 'react-vendor': ['react', 'react-dom'], 'firebase-app': ['firebase/app'], 'firebase-auth': ['firebase/auth'], 'firebase-firestore': ['firebase/firestore'], 'firebase-webchannel': ['@firebase/webchannel-wrapper/webchannel-blob', '@firebase/webchannel-wrapper/bloom-blob'] } } } },
+    build: { rollupOptions: { output: { manualChunks: { 'react-vendor': ['react', 'react-dom'], 'firebase-app': ['@firebase/app'], 'firebase-auth': ['@firebase/auth'], 'firebase-firestore': ['@firebase/firestore'], 'firebase-webchannel': ['@firebase/webchannel-wrapper/webchannel-blob', '@firebase/webchannel-wrapper/bloom-blob'] } } } },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.

@@ -4,7 +4,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
-} from 'firebase/auth';
+} from '@firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
 interface LoginScreenProps {

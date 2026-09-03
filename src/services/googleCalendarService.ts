@@ -1,4 +1,4 @@
-import { signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signOut, User } from '@firebase/auth';
 import { auth } from '../lib/firebase';
 import { ScheduledEvent } from '../types';
 

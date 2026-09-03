@@ -9,7 +9,7 @@ import {
   syncScheduledEventToGoogle,
   deleteScheduledEventFromGoogle,
 } from '../services/googleCalendarService';
-import { User } from 'firebase/auth';
+import { User } from '@firebase/auth';
 
 interface CalendarViewProps {
   events: ScheduledEvent[];

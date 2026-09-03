@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User } from 'firebase/auth';
+import { User } from '@firebase/auth';
 import { NavigationTab, FirmSettings } from '../types';
 
 interface NavigationProps {
