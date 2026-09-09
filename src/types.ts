@@ -1,4 +1,4 @@
-export type NavigationTab = 'dashboard' | 'clients' | 'cases' | 'documents' | 'calendar' | 'settings' | 'support' | 'create-case';
+export type NavigationTab = 'dashboard' | 'bpc-loas' | 'clients' | 'documents' | 'calendar' | 'settings' | 'support';
 
 export interface UserPermissions {
   canManageWorkflows?: boolean;

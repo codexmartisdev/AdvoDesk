@@ -5,8 +5,6 @@ import { NavigationTab, FirmSettings } from '../types';
 interface NavigationProps {
   currentTab: NavigationTab;
   onTabChange: (tab: NavigationTab) => void;
-  onOpenNewCaseModal: () => void;
-  onOpenAddEntryModal: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   settings?: FirmSettings;
@@ -17,8 +15,6 @@ interface NavigationProps {
 export const Navigation: React.FC<NavigationProps> = ({
   currentTab,
   onTabChange,
-  onOpenNewCaseModal,
-  onOpenAddEntryModal,
   searchQuery,
   onSearchChange,
   settings,
@@ -41,8 +37,6 @@ export const Navigation: React.FC<NavigationProps> = ({
         return 'Pesquisar clientes, CPF ou contatos...';
       case 'documents':
         return 'Buscar modelos de petições e contratos...';
-      case 'cases':
-        return 'Pesquisar processos, partes ou número CNJ...';
       case 'calendar':
         return 'Buscar prazos fatais e audiências...';
       default:
@@ -106,32 +100,6 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
 
-        {/* Quick Actions (Novo Processo & Novo Cliente) */}
-        <div className="grid grid-cols-2 gap-2 pb-1">
-          <button
-            onClick={() => {
-              onTabChange('create-case');
-              setMobileMenuOpen(false);
-            }}
-            className="glass-btn-primary py-2.5 px-2 rounded-xl text-white font-title-md text-xs font-bold flex items-center justify-center space-x-1.5 group transition-all shadow-xs"
-            title="Cadastrar Novo Processo Previdenciário"
-          >
-            <span className="material-symbols-outlined text-[16px] text-[#C9A227] group-hover:rotate-90 transition-transform">
-              add_circle
-            </span>
-            <span>+ Processo</span>
-          </button>
-
-          <button
-            onClick={onOpenAddEntryModal}
-            className="bg-slate-100 hover:bg-slate-200/80 text-slate-800 py-2.5 px-2 rounded-xl font-title-md text-xs font-bold flex items-center justify-center space-x-1.5 border border-slate-200/90 transition-all shadow-2xs"
-            title="Cadastrar Novo Cliente"
-          >
-            <span className="material-symbols-outlined text-[16px] text-slate-600">person_add</span>
-            <span>Cliente</span>
-          </button>
-        </div>
-
         {/* Navigation Links */}
         <div className="flex-1 space-y-1 overflow-y-auto pr-1">
           {/* Dashboard */}
@@ -155,25 +123,25 @@ export const Navigation: React.FC<NavigationProps> = ({
             <span>Painel Principal</span>
           </button>
 
-          {/* Cadastrar Processos */}
+          {/* BPC LOAS */}
           <button
             onClick={() => {
-              onTabChange('create-case');
+              onTabChange('bpc-loas');
               setMobileMenuOpen(false);
             }}
             className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
-              currentTab === 'create-case'
+              currentTab === 'bpc-loas'
                 ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
                 : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span
-              className={`material-symbols-outlined text-[18px] ${currentTab === 'create-case' ? 'text-[#C9A227]' : 'text-[#8c6e14]'}`}
-              style={{ fontVariationSettings: currentTab === 'create-case' ? "'FILL' 1" : "'FILL' 0" }}
+              className={`material-symbols-outlined text-[18px] ${currentTab === 'bpc-loas' ? 'text-[#C9A227]' : 'text-slate-500'}`}
+              style={{ fontVariationSettings: currentTab === 'bpc-loas' ? "'FILL' 1" : "'FILL' 0" }}
             >
-              post_add
+              accessibility_new
             </span>
-            <span>Cadastrar Processos</span>
+            <span>BPC LOAS</span>
           </button>
 
           {/* Clients */}
@@ -195,27 +163,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               group
             </span>
             <span>Clientes</span>
-          </button>
-
-          {/* Cases */}
-          <button
-            onClick={() => {
-              onTabChange('cases');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
-              currentTab === 'cases'
-                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
-                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <span
-              className={`material-symbols-outlined text-[18px] ${currentTab === 'cases' ? 'text-[#C9A227]' : 'text-slate-500'}`}
-              style={{ fontVariationSettings: currentTab === 'cases' ? "'FILL' 1" : "'FILL' 0" }}
-            >
-              folder_open
-            </span>
-            <span>Acompanhar Processos</span>
           </button>
 
           {/* Documents */}
@@ -359,30 +306,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  onOpenNewCaseModal();
-                  setMobileMenuOpen(false);
-                }}
-                className="glass-btn-primary py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center space-x-1"
-              >
-                <span className="material-symbols-outlined text-[16px]">add</span>
-                <span>Processo</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  onOpenAddEntryModal();
-                  setMobileMenuOpen(false);
-                }}
-                className="bg-slate-100 text-slate-800 py-2.5 rounded-xl font-bold text-xs border border-slate-200 flex items-center justify-center space-x-1"
-              >
-                <span className="material-symbols-outlined text-[16px]">person_add</span>
-                <span>Cliente</span>
-              </button>
-            </div>
-
             <div className="flex-1 space-y-1 overflow-y-auto">
               <button
                 onClick={() => {
@@ -398,15 +321,15 @@ export const Navigation: React.FC<NavigationProps> = ({
               </button>
               <button
                 onClick={() => {
-                  onTabChange('create-case');
+                  onTabChange('bpc-loas');
                   setMobileMenuOpen(false);
                 }}
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
-                  currentTab === 'create-case' ? 'bg-[#0D0D0D] text-white font-extrabold border border-[#C9A227]/50' : 'text-slate-600'
+                  currentTab === 'bpc-loas' ? 'bg-[#0D0D0D] text-white font-extrabold border border-[#C9A227]/50' : 'text-slate-600'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px] text-[#C9A227]">post_add</span>
-                <span>Cadastrar Processos</span>
+                <span className="material-symbols-outlined text-[18px]">accessibility_new</span>
+                <span>BPC LOAS</span>
               </button>
               <button
                 onClick={() => {
@@ -419,18 +342,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               >
                 <span className="material-symbols-outlined text-[18px]">group</span>
                 <span>Clientes</span>
-              </button>
-              <button
-                onClick={() => {
-                  onTabChange('cases');
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
-                  currentTab === 'cases' ? 'bg-slate-100 text-slate-900 font-extrabold' : 'text-slate-600'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">folder_open</span>
-                <span>Acompanhar Processos</span>
               </button>
               <button
                 onClick={() => {

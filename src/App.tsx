@@ -30,10 +30,9 @@ import {
 } from './services/firestoreService';
 import { INITIAL_WORKFLOWS } from './data/defaultWorkflows';
 import { Navigation } from './components/Navigation';
-const RegisterCaseWizard = lazy(() => import('./components/RegisterCaseWizard').then((module) => ({ default: module.RegisterCaseWizard })));
 const DashboardView = lazy(() => import('./components/DashboardView').then((module) => ({ default: module.DashboardView })));
+const BpcLoasView = lazy(() => import('./components/bpc/BpcLoasView').then((module) => ({ default: module.BpcLoasView })));
 const ClientsView = lazy(() => import('./components/ClientsView').then((module) => ({ default: module.ClientsView })));
-const CasesView = lazy(() => import('./components/CasesView').then((module) => ({ default: module.CasesView })));
 const DocumentsView = lazy(() => import('./components/DocumentsView').then((module) => ({ default: module.DocumentsView })));
 const CalendarView = lazy(() => import('./components/CalendarView').then((module) => ({ default: module.CalendarView })));
 const SettingsView = lazy(() => import('./components/SettingsView').then((module) => ({ default: module.SettingsView })));
@@ -195,12 +194,8 @@ export default function App() {
     'Outro',
   ]);
 
-  // Active selections
-  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
-
   // Modals
   const [newCaseModalOpen, setNewCaseModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'case' | 'client'>('case');
 
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [clientSelectorModalOpen, setClientSelectorModalOpen] = useState(false);
@@ -309,36 +304,6 @@ export default function App() {
 
   const handleDeleteFormat = (fmt: string) => {
     setDocFormats(docFormats.filter((f) => f !== fmt));
-  };
-
-  // Handlers
-  const handleCaseCreated = (newCase: LegalCase) => {
-    setCases([newCase, ...cases]);
-    setSelectedCaseId(newCase.id);
-    setCurrentTab('cases');
-    if (!userProfile?.firmId) {
-      console.error('[Firestore Write Error] Cannot save new case: userProfile.firmId is not defined.');
-      return;
-    }
-    saveCaseInFirestore(newCase, userProfile.firmId);
-  };
-
-  const handleUpdateCase = (updatedCase: LegalCase) => {
-    setCases(cases.map((c) => (c.id === updatedCase.id ? updatedCase : c)));
-    if (!userProfile?.firmId) {
-      console.error('[Firestore Write Error] Cannot save updated case: userProfile.firmId is not defined.');
-      return;
-    }
-    saveCaseInFirestore(updatedCase, userProfile.firmId);
-  };
-
-  const handleDeleteCase = (caseId: string) => {
-    const remaining = cases.filter((c) => c.id !== caseId);
-    setCases(remaining);
-    if (remaining.length > 0) {
-      setSelectedCaseId(remaining[0].id);
-    }
-    deleteCaseFromFirestore(caseId);
   };
 
   const handleClientCreated = (newClient: Client) => {
@@ -484,13 +449,6 @@ export default function App() {
       <Navigation
         currentTab={currentTab}
         onTabChange={setCurrentTab}
-        onOpenNewCaseModal={() => {
-          setCurrentTab('create-case');
-        }}
-        onOpenAddEntryModal={() => {
-          setModalMode('client');
-          setNewCaseModalOpen(true);
-        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         settings={settings}
@@ -502,68 +460,32 @@ export default function App() {
       <Suspense fallback={<main className="md:ml-64 pt-24 text-center text-sm text-slate-500">Carregando...</main>}>
       {currentTab === 'dashboard' && (
         <DashboardView
-          cases={cases}
           events={events}
           clients={clients}
           templates={templates}
           onNavigateToTab={setCurrentTab}
-          onSelectCase={setSelectedCaseId}
-          onOpenNewCaseModal={() => {
-            setCurrentTab('create-case');
-          }}
-          onOpenNewClientModal={() => {
-            setModalMode('client');
-            setNewCaseModalOpen(true);
-          }}
+          onOpenNewClientModal={() => setNewCaseModalOpen(true)}
           onOpenDocModal={() => {
             openDefaultTenantTemplate();
           }}
+          onSelectClientForDoc={handleSelectClientForDoc}
         />
       )}
 
-      {currentTab === 'create-case' && (
-        <main className="pl-0 md:pl-64 pt-16 md:pt-6 pb-12 transition-all">
-          <RegisterCaseWizard
-            clients={clients}
-            onCaseCreated={handleCaseCreated}
-            onNavigateToTab={setCurrentTab}
-            onSelectCaseId={setSelectedCaseId}
-            onOpenDocModalForCase={(caseItem) => {
-              openDefaultTenantTemplate();
-            }}
-            settings={{ ...settings, workflows }}
-            currentUser={userProfile}
-          />
-        </main>
+      {currentTab === 'bpc-loas' && (
+        <BpcLoasView
+          clients={clients}
+        />
       )}
 
       {currentTab === 'clients' && (
         <ClientsView
           clients={clients}
           searchQuery={searchQuery}
-          onOpenAddClientModal={() => {
-            setModalMode('client');
-            setNewCaseModalOpen(true);
-          }}
+          onOpenAddClientModal={() => setNewCaseModalOpen(true)}
           onSelectClientForDoc={handleSelectClientForDoc}
           onSaveClient={handleSaveClient}
           onDeleteClient={handleDeleteClient}
-          clientCategories={settings.clientCategories}
-        />
-      )}
-
-      {currentTab === 'cases' && (
-        <CasesView
-          cases={cases}
-          clients={clients}
-          selectedCaseId={selectedCaseId}
-          onSelectCaseId={setSelectedCaseId}
-          onOpenDocModal={() => {
-            openDefaultTenantTemplate();
-          }}
-          onUpdateCase={handleUpdateCase}
-          onDeleteCase={handleDeleteCase}
-          practiceAreas={settings.practiceAreas}
           clientCategories={settings.clientCategories}
         />
       )}
@@ -669,10 +591,7 @@ export default function App() {
         isOpen={newCaseModalOpen}
         onClose={() => setNewCaseModalOpen(false)}
         clients={clients}
-        onCaseCreated={handleCaseCreated}
         onClientCreated={handleClientCreated}
-        initialMode={modalMode}
-        practiceAreas={settings.practiceAreas}
         clientCategories={settings.clientCategories}
       />
       )}
