@@ -24,7 +24,7 @@ COM PODERES ESPECÍFICOS PARA ATUAÇÃO PREVIDENCIÁRIA E ASSISTENCIAL
 
 OUTORGANTE: {CLIENTE_NOME}, {CLIENTE_NACIONALIDADE}, {CLIENTE_ESTADO_CIVIL}, {CLIENTE_PROFISSAO}, nascido(a) em {CLIENTE_DATA_NASCIMENTO}, filho(a) de {CLIENTE_NOME_MAE} e {CLIENTE_NOME_PAI}, portador(a) do documento de identidade nº {CLIENTE_RG} ({CLIENTE_RG_ORGAO_UF_DATA}), inscrito(a) no CPF sob o nº {CLIENTE_CPF}, inscrito(a) no NIT/PIS/PASEP sob o nº {CLIENTE_NIT}, residente e domiciliado(a) na {CLIENTE_ENDERECO_COMPLETO}, telefone {CLIENTE_TELEFONE_PRINCIPAL}, e-mail {CLIENTE_EMAIL}.
 
-OUTORGADO: {ADVOGADO_NOME}, brasileiro, solteiro, advogado, inscrito no quadro da Ordem dos Advogados do Brasil, Seccional do Piauí, sob o nº {ADVOGADO_OAB}, com endereço profissional integrante da banca {NOME_ESCRITORIO}.
+OUTORGADO: {ADVOGADO_QUALIFICACAO_COMPLETA}, onde recebe notificações e intimações de estilo.
 
 O(A) OUTORGANTE nomeia e constitui o advogado acima qualificado como seu bastante procurador, conferindo-lhe os poderes adiante especificados para a defesa de seus direitos e interesses previdenciários, assistenciais, administrativos e judiciais.
 

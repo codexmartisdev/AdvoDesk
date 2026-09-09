@@ -174,10 +174,12 @@ export interface LegalCase {
   clientCpf: string;
 
   // Datas-chave
+  openingDate?: string; // Data de abertura da ficha interna no escritório
   filingDate?: string; // Data de entrada do requerimento (DER) ou distribuição da ação
   lastMovementDate?: string; // Data da última movimentação
   nextDeadlineDate?: string; // Data do próximo prazo/compromisso
   nextDeadlineType?: string; // Tipo do próximo compromisso (Perícia, Recurso, Retorno de Exigência, Audiência)
+  caseFacts?: string; // Fatos da causa / Narrativa fática informada no cadastro
 
   // Controle financeiro
   agreedFees?: string; // Honorários combinados (valor fixo ou % do benefício, ex: "30% dos atrasados")
@@ -548,6 +550,10 @@ export interface FirmSettings {
   lawyerTitle: string;
   lawyerAvatarUrl: string;
   oabNumber: string;
+  lawyerNationality?: string;
+  lawyerMaritalStatus?: string;
+  lawyerOabUf?: string;
+  lawyerAddress?: string;
   notificationEmail?: string;
   practiceAreas: string[];
   clientCategories: string[];

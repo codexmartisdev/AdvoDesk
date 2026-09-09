@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LegalCase, Client } from '../types';
+import { LegalCase, Client, WorkflowTemplate } from '../types';
 import { getBrasiliaISO, getBrasiliaFormatted, formatToPtBR } from '../utils/dateUtils';
 import { calculateLegalDeadline, DeadlineType } from '../utils/legalDeadlines';
 import { WorkflowExecutionPanel } from './WorkflowExecutionPanel';
@@ -16,6 +16,8 @@ interface CasesViewProps {
   onDeleteCase?: (caseId: string) => void;
   practiceAreas?: string[];
   clientCategories?: string[];
+  workflows?: WorkflowTemplate[];
+  currentUser?: { id: string; name: string; role: string };
 }
 
 export const CasesView: React.FC<CasesViewProps> = ({
@@ -28,6 +30,8 @@ export const CasesView: React.FC<CasesViewProps> = ({
   onDeleteCase,
   practiceAreas = ['Contencioso Cível', 'Direito Trabalhista', 'Direito Previdenciário', 'Direito de Família'],
   clientCategories = ['BPC Loas', 'Auxílio Doença', 'Aposentadoria', 'Trabalhista', 'Cível'],
+  workflows = [],
+  currentUser,
 }) => {
   const currentCase = cases.find((c) => c.id === selectedCaseId) || cases[0];
 

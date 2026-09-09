@@ -219,9 +219,14 @@ export function getWorkflowVariablesMap(
 export function instantiateWorkflow(
   template: WorkflowTemplate,
   caseItem: LegalCase,
-  client?: Client | null
+  client?: Client | null,
+  userActor?: { id: string; name: string; role?: string }
 ): WorkflowInstance {
   const initialVariables = getWorkflowVariablesMap({}, client, caseItem);
+
+  const effectiveUserId = userActor?.id || caseItem.responsibleUserId || 'usr-resp';
+  const effectiveUserName = userActor?.name || caseItem.responsibleUserName || 'Advogado Responsável';
+  const effectiveRole = userActor?.role || 'Advogado';
 
   const stepInstances: WorkflowStepInstance[] = template.steps.map((step, idx) => {
     const checklistData = (step.checklist || []).map((chk) => ({
@@ -237,9 +242,9 @@ export function instantiateWorkflow(
       description: step.description,
       order: step.order || idx + 1,
       status: idx === 0 ? 'in_progress' : 'not_started',
-      assignedRole: step.responsibleRole || 'Advogado Associado',
-      assignedUserId: step.responsibleUserId || caseItem.responsibleUserId,
-      assignedUserName: caseItem.responsibleUserName || 'Advogado Responsável',
+      assignedRole: step.responsibleRole || effectiveRole,
+      assignedUserId: step.responsibleUserId || effectiveUserId,
+      assignedUserName: effectiveUserName,
       slaDays: step.slaDays || 5,
       processDeadlineDays: step.processDeadlineDays,
       requiresLawyerReview: Boolean(step.requiresLawyerReview),
@@ -253,10 +258,10 @@ export function instantiateWorkflow(
   const auditLog: WorkflowAuditLog = {
     id: `log-${Date.now()}`,
     timestamp: new Date().toISOString(),
-    userId: caseItem.responsibleUserId || 'sys',
-    userName: caseItem.responsibleUserName || 'Sistema',
+    userId: effectiveUserId,
+    userName: effectiveUserName,
     action: 'workflow_instantiated',
-    details: `Workflow "${template.title}" (v${template.version}) instanciado para o processo ${caseItem.caseNumber}. Snapshot do modelo congelado com sucesso.`,
+    details: `Workflow "${template.title}" (v${template.version}) instanciado por ${effectiveUserName} para o processo ${caseItem.caseNumber}. Snapshot do modelo congelado com sucesso.`,
   };
 
   return {

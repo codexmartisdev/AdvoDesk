@@ -327,6 +327,50 @@ export const CLIENT_VARIABLES: VariableDefinition[] = [
     getValue: (_, s) => s?.oabNumber || null,
   },
   {
+    key: '{ADVOGADO_NACIONALIDADE}',
+    label: 'Nacionalidade do Advogado',
+    category: 'Geral & Advogado',
+    example: 'brasileiro(a)',
+    getValue: (_, s) => s?.lawyerNationality || 'brasileiro(a)',
+  },
+  {
+    key: '{ADVOGADO_ESTADO_CIVIL}',
+    label: 'Estado Civil / Cargo do Advogado',
+    category: 'Geral & Advogado',
+    example: 'advogado(a), solteiro(a)',
+    getValue: (_, s) => s?.lawyerMaritalStatus || 'advogado(a)',
+  },
+  {
+    key: '{ADVOGADO_OAB_UF}',
+    label: 'Seccional OAB do Advogado',
+    category: 'Geral & Advogado',
+    example: 'SP ou PI',
+    getValue: (_, s) => s?.lawyerOabUf || null,
+  },
+  {
+    key: '{ADVOGADO_ENDERECO_PROFISSIONAL}',
+    label: 'Endereço Profissional do Advogado',
+    category: 'Geral & Advogado',
+    example: 'Rua das Flores, 123, Sala 10',
+    getValue: (_, s) => s?.lawyerAddress || null,
+  },
+  {
+    key: '{ADVOGADO_QUALIFICACAO_COMPLETA}',
+    label: 'Qualificação Completa do Advogado Outorgado',
+    category: 'Geral & Advogado',
+    example: 'Dr(a). Fulano de Tal, brasileiro(a), advogado(a), inscrito(a) na OAB...',
+    getValue: (_, s) => {
+      const nome = s?.lawyerName?.trim() || 'Dr(a). Advogado(a)';
+      const nacionalidade = s?.lawyerNationality?.trim() || 'brasileiro(a)';
+      const estadoCivil = s?.lawyerMaritalStatus?.trim() || 'advogado(a)';
+      const oab = s?.oabNumber?.trim() || 'OAB';
+      const oabUf = s?.lawyerOabUf?.trim() ? `/${s.lawyerOabUf.trim()}` : '';
+      const escritorio = s?.firmName?.trim() ? `, integrante da banca ${s.firmName.trim()}` : '';
+      const endereco = s?.lawyerAddress?.trim() ? `, com domicílio profissional em ${s.lawyerAddress.trim()}` : '';
+      return `${nome}, ${nacionalidade}, ${estadoCivil}, inscrito(a) nos quadros da Ordem dos Advogados do Brasil sob o nº ${oab}${oabUf}${escritorio}${endereco}`;
+    },
+  },
+  {
     key: '{NOME_ESCRITORIO}',
     label: 'Nome do Escritório',
     category: 'Geral & Advogado',

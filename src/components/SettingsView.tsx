@@ -278,6 +278,66 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Qualificação do Advogado para Peças & Procurações */}
+              <div className="pt-3 border-t border-slate-200/80 space-y-3">
+                <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-blue-900 text-sm">badge</span>
+                  <span>Qualificação Dinâmica do Advogado (Minutas e Procurações)</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Nº OAB</label>
+                    <input
+                      type="text"
+                      value={form.oabNumber || ''}
+                      onChange={(e) => handleChange('oabNumber', e.target.value)}
+                      placeholder="Ex: 123.456"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Seccional (UF)</label>
+                    <input
+                      type="text"
+                      value={form.lawyerOabUf || ''}
+                      onChange={(e) => handleChange('lawyerOabUf', e.target.value)}
+                      placeholder="Ex: SP, RJ, PI"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Nacionalidade</label>
+                    <input
+                      type="text"
+                      value={form.lawyerNationality || ''}
+                      onChange={(e) => handleChange('lawyerNationality', e.target.value)}
+                      placeholder="Ex: brasileiro(a)"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Estado Civil</label>
+                    <input
+                      type="text"
+                      value={form.lawyerMaritalStatus || ''}
+                      onChange={(e) => handleChange('lawyerMaritalStatus', e.target.value)}
+                      placeholder="Ex: solteiro(a), casado(a)"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-900"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Endereço / Domicílio Profissional da Banca</label>
+                  <input
+                    type="text"
+                    value={form.lawyerAddress || ''}
+                    onChange={(e) => handleChange('lawyerAddress', e.target.value)}
+                    placeholder="Ex: Av. Paulista, nº 1000, 12º andar, Bela Vista, São Paulo/SP"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </section>

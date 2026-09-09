@@ -144,6 +144,10 @@ export const DEFAULT_SETTINGS: FirmSettings = {
   lawyerTitle: '',
   lawyerAvatarUrl: '',
   oabNumber: '',
+  lawyerNationality: 'brasileiro(a)',
+  lawyerMaritalStatus: 'advogado(a)',
+  lawyerOabUf: '',
+  lawyerAddress: '',
   notificationEmail: '',
   practiceAreas: [
     'Contencioso Cível',
