@@ -9,12 +9,14 @@ interface BpcNewCaseSectionProps {
   onCancel: () => void;
 }
 
+type CadUnicoSelection = NonNullable<BpcCaseItem['cadUnicoStatus']> | '';
+
 export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
   clients,
   onSaveCase,
   onCancel,
 }) => {
-  const [modality, setModality] = useState<BpcModality>('idoso');
+  const [modality, setModality] = useState<BpcModality | null>(null);
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
   const [useNewClient, setUseNewClient] = useState(clients.length === 0);
 
@@ -23,8 +25,8 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
   const [requerenteCpf, setRequerenteCpf] = useState('');
   const [requerentePhone, setRequerentePhone] = useState('');
 
-  // Preliminary BPC Details
-  const [cadUnicoStatus, setCadUnicoStatus] = useState<'Atualizado' | 'Desatualizado' | 'Não Inscrito' | 'Pendente'>('Pendente');
+  // Preliminary BPC Details. Factual fields start neutral and are only persisted when informed.
+  const [cadUnicoStatus, setCadUnicoStatus] = useState<CadUnicoSelection>('');
   const [nisNumber, setNisNumber] = useState('');
   const [protocolNumber, setProtocolNumber] = useState('');
   const [cidPrincipal, setCidPrincipal] = useState('');
@@ -35,9 +37,14 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!modality) {
+      window.alert('Selecione a modalidade do BPC antes de salvar o caso.');
+      return;
+    }
+
     const finalClientName = useNewClient
       ? requerenteName.trim()
-      : selectedClient?.name || 'Requerente';
+      : selectedClient?.name || '';
 
     const finalClientCpf = useNewClient
       ? requerenteCpf.trim()
@@ -47,21 +54,25 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
       ? requerentePhone.trim()
       : selectedClient?.phone || '';
 
-    if (!finalClientName) return;
+    if (!finalClientName) {
+      window.alert('Informe ou selecione o requerente antes de salvar o caso.');
+      return;
+    }
+
+    const now = getBrasiliaFormatted();
 
     const newCase: BpcCaseItem = {
       id: `bpc-${Date.now()}`,
-      caseNumber: `BPC #${Math.floor(1000 + Math.random() * 9000)}`,
-      clientId: useNewClient ? `c-new-${Date.now()}` : selectedClientId,
+      clientId: useNewClient ? '' : selectedClientId,
       clientName: finalClientName,
       clientCpf: finalClientCpf,
       clientPhone: finalClientPhone,
       modality,
       status: 'Triagem',
       currentStep: 'triagem',
-      createdAt: getBrasiliaFormatted(),
-      updatedAt: getBrasiliaFormatted(),
-      cadUnicoStatus,
+      createdAt: now,
+      updatedAt: now,
+      ...(cadUnicoStatus ? { cadUnicoStatus } : {}),
       nisNumber: nisNumber.trim() || undefined,
       protocolNumber: protocolNumber.trim() || undefined,
       cidPrincipal: modality === 'pcd' ? cidPrincipal.trim() || undefined : undefined,
@@ -135,6 +146,9 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
               </div>
             </button>
           </div>
+          {!modality && (
+            <p className="text-[11px] text-slate-500 mt-2">Nenhuma modalidade selecionada.</p>
+          )}
         </div>
 
         {/* 2. Requerente */}
@@ -207,9 +221,10 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
               <label className="block text-[11px] text-slate-600 mb-1">Situação do CadÚnico</label>
               <select
                 value={cadUnicoStatus}
-                onChange={(e) => setCadUnicoStatus(e.target.value as any)}
+                onChange={(e) => setCadUnicoStatus(e.target.value as CadUnicoSelection)}
                 className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
               >
+                <option value="">Não informado</option>
                 <option value="Pendente">Pendente de Verificação</option>
                 <option value="Atualizado">Atualizado (&lt; 24 meses)</option>
                 <option value="Desatualizado">Desatualizado (Exige CRAS)</option>
