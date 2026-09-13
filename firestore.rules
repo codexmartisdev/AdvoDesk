@@ -106,6 +106,20 @@ service cloud.firestore {
     }
 
     // ==========================================
+    // 4D. BPC PRAZOS (/bpcPrazos/{prazoId})
+    // ==========================================
+    match /bpcPrazos/{prazoId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if hasFirmAccess(resource.data.firmId);
+    }
+
+    // ==========================================
     // 5. WORKFLOW TEMPLATES & VERSIONS
     // ==========================================
     match /workflowTemplates/{templateId} {
