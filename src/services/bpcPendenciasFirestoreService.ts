@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   setDoc,
@@ -13,6 +12,11 @@ import { appendBpcAuditEventSafely } from './bpcAuditFirestoreService';
 
 type PersistedBpcPendencia = BpcPendenciaItem & {
   firmId: string;
+};
+
+type BpcPendenciaAudit = {
+  action: string;
+  description: string;
 };
 
 function removeUndefined<T>(value: T): T {
@@ -72,17 +76,13 @@ export function subscribeToBpcPendencias(
 
 export async function saveBpcPendenciaInFirestore(
   item: BpcPendenciaItem,
-  firmId: string
+  firmId: string,
+  audit?: BpcPendenciaAudit
 ): Promise<void> {
   const path = `bpcPendencias/${item.id}`;
   const itemRef = doc(db, 'bpcPendencias', item.id);
 
   try {
-    const previousSnapshot = await getDoc(itemRef);
-    const previousItem = previousSnapshot.exists()
-      ? (previousSnapshot.data() as PersistedBpcPendencia)
-      : null;
-
     const persistedItem: PersistedBpcPendencia = {
       ...item,
       firmId,
@@ -90,29 +90,13 @@ export async function saveBpcPendenciaInFirestore(
 
     await setDoc(itemRef, removeUndefined(persistedItem));
 
-    let action = 'Pendência criada';
-    let description = `${item.type}: ${item.description}`;
-
-    if (previousItem) {
-      if (!previousItem.resolved && item.resolved) {
-        action = 'Pendência resolvida';
-        description = `${item.type}: ${item.description}`;
-      } else if (previousItem.resolved && !item.resolved) {
-        action = 'Pendência reaberta';
-        description = `${item.type}: ${item.description}`;
-      } else {
-        action = 'Pendência atualizada';
-        description = `${item.type}: ${item.description}`;
-      }
-    }
-
     await appendBpcAuditEventSafely(
       {
         caseId: item.caseId,
         clientName: item.clientName,
         category: 'Pendência',
-        action,
-        description,
+        action: audit?.action || 'Pendência atualizada',
+        description: audit?.description || `${item.type}: ${item.description}`,
       },
       firmId
     );
