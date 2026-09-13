@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   setDoc,
@@ -13,6 +12,11 @@ import { appendBpcAuditEventSafely } from './bpcAuditFirestoreService';
 
 type PersistedBpcAvaliacao = BpcAvaliacaoItem & {
   firmId: string;
+};
+
+type BpcAvaliacaoAudit = {
+  action: string;
+  description: string;
 };
 
 function removeUndefined<T>(value: T): T {
@@ -72,17 +76,13 @@ export function subscribeToBpcAvaliacoes(
 
 export async function saveBpcAvaliacaoInFirestore(
   item: BpcAvaliacaoItem,
-  firmId: string
+  firmId: string,
+  audit?: BpcAvaliacaoAudit
 ): Promise<void> {
   const path = `bpcAvaliacoes/${item.id}`;
   const itemRef = doc(db, 'bpcAvaliacoes', item.id);
 
   try {
-    const previousSnapshot = await getDoc(itemRef);
-    const previousItem = previousSnapshot.exists()
-      ? (previousSnapshot.data() as PersistedBpcAvaliacao)
-      : null;
-
     const persistedItem: PersistedBpcAvaliacao = {
       ...item,
       firmId,
@@ -90,26 +90,13 @@ export async function saveBpcAvaliacaoInFirestore(
 
     await setDoc(itemRef, removeUndefined(persistedItem));
 
-    let action = 'Avaliação criada';
-    let description = `${item.type} registrada para ${item.date} com situação ${item.status}.`;
-
-    if (previousItem) {
-      if (previousItem.status !== item.status) {
-        action = 'Situação da avaliação atualizada';
-        description = `${item.type}: situação alterada de ${previousItem.status} para ${item.status}.`;
-      } else {
-        action = 'Avaliação atualizada';
-        description = `${item.type} atualizada para ${item.date}.`;
-      }
-    }
-
     await appendBpcAuditEventSafely(
       {
         caseId: item.caseId,
         clientName: item.clientName,
         category: 'Avaliação',
-        action,
-        description,
+        action: audit?.action || 'Avaliação atualizada',
+        description: audit?.description || `${item.type} atualizada para ${item.date}.`,
       },
       firmId
     );
