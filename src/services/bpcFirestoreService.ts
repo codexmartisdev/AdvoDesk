@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   setDoc,
@@ -13,6 +12,11 @@ import { appendBpcAuditEventSafely } from './bpcAuditFirestoreService';
 
 type PersistedBpcCase = BpcCaseItem & {
   firmId: string;
+};
+
+type BpcCaseAudit = {
+  action: string;
+  description: string;
 };
 
 function removeUndefined<T>(value: T): T {
@@ -72,17 +76,13 @@ export function subscribeToBpcCases(
 
 export async function saveBpcCaseInFirestore(
   bpcCase: BpcCaseItem,
-  firmId: string
+  firmId: string,
+  audit?: BpcCaseAudit
 ): Promise<void> {
   const path = `bpcCases/${bpcCase.id}`;
   const caseRef = doc(db, 'bpcCases', bpcCase.id);
 
   try {
-    const previousSnapshot = await getDoc(caseRef);
-    const previousCase = previousSnapshot.exists()
-      ? (previousSnapshot.data() as PersistedBpcCase)
-      : null;
-
     const persistedCase: PersistedBpcCase = {
       ...bpcCase,
       firmId,
@@ -92,32 +92,13 @@ export async function saveBpcCaseInFirestore(
     // removidos na edição também deixam de existir no Firestore.
     await setDoc(caseRef, removeUndefined(persistedCase));
 
-    let action = 'Caso criado';
-    let description = `Caso BPC ${bpcCase.modality === 'pcd' ? 'PCD' : 'Idoso'} criado com status ${bpcCase.status}.`;
-
-    if (previousCase) {
-      if (!previousCase.archivedAt && bpcCase.archivedAt) {
-        action = 'Caso arquivado';
-        description = 'Caso BPC arquivado e retirado da operação diária.';
-      } else if (previousCase.archivedAt && !bpcCase.archivedAt) {
-        action = 'Caso restaurado';
-        description = 'Caso BPC restaurado para a operação diária.';
-      } else if (previousCase.status !== bpcCase.status) {
-        action = 'Status do caso atualizado';
-        description = `Status alterado de ${previousCase.status} para ${bpcCase.status}.`;
-      } else {
-        action = 'Caso atualizado';
-        description = 'Dados do caso BPC atualizados.';
-      }
-    }
-
     await appendBpcAuditEventSafely(
       {
         caseId: bpcCase.id,
         clientName: bpcCase.clientName,
         category: 'Caso',
-        action,
-        description,
+        action: audit?.action || 'Caso atualizado',
+        description: audit?.description || 'Dados do caso BPC atualizados.',
       },
       firmId
     );
