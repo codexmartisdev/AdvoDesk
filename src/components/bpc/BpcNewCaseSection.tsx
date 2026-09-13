@@ -5,75 +5,75 @@ import { getBrasiliaFormatted } from '../../utils/dateUtils';
 
 interface BpcNewCaseSectionProps {
   clients: Client[];
-  onSaveCase: (newCase: BpcCaseItem) => void;
+  onSaveCase: (newCase: BpcCaseItem) => Promise<void>;
   onCancel: () => void;
 }
+
+type CadUnicoSelection = NonNullable<BpcCaseItem['cadUnicoStatus']> | '';
 
 export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
   clients,
   onSaveCase,
   onCancel,
 }) => {
-  const [modality, setModality] = useState<BpcModality>('idoso');
-  const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
-  const [useNewClient, setUseNewClient] = useState(clients.length === 0);
-
-  // Manual Requerente input
-  const [requerenteName, setRequerenteName] = useState('');
-  const [requerenteCpf, setRequerenteCpf] = useState('');
-  const [requerentePhone, setRequerentePhone] = useState('');
-
-  // Preliminary BPC Details
-  const [cadUnicoStatus, setCadUnicoStatus] = useState<'Atualizado' | 'Desatualizado' | 'Não Inscrito' | 'Pendente'>('Pendente');
+  const [modality, setModality] = useState<BpcModality | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [cadUnicoStatus, setCadUnicoStatus] = useState<CadUnicoSelection>('');
   const [nisNumber, setNisNumber] = useState('');
   const [protocolNumber, setProtocolNumber] = useState('');
   const [cidPrincipal, setCidPrincipal] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const selectedClient = clients.find((c) => c.id === selectedClientId);
+  const selectedClient = clients.find((client) => client.id === selectedClientId);
+  const canSubmit = Boolean(modality && selectedClient && !isSaving);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
 
-    const finalClientName = useNewClient
-      ? requerenteName.trim()
-      : selectedClient?.name || 'Requerente';
+    if (!modality) {
+      window.alert('Selecione a modalidade do BPC antes de salvar o caso.');
+      return;
+    }
 
-    const finalClientCpf = useNewClient
-      ? requerenteCpf.trim()
-      : selectedClient?.cpf || '';
+    if (!selectedClient) {
+      window.alert('Selecione um cliente cadastrado antes de salvar o caso BPC.');
+      return;
+    }
 
-    const finalClientPhone = useNewClient
-      ? requerentePhone.trim()
-      : selectedClient?.phone || '';
-
-    if (!finalClientName) return;
+    const now = getBrasiliaFormatted();
 
     const newCase: BpcCaseItem = {
       id: `bpc-${Date.now()}`,
-      caseNumber: `BPC #${Math.floor(1000 + Math.random() * 9000)}`,
-      clientId: useNewClient ? `c-new-${Date.now()}` : selectedClientId,
-      clientName: finalClientName,
-      clientCpf: finalClientCpf,
-      clientPhone: finalClientPhone,
+      clientId: selectedClient.id,
+      clientName: selectedClient.name,
+      clientCpf: selectedClient.cpf || '',
+      clientPhone: selectedClient.phone || '',
       modality,
       status: 'Triagem',
       currentStep: 'triagem',
-      createdAt: getBrasiliaFormatted(),
-      updatedAt: getBrasiliaFormatted(),
-      cadUnicoStatus,
+      createdAt: now,
+      updatedAt: now,
+      ...(cadUnicoStatus ? { cadUnicoStatus } : {}),
       nisNumber: nisNumber.trim() || undefined,
       protocolNumber: protocolNumber.trim() || undefined,
       cidPrincipal: modality === 'pcd' ? cidPrincipal.trim() || undefined : undefined,
       observacoes: observacoes.trim() || undefined,
     };
 
-    onSaveCase(newCase);
+    setIsSaving(true);
+    try {
+      await onSaveCase(newCase);
+    } catch {
+      // O componente pai já exibe a mensagem de erro e mantém o formulário aberto.
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="max-w-3xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-      {/* Header */}
       <div className="p-6 bg-slate-50/70 border-b border-slate-200">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#0D0D0D] text-[#C9A227] flex items-center justify-center border border-[#C9A227]/40 shrink-0">
@@ -89,7 +89,6 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6 text-xs">
-        {/* 1. Modalidade BPC */}
         <div>
           <label className="block font-bold text-slate-800 mb-2">
             1. Selecione a Modalidade do BPC *
@@ -97,8 +96,9 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
+              disabled={isSaving}
               onClick={() => setModality('idoso')}
-              className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
+              className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 disabled:opacity-60 ${
                 modality === 'idoso'
                   ? 'border-amber-600 bg-amber-50/50 shadow-xs ring-1 ring-amber-500/20'
                   : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -117,8 +117,9 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
 
             <button
               type="button"
+              disabled={isSaving}
               onClick={() => setModality('pcd')}
-              className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
+              className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 disabled:opacity-60 ${
                 modality === 'pcd'
                   ? 'border-blue-600 bg-blue-50/50 shadow-xs ring-1 ring-blue-500/20'
                   : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -135,69 +136,68 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
               </div>
             </button>
           </div>
+          {!modality && (
+            <p className="text-[11px] text-slate-500 mt-2">Nenhuma modalidade selecionada.</p>
+          )}
         </div>
 
-        {/* 2. Requerente */}
         <div className="pt-2 border-t border-slate-100 space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="font-bold text-slate-800">
-              2. Dados do Requerente *
-            </label>
-            {clients.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setUseNewClient(!useNewClient)}
-                className="text-[11px] font-bold text-blue-900 hover:underline"
-              >
-                {useNewClient ? 'Selecionar da carteira de clientes' : '+ Digitar novo requerente'}
-              </button>
-            )}
-          </div>
+          <label className="font-bold text-slate-800 block">
+            2. Cliente / Requerente *
+          </label>
 
-          {!useNewClient && clients.length > 0 ? (
-            <div>
-              <label className="block text-[11px] text-slate-600 mb-1">Cliente Vinculado</label>
-              <select
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
-              >
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} - CPF: {c.cpf || 'Sem CPF'} ({c.typePill || 'Cliente'})
-                  </option>
-                ))}
-              </select>
+          {clients.length === 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+              <div className="flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-lg">person_add</span>
+                <div>
+                  <p className="font-bold text-xs">Nenhum cliente cadastrado</p>
+                  <p className="text-[11px] mt-1 leading-relaxed">
+                    Cadastre primeiro o requerente na área Clientes. O caso BPC será vinculado ao cadastro real da carteira.
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] text-slate-600 mb-1">Nome Completo *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Nome do titular requerente"
-                  value={requerenteName}
-                  onChange={(e) => setRequerenteName(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
-                />
-              </div>
+            <div className="space-y-3">
               <div>
-                <label className="block text-[11px] text-slate-600 mb-1">CPF *</label>
-                <input
-                  type="text"
+                <label className="block text-[11px] text-slate-600 mb-1">Cliente Vinculado</label>
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => setSelectedClientId(e.target.value)}
                   required
-                  placeholder="000.000.000-00"
-                  value={requerenteCpf}
-                  onChange={(e) => setRequerenteCpf(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
-                />
+                  disabled={isSaving}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden disabled:opacity-60"
+                >
+                  <option value="">Selecione um cliente cadastrado</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name} - CPF: {client.cpf || 'Não informado'} ({client.typePill || 'Cliente'})
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {selectedClient && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Nome</span>
+                    <span className="text-[11px] font-semibold text-slate-800 block mt-0.5">{selectedClient.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">CPF</span>
+                    <span className="text-[11px] font-semibold text-slate-800 block mt-0.5">{selectedClient.cpf || 'Não informado'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Telefone</span>
+                    <span className="text-[11px] font-semibold text-slate-800 block mt-0.5">{selectedClient.phone || 'Não informado'}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* 3. Triagem & CadÚnico */}
         <div className="pt-2 border-t border-slate-100 space-y-3">
           <label className="font-bold text-slate-800 block">
             3. Triagem CadÚnico & INSS
@@ -207,9 +207,11 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
               <label className="block text-[11px] text-slate-600 mb-1">Situação do CadÚnico</label>
               <select
                 value={cadUnicoStatus}
-                onChange={(e) => setCadUnicoStatus(e.target.value as any)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
+                onChange={(e) => setCadUnicoStatus(e.target.value as CadUnicoSelection)}
+                disabled={isSaving}
+                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden disabled:opacity-60"
               >
+                <option value="">Não informado</option>
                 <option value="Pendente">Pendente de Verificação</option>
                 <option value="Atualizado">Atualizado (&lt; 24 meses)</option>
                 <option value="Desatualizado">Desatualizado (Exige CRAS)</option>
@@ -224,7 +226,8 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
                 placeholder="Número de Identificação Social"
                 value={nisNumber}
                 onChange={(e) => setNisNumber(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
+                disabled={isSaving}
+                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden disabled:opacity-60"
               />
             </div>
 
@@ -235,7 +238,8 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
                 placeholder="Ex: 198273412"
                 value={protocolNumber}
                 onChange={(e) => setProtocolNumber(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
+                disabled={isSaving}
+                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden disabled:opacity-60"
               />
             </div>
           </div>
@@ -248,7 +252,8 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
                 placeholder="Ex: F84.0 (TEA), M54.5, G80, etc."
                 value={cidPrincipal}
                 onChange={(e) => setCidPrincipal(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
+                disabled={isSaving}
+                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden disabled:opacity-60"
               />
             </div>
           )}
@@ -260,26 +265,28 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
               placeholder="Anotações de triagem, composição familiar preliminar ou pendências imediatas..."
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
+              disabled={isSaving}
+              className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden disabled:opacity-60"
             />
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors"
+            disabled={isSaving}
+            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-60 text-slate-700 font-bold transition-colors"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl bg-[#0D0D0D] hover:bg-black text-white font-bold transition-all shadow-xs border border-[#C9A227]/50 flex items-center gap-2"
+            disabled={!canSubmit}
+            className="px-6 py-2.5 rounded-xl bg-[#0D0D0D] hover:bg-black disabled:bg-slate-300 disabled:border-slate-300 disabled:cursor-not-allowed text-white font-bold transition-all shadow-xs border border-[#C9A227]/50 flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-sm text-[#C9A227]">check_circle</span>
-            <span>Salvar e Iniciar Caso BPC</span>
+            <span>{isSaving ? 'Salvando...' : 'Salvar e Iniciar Caso BPC'}</span>
           </button>
         </div>
       </form>

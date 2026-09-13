@@ -1,26 +1,49 @@
 import React from 'react';
-import { BpcCaseItem, BpcSubTab } from '../../types/bpc';
+import {
+  BpcAvaliacaoItem,
+  BpcCaseItem,
+  BpcDeadlineItem,
+  BpcPendenciaItem,
+  BpcSubTab,
+} from '../../types/bpc';
 import { BPC_WORKFLOW_STEPS } from './bpcConstants';
 
 interface BpcDashboardSectionProps {
   cases: BpcCaseItem[];
+  pendencias: BpcPendenciaItem[];
+  deadlines: BpcDeadlineItem[];
+  avaliacoes: BpcAvaliacaoItem[];
   onNavigateSubTab: (tab: BpcSubTab) => void;
   onOpenNewCase: () => void;
 }
 
 export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
   cases,
+  pendencias,
+  deadlines,
+  avaliacoes,
   onNavigateSubTab,
   onOpenNewCase,
 }) => {
   const idosoCount = cases.filter((c) => c.modality === 'idoso').length;
   const pcdCount = cases.filter((c) => c.modality === 'pcd').length;
-  const pendenciasCount = cases.filter((c) => 
-    c.status === 'Exigência Aberta' || c.status === 'CadÚnico Pendente' || c.status === 'Coleta de Documentos'
-  ).length;
-  const prazosCount = cases.filter((c) => 
-    c.status === 'Perícia Agendada' || c.status === 'Avaliação Social Agendada' || c.status === 'Exigência Aberta'
-  ).length;
+  const activeCaseIds = new Set(cases.map((item) => item.id));
+
+  const openPendencias = pendencias.filter(
+    (item) => activeCaseIds.has(item.caseId) && !item.resolved
+  );
+  const pendingDeadlines = deadlines.filter(
+    (item) => activeCaseIds.has(item.caseId) && item.status === 'Pendente'
+  );
+  const scheduledAvaliacoes = avaliacoes.filter(
+    (item) => activeCaseIds.has(item.caseId) && item.status === 'Agendada'
+  );
+
+  const attentionCaseIds = new Set([
+    ...openPendencias.map((item) => item.caseId),
+    ...pendingDeadlines.map((item) => item.caseId),
+    ...scheduledAvaliacoes.map((item) => item.caseId),
+  ]);
 
   const quickNavCards: {
     tab: BpcSubTab;
@@ -32,48 +55,48 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
     {
       tab: 'cases',
       title: 'Casos BPC',
-      description: 'Gestão completa dos requerimentos de Idoso e Pessoa com Deficiência.',
+      description: 'Gestão dos requerimentos ativos de Idoso e Pessoa com Deficiência.',
       icon: 'folder_open',
       badge: `${cases.length} casos`,
     },
     {
       tab: 'new-case',
       title: 'Novo Caso BPC',
-      description: 'Abertura rápida e triagem inicial de novo requerente de benefício.',
+      description: 'Abertura de requerimento vinculado a cliente já cadastrado.',
       icon: 'person_add',
       badge: 'Início',
     },
     {
       tab: 'pendencias',
       title: 'Pendências & Exigências',
-      description: 'Controle de CadÚnico desatualizado, biometria e cartas de exigência.',
+      description: 'Pendências reais cadastradas e ainda não resolvidas.',
       icon: 'warning',
-      badge: pendenciasCount > 0 ? `${pendenciasCount} ativas` : 'Em dia',
+      badge: openPendencias.length > 0 ? `${openPendencias.length} abertas` : 'Sem abertas',
     },
     {
       tab: 'prazos',
       title: 'Prazos & Agendamentos',
-      description: 'Datas de perícia médica, avaliação social e prazos recursais.',
+      description: 'Prazos reais cadastrados e ainda pendentes.',
       icon: 'event',
-      badge: prazosCount > 0 ? `${prazosCount} próximos` : undefined,
+      badge: pendingDeadlines.length > 0 ? `${pendingDeadlines.length} pendentes` : 'Sem pendentes',
     },
     {
       tab: 'avaliacoes',
       title: 'Avaliações Médica & Social',
-      description: 'Critério biopsicossocial da pessoa com deficiência e barreiras socioambientais.',
+      description: 'Perícias médicas e avaliações sociais registradas para casos BPC PCD.',
       icon: 'medical_services',
+      badge: scheduledAvaliacoes.length > 0 ? `${scheduledAvaliacoes.length} agendadas` : undefined,
     },
     {
       tab: 'auditorias',
-      title: 'Auditorias Pré-Protocolo',
-      description: 'Checklist rigoroso de conformidade antes da transmissão no Meu INSS.',
-      icon: 'fact_check',
+      title: 'Histórico & Auditoria',
+      description: 'Trilha cronológica das movimentações persistidas no módulo BPC.',
+      icon: 'history',
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
@@ -84,7 +107,7 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{cases.length}</span>
-            <span className="text-[11px] text-slate-500 block mt-0.5">Carteira LOAS ativa</span>
+            <span className="text-[11px] text-slate-500 block mt-0.5">Casos ativos persistidos</span>
           </div>
         </div>
 
@@ -97,7 +120,7 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{idosoCount}</span>
-            <span className="text-[11px] text-amber-700 font-medium block mt-0.5">Requisitos etários</span>
+            <span className="text-[11px] text-amber-700 font-medium block mt-0.5">Modalidade informada</span>
           </div>
         </div>
 
@@ -110,25 +133,24 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{pcdCount}</span>
-            <span className="text-[11px] text-blue-700 font-medium block mt-0.5">Perícia & Social</span>
+            <span className="text-[11px] text-blue-700 font-medium block mt-0.5">Modalidade informada</span>
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Pendências & Prazos</span>
+            <span className="text-xs font-semibold text-slate-500">Casos com Atenção</span>
             <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-200/60 flex items-center justify-center text-red-600">
               <span className="material-symbols-outlined text-base">schedule</span>
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-black text-slate-900">{pendenciasCount + prazosCount}</span>
-            <span className="text-[11px] text-red-600 font-medium block mt-0.5">Ações prioritárias</span>
+            <span className="text-2xl font-black text-slate-900">{attentionCaseIds.size}</span>
+            <span className="text-[11px] text-red-600 font-medium block mt-0.5">Pendência, prazo ou avaliação agendada</span>
           </div>
         </div>
       </div>
 
-      {/* Navigation Sections Grid */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -175,7 +197,6 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
         </div>
       </div>
 
-      {/* Workflow Timeline Preview (Prepared for Expansion) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
           <div>
@@ -196,7 +217,6 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </button>
         </div>
 
-        {/* Phase Chips */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-1">
           {BPC_WORKFLOW_STEPS.slice(0, 12).map((step, idx) => (
             <div
@@ -223,7 +243,7 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-600 text-sm">info</span>
             <span>
-              Todas as 18 etapas (CadÚnico, Renda, Perícia, Exigências e Recursos) já estão mapeadas na arquitetura.
+              As etapas do fluxo estão mapeadas como referência estrutural e serão ativadas progressivamente.
             </span>
           </div>
           <button

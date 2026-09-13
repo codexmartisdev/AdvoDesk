@@ -78,6 +78,74 @@ service cloud.firestore {
     }
 
     // ==========================================
+    // 4B. BPC CASES (/bpcCases/{bpcCaseId})
+    // ==========================================
+    match /bpcCases/{bpcCaseId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // 4C. BPC PENDENCIAS (/bpcPendencias/{pendenciaId})
+    // ==========================================
+    match /bpcPendencias/{pendenciaId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // 4D. BPC PRAZOS (/bpcPrazos/{prazoId})
+    // ==========================================
+    match /bpcPrazos/{prazoId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // 4E. BPC AVALIACOES (/bpcAvaliacoes/{avaliacaoId})
+    // ==========================================
+    match /bpcAvaliacoes/{avaliacaoId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId);
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId;
+
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // 4F. BPC AUDITORIA (/bpcAuditorias/{eventId})
+    // ==========================================
+    match /bpcAuditorias/{eventId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId)
+        && request.resource.data.actorUid == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+
+    // ==========================================
     // 5. WORKFLOW TEMPLATES & VERSIONS
     // ==========================================
     match /workflowTemplates/{templateId} {

@@ -68,6 +68,7 @@ export interface BpcCaseItem {
   currentStep: BpcWorkflowPhaseId;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
   
   // Metadados específicos do processo BPC (preparados para preenchimento posterior)
   cadUnicoStatus?: 'Atualizado' | 'Desatualizado' | 'Não Inscrito' | 'Pendente';
@@ -90,6 +91,9 @@ export interface BpcPendenciaItem {
   deadline?: string;
   resolved: boolean;
   severity: 'alta' | 'media' | 'baixa';
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
 }
 
 export interface BpcDeadlineItem {
@@ -100,4 +104,35 @@ export interface BpcDeadlineItem {
   date: string;
   type: 'Perícia Médica' | 'Avaliação Social' | 'Cumprimento de Exigência' | 'Prazo Recursal' | 'Outro';
   status: 'Pendente' | 'Concluído';
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface BpcAvaliacaoItem {
+  id: string;
+  caseId: string;
+  clientName: string;
+  type: 'Perícia Médica' | 'Avaliação Social';
+  date: string;
+  status: 'Agendada' | 'Realizada' | 'Cancelada';
+  observacoes?: string;
+  resultado?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export type BpcAuditCategory = 'Caso' | 'Pendência' | 'Prazo' | 'Avaliação';
+
+export interface BpcAuditItem {
+  id: string;
+  caseId: string;
+  clientName: string;
+  category: BpcAuditCategory;
+  action: string;
+  description: string;
+  actorUid: string;
+  actorLabel: string;
+  occurredAt: string;
 }
