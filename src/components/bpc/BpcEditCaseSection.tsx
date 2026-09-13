@@ -58,13 +58,6 @@ export const BpcEditCaseSection: React.FC<BpcEditCaseSectionProps> = ({
   const [nisNumber, setNisNumber] = useState(bpcCase.nisNumber || '');
   const [protocolNumber, setProtocolNumber] = useState(bpcCase.protocolNumber || '');
   const [derDate, setDerDate] = useState(bpcCase.derDate || '');
-  const [periciaDate, setPericiaDate] = useState(bpcCase.periciaDate || '');
-  const [avaliacaoSocialDate, setAvaliacaoSocialDate] = useState(
-    bpcCase.avaliacaoSocialDate || ''
-  );
-  const [exigenciaDeadline, setExigenciaDeadline] = useState(
-    bpcCase.exigenciaDeadline || ''
-  );
   const [cidPrincipal, setCidPrincipal] = useState(bpcCase.cidPrincipal || '');
   const [observacoes, setObservacoes] = useState(bpcCase.observacoes || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -83,9 +76,6 @@ export const BpcEditCaseSection: React.FC<BpcEditCaseSectionProps> = ({
       nisNumber: nisNumber.trim() || undefined,
       protocolNumber: protocolNumber.trim() || undefined,
       derDate: derDate || undefined,
-      periciaDate: periciaDate || undefined,
-      avaliacaoSocialDate: avaliacaoSocialDate || undefined,
-      exigenciaDeadline: exigenciaDeadline || undefined,
       cidPrincipal: modality === 'pcd' ? cidPrincipal.trim() || undefined : undefined,
       observacoes: observacoes.trim() || undefined,
     };
@@ -210,35 +200,14 @@ export const BpcEditCaseSection: React.FC<BpcEditCaseSectionProps> = ({
           </div>
         </section>
 
-        <section className="pt-2 border-t border-slate-100 space-y-3">
-          <h3 className="font-bold text-slate-800">Prazos e avaliações</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <section className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <div className="flex items-start gap-2.5">
+            <span className="material-symbols-outlined text-blue-700 text-base">event_note</span>
             <div>
-              <label className="block text-[11px] text-slate-600 mb-1">Perícia médica</label>
-              <input
-                type="date"
-                value={periciaDate}
-                onChange={(event) => setPericiaDate(event.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-slate-600 mb-1">Avaliação social</label>
-              <input
-                type="date"
-                value={avaliacaoSocialDate}
-                onChange={(event) => setAvaliacaoSocialDate(event.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-slate-600 mb-1">Prazo de exigência</label>
-              <input
-                type="date"
-                value={exigenciaDeadline}
-                onChange={(event) => setExigenciaDeadline(event.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-hidden"
-              />
+              <h3 className="font-bold text-blue-950 text-xs">Prazos e avaliações em módulos próprios</h3>
+              <p className="text-[11px] text-blue-900/80 mt-1 leading-relaxed">
+                Perícias, avaliações sociais e demais vencimentos devem ser registrados nas abas Prazos e Avaliações. Isso evita datas duplicadas ou divergentes dentro do mesmo caso.
+              </p>
             </div>
           </div>
         </section>
