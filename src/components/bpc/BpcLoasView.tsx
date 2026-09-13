@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Client } from '../../types';
 import { BpcCaseItem, BpcSubTab } from '../../types/bpc';
+import { auth } from '../../lib/firebase';
+import { getUserProfileInFirestore } from '../../services/firestoreService';
+import {
+  saveBpcCaseInFirestore,
+  subscribeToBpcCases,
+} from '../../services/bpcFirestoreService';
 import { BpcDashboardSection } from './BpcDashboardSection';
 import { BpcCasesSection } from './BpcCasesSection';
 import { BpcNewCaseSection } from './BpcNewCaseSection';
@@ -19,39 +25,83 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
   initialSubTab = 'dashboard',
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<BpcSubTab>(initialSubTab);
+  const [bpcCases, setBpcCases] = useState<BpcCaseItem[]>([]);
+  const [firmId, setFirmId] = useState<string | null>(null);
+  const [isLoadingCases, setIsLoadingCases] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  // Inicializar casos BPC sincronizados ou mock inicial se a carteira já tiver clientes BPC
-  const [bpcCases, setBpcCases] = useState<BpcCaseItem[]>(() => {
-    // Detectar clientes já cadastrados na categoria BPC Loas para preencher o módulo
-    const bpcClients = clients.filter(
-      (c) => c.typePill === 'BPC Loas' || c.name.includes('LOAS') || c.benefitNumber
-    );
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
 
-    if (bpcClients.length > 0) {
-      return bpcClients.map((c, index) => ({
-        id: `bpc-init-${c.id}`,
-        caseNumber: `BPC #${1000 + index}`,
-        clientId: c.id,
-        clientName: c.name,
-        clientCpf: c.cpf,
-        clientPhone: c.phone,
-        modality: index % 2 === 0 ? 'idoso' : 'pcd',
-        status: index === 0 ? 'Triagem' : 'CadÚnico Pendente',
-        currentStep: 'triagem',
-        createdAt: c.updatedAt || 'Recente',
-        updatedAt: 'Recente',
-        cadUnicoStatus: index === 0 ? 'Atualizado' : 'Pendente',
-        nisNumber: c.nitPisPasep || undefined,
-        protocolNumber: c.benefitNumber || undefined,
-      }));
+    const connectToBpcCases = async () => {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        if (active) {
+          setLoadError('Não foi possível identificar o usuário autenticado.');
+          setIsLoadingCases(false);
+        }
+        return;
+      }
+
+      const userProfile = await getUserProfileInFirestore(currentUser.uid);
+      const resolvedFirmId = userProfile?.firmId?.trim();
+
+      if (!resolvedFirmId) {
+        if (active) {
+          setLoadError('O usuário autenticado não possui escritório vinculado.');
+          setIsLoadingCases(false);
+        }
+        return;
+      }
+
+      if (!active) return;
+
+      setFirmId(resolvedFirmId);
+      unsubscribe = subscribeToBpcCases(
+        resolvedFirmId,
+        (persistedCases) => {
+          if (!active) return;
+          setBpcCases(persistedCases);
+          setLoadError('');
+          setIsLoadingCases(false);
+        },
+        () => {
+          if (!active) return;
+          setLoadError('Não foi possível carregar os casos BPC do Firestore.');
+          setIsLoadingCases(false);
+        }
+      );
+    };
+
+    void connectToBpcCases().catch((error) => {
+      console.error('Erro ao inicializar casos BPC:', error);
+      if (active) {
+        setLoadError('Não foi possível inicializar a carteira BPC.');
+        setIsLoadingCases(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  const handleSaveNewCase = async (newCase: BpcCaseItem) => {
+    if (!firmId) {
+      window.alert('Não foi possível identificar o escritório para salvar o caso BPC.');
+      return;
     }
 
-    return [];
-  });
-
-  const handleSaveNewCase = (newCase: BpcCaseItem) => {
-    setBpcCases((prev) => [newCase, ...prev]);
-    setActiveSubTab('cases');
+    try {
+      await saveBpcCaseInFirestore(newCase, firmId);
+      setActiveSubTab('cases');
+    } catch (error) {
+      console.error('Erro ao salvar caso BPC:', error);
+      window.alert('Não foi possível salvar o caso BPC. Tente novamente.');
+    }
   };
 
   const navItems: { id: BpcSubTab; label: string; icon: string }[] = [
@@ -99,6 +149,18 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
             </button>
           </div>
         </div>
+
+        {isLoadingCases && (
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-500">
+            Carregando casos BPC...
+          </div>
+        )}
+
+        {loadError && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+            {loadError}
+          </div>
+        )}
 
         {/* Sub-Navigation Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
