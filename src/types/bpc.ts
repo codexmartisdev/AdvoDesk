@@ -104,4 +104,7 @@ export interface BpcDeadlineItem {
   date: string;
   type: 'Perícia Médica' | 'Avaliação Social' | 'Cumprimento de Exigência' | 'Prazo Recursal' | 'Outro';
   status: 'Pendente' | 'Concluído';
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
 }
