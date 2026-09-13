@@ -31,6 +31,7 @@ export const BpcAvaliacoesSection: React.FC<BpcAvaliacoesSectionProps> = ({
   const [resultado, setResultado] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | BpcAvaliacaoItem['status']>('all');
   const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const filteredAvaliacoes = visibleAvaliacoes
     .filter((item) => filterStatus === 'all' || item.status === filterStatus)
@@ -73,6 +74,20 @@ export const BpcAvaliacoesSection: React.FC<BpcAvaliacoesSectionProps> = ({
       resetForm();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (
+    item: BpcAvaliacaoItem,
+    nextStatus: BpcAvaliacaoItem['status']
+  ) => {
+    setUpdatingId(item.id);
+    try {
+      await onUpdateStatus(item, nextStatus);
+    } catch {
+      // O componente pai já apresenta a mensagem de erro ao usuário.
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -263,8 +278,9 @@ export const BpcAvaliacoesSection: React.FC<BpcAvaliacoesSectionProps> = ({
                   <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Situação</span>
                   <select
                     value={item.status}
-                    onChange={(event) => void onUpdateStatus(item, event.target.value as BpcAvaliacaoItem['status'])}
-                    className="px-2.5 py-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700"
+                    disabled={updatingId === item.id}
+                    onChange={(event) => void handleStatusChange(item, event.target.value as BpcAvaliacaoItem['status'])}
+                    className="px-2.5 py-2 rounded-lg border border-slate-200 bg-white disabled:bg-slate-100 text-xs font-semibold text-slate-700"
                   >
                     <option value="Agendada">Agendada</option>
                     <option value="Realizada">Realizada</option>
