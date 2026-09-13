@@ -1,42 +1,49 @@
 import React from 'react';
-import { BpcCaseItem, BpcSubTab } from '../../types/bpc';
+import {
+  BpcAvaliacaoItem,
+  BpcCaseItem,
+  BpcDeadlineItem,
+  BpcPendenciaItem,
+  BpcSubTab,
+} from '../../types/bpc';
 import { BPC_WORKFLOW_STEPS } from './bpcConstants';
 
 interface BpcDashboardSectionProps {
   cases: BpcCaseItem[];
+  pendencias: BpcPendenciaItem[];
+  deadlines: BpcDeadlineItem[];
+  avaliacoes: BpcAvaliacaoItem[];
   onNavigateSubTab: (tab: BpcSubTab) => void;
   onOpenNewCase: () => void;
 }
 
 export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
   cases,
+  pendencias,
+  deadlines,
+  avaliacoes,
   onNavigateSubTab,
   onOpenNewCase,
 }) => {
   const idosoCount = cases.filter((c) => c.modality === 'idoso').length;
   const pcdCount = cases.filter((c) => c.modality === 'pcd').length;
+  const activeCaseIds = new Set(cases.map((item) => item.id));
 
-  const pendingCases = cases.filter((c) =>
-    c.status === 'Exigência Aberta' ||
-    c.status === 'CadÚnico Pendente' ||
-    c.status === 'Coleta de Documentos' ||
-    c.cadUnicoStatus === 'Desatualizado' ||
-    c.cadUnicoStatus === 'Não Inscrito' ||
-    c.cadUnicoStatus === 'Pendente'
+  const openPendencias = pendencias.filter(
+    (item) => activeCaseIds.has(item.caseId) && !item.resolved
   );
-
-  const casesWithRegisteredDates = cases.filter((c) =>
-    Boolean(c.periciaDate || c.avaliacaoSocialDate || c.exigenciaDeadline)
+  const pendingDeadlines = deadlines.filter(
+    (item) => activeCaseIds.has(item.caseId) && item.status === 'Pendente'
+  );
+  const scheduledAvaliacoes = avaliacoes.filter(
+    (item) => activeCaseIds.has(item.caseId) && item.status === 'Agendada'
   );
 
   const attentionCaseIds = new Set([
-    ...pendingCases.map((c) => c.id),
-    ...casesWithRegisteredDates.map((c) => c.id),
+    ...openPendencias.map((item) => item.caseId),
+    ...pendingDeadlines.map((item) => item.caseId),
+    ...scheduledAvaliacoes.map((item) => item.caseId),
   ]);
-
-  const pendenciasCount = pendingCases.length;
-  const prazosCount = casesWithRegisteredDates.length;
-  const attentionCount = attentionCaseIds.size;
 
   const quickNavCards: {
     tab: BpcSubTab;
@@ -48,48 +55,48 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
     {
       tab: 'cases',
       title: 'Casos BPC',
-      description: 'Gestão completa dos requerimentos de Idoso e Pessoa com Deficiência.',
+      description: 'Gestão dos requerimentos ativos de Idoso e Pessoa com Deficiência.',
       icon: 'folder_open',
       badge: `${cases.length} casos`,
     },
     {
       tab: 'new-case',
       title: 'Novo Caso BPC',
-      description: 'Abertura rápida e triagem inicial de novo requerente de benefício.',
+      description: 'Abertura de requerimento vinculado a cliente já cadastrado.',
       icon: 'person_add',
       badge: 'Início',
     },
     {
       tab: 'pendencias',
       title: 'Pendências & Exigências',
-      description: 'Controle dos alertas identificados nos dados cadastrados do caso.',
+      description: 'Pendências reais cadastradas e ainda não resolvidas.',
       icon: 'warning',
-      badge: pendenciasCount > 0 ? `${pendenciasCount} registradas` : 'Sem registros',
+      badge: openPendencias.length > 0 ? `${openPendencias.length} abertas` : 'Sem abertas',
     },
     {
       tab: 'prazos',
       title: 'Prazos & Agendamentos',
-      description: 'Datas de perícia, avaliação social e exigências informadas nos casos.',
+      description: 'Prazos reais cadastrados e ainda pendentes.',
       icon: 'event',
-      badge: prazosCount > 0 ? `${prazosCount} com datas` : undefined,
+      badge: pendingDeadlines.length > 0 ? `${pendingDeadlines.length} pendentes` : 'Sem pendentes',
     },
     {
       tab: 'avaliacoes',
       title: 'Avaliações Médica & Social',
-      description: 'Critério biopsicossocial da pessoa com deficiência e barreiras socioambientais.',
+      description: 'Perícias médicas e avaliações sociais registradas para casos BPC PCD.',
       icon: 'medical_services',
+      badge: scheduledAvaliacoes.length > 0 ? `${scheduledAvaliacoes.length} agendadas` : undefined,
     },
     {
       tab: 'auditorias',
-      title: 'Auditorias Pré-Protocolo',
-      description: 'Checklist rigoroso de conformidade antes da transmissão no Meu INSS.',
-      icon: 'fact_check',
+      title: 'Histórico & Auditoria',
+      description: 'Trilha cronológica das movimentações persistidas no módulo BPC.',
+      icon: 'history',
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
@@ -100,7 +107,7 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{cases.length}</span>
-            <span className="text-[11px] text-slate-500 block mt-0.5">Casos persistidos</span>
+            <span className="text-[11px] text-slate-500 block mt-0.5">Casos ativos persistidos</span>
           </div>
         </div>
 
@@ -138,13 +145,12 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-black text-slate-900">{attentionCount}</span>
-            <span className="text-[11px] text-red-600 font-medium block mt-0.5">Com pendência ou data registrada</span>
+            <span className="text-2xl font-black text-slate-900">{attentionCaseIds.size}</span>
+            <span className="text-[11px] text-red-600 font-medium block mt-0.5">Pendência, prazo ou avaliação agendada</span>
           </div>
         </div>
       </div>
 
-      {/* Navigation Sections Grid */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -191,7 +197,6 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
         </div>
       </div>
 
-      {/* Workflow Timeline Preview (Prepared for Expansion) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
           <div>
@@ -212,7 +217,6 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </button>
         </div>
 
-        {/* Phase Chips */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-1">
           {BPC_WORKFLOW_STEPS.slice(0, 12).map((step, idx) => (
             <div
