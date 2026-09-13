@@ -14,6 +14,12 @@ type PendenciaTypeSelection = BpcPendenciaItem['type'] | '';
 type SeveritySelection = BpcPendenciaItem['severity'] | '';
 type ViewFilter = 'abertas' | 'resolvidas';
 
+function sortableDate(value: string): string {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return value;
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
 export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
   cases,
   pendencias,
@@ -38,7 +44,7 @@ export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
 
   const visiblePendencias = operationalPendencias
     .filter((item) => (viewFilter === 'abertas' ? !item.resolved : item.resolved))
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    .sort((a, b) => sortableDate(b.updatedAt).localeCompare(sortableDate(a.updatedAt)));
 
   const selectedCase = cases.find((item) => item.id === selectedCaseId);
   const canSubmit = Boolean(selectedCase && type && description.trim() && severity);
