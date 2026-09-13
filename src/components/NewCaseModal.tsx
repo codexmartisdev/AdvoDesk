@@ -26,9 +26,35 @@ const createClientIdentity = () => {
   };
 };
 
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
+const formatCpf = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+};
+
+const isValidCpf = (value: string) => {
+  const cpf = onlyDigits(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  const calculateDigit = (base: string, factor: number) => {
+    const total = base.split('').reduce((sum, digit) => sum + Number(digit) * factor--, 0);
+    const remainder = (total * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  const firstDigit = calculateDigit(cpf.slice(0, 9), 10);
+  const secondDigit = calculateDigit(cpf.slice(0, 10), 11);
+  return firstDigit === Number(cpf[9]) && secondDigit === Number(cpf[10]);
+};
+
 export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   isOpen,
   onClose,
+  clients = [],
   onClientCreated,
   clientCategories = [
     'BPC Loas',
@@ -86,25 +112,57 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [pixKey, setPixKey] = useState('');
 
   const [typePill, setTypePill] = useState('');
+  const [validationError, setValidationError] = useState('');
 
   if (!isOpen) return null;
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName.trim()) return;
 
+    const normalizedName = clientName.trim().replace(/\s+/g, ' ');
+    const normalizedCpf = formatCpf(clientCpf);
+    const cpfDigits = onlyDigits(clientCpf);
+    const phoneDigits = onlyDigits(clientPhone);
+
+    if (normalizedName.length < 3) {
+      setValidationError('Informe o nome completo do cliente.');
+      return;
+    }
+
+    if (!isValidCpf(cpfDigits)) {
+      setValidationError('Informe um CPF válido com 11 dígitos.');
+      return;
+    }
+
+    const duplicateCpf = clients.some((client) => onlyDigits(client.cpf || '') === cpfDigits);
+    if (duplicateCpf) {
+      setValidationError('Já existe um cliente cadastrado com este CPF.');
+      return;
+    }
+
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setValidationError('Informe um telefone ou WhatsApp válido com DDD.');
+      return;
+    }
+
+    if (!typePill) {
+      setValidationError('Selecione a categoria ou benefício do cliente.');
+      return;
+    }
+
+    setValidationError('');
     const identity = createClientIdentity();
 
     const newClient: Client = {
       id: identity.id,
       code: identity.code,
-      name: clientName,
-      socialName,
+      name: normalizedName,
+      socialName: socialName.trim(),
       typePill,
       // Regra operacional: um cadastro concluído entra na carteira como cliente ativo.
       status: 'Ativo',
       updatedAt: 'Criado agora',
-      cpf: clientCpf.trim(),
+      cpf: normalizedCpf,
       birthDate,
       nationality,
       birthplace,
@@ -173,6 +231,13 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
 
         {/* Client Form */}
         <form onSubmit={handleCreateClient} className="space-y-4 text-xs max-h-[70vh] overflow-y-auto pr-1">
+            {validationError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-red-800 font-semibold flex items-start gap-2" role="alert">
+                <span className="material-symbols-outlined text-base mt-0.5">error</span>
+                <span>{validationError}</span>
+              </div>
+            )}
+
             {/* 1. Identificação Pessoal */}
             <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
               <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 border-b border-slate-200 pb-2">
@@ -187,7 +252,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     type="text"
                     required
                     value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
+                    onChange={(e) => {
+                      setClientName(e.target.value);
+                      setValidationError('');
+                    }}
                     placeholder="Ex: Roberto Alves de Souza"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-900"
                   />
@@ -209,8 +277,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={14}
                     value={clientCpf}
-                    onChange={(e) => setClientCpf(e.target.value)}
+                    onChange={(e) => {
+                      setClientCpf(formatCpf(e.target.value));
+                      setValidationError('');
+                    }}
                     placeholder="000.000.000-00"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono font-bold"
                   />
@@ -346,8 +420,12 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <input
                     type="text"
                     required
+                    inputMode="tel"
                     value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
+                    onChange={(e) => {
+                      setClientPhone(e.target.value);
+                      setValidationError('');
+                    }}
                     placeholder="(00) 00000-0000"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   />
@@ -510,7 +588,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <select
                     required
                     value={typePill}
-                    onChange={(e) => setTypePill(e.target.value)}
+                    onChange={(e) => {
+                      setTypePill(e.target.value);
+                      setValidationError('');
+                    }}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   >
                     <option value="">Selecione</option>
