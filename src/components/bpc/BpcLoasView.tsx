@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Client } from '../../types';
-import { BpcCaseItem, BpcSubTab } from '../../types/bpc';
+import { BpcCaseItem, BpcPendenciaItem, BpcSubTab } from '../../types/bpc';
 import { auth } from '../../lib/firebase';
 import { getBrasiliaFormatted } from '../../utils/dateUtils';
 import { getUserProfileInFirestore } from '../../services/firestoreService';
@@ -8,6 +8,10 @@ import {
   saveBpcCaseInFirestore,
   subscribeToBpcCases,
 } from '../../services/bpcFirestoreService';
+import {
+  saveBpcPendenciaInFirestore,
+  subscribeToBpcPendencias,
+} from '../../services/bpcPendenciasFirestoreService';
 import { BpcDashboardSection } from './BpcDashboardSection';
 import { BpcCasesSection } from './BpcCasesSection';
 import { BpcNewCaseSection } from './BpcNewCaseSection';
@@ -28,18 +32,21 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<BpcSubTab>(initialSubTab);
   const [bpcCases, setBpcCases] = useState<BpcCaseItem[]>([]);
+  const [bpcPendencias, setBpcPendencias] = useState<BpcPendenciaItem[]>([]);
   const [editingCase, setEditingCase] = useState<BpcCaseItem | null>(null);
   const [firmId, setFirmId] = useState<string | null>(null);
   const [isLoadingCases, setIsLoadingCases] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [pendenciasError, setPendenciasError] = useState('');
 
   const activeBpcCases = bpcCases.filter((bpcCase) => !bpcCase.archivedAt);
 
   useEffect(() => {
     let active = true;
-    let unsubscribe: (() => void) | undefined;
+    let unsubscribeCases: (() => void) | undefined;
+    let unsubscribePendencias: (() => void) | undefined;
 
-    const connectToBpcCases = async () => {
+    const connectToBpcData = async () => {
       const currentUser = auth.currentUser;
 
       if (!currentUser) {
@@ -64,7 +71,8 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
       if (!active) return;
 
       setFirmId(resolvedFirmId);
-      unsubscribe = subscribeToBpcCases(
+
+      unsubscribeCases = subscribeToBpcCases(
         resolvedFirmId,
         (persistedCases) => {
           if (!active) return;
@@ -78,10 +86,23 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           setIsLoadingCases(false);
         }
       );
+
+      unsubscribePendencias = subscribeToBpcPendencias(
+        resolvedFirmId,
+        (persistedPendencias) => {
+          if (!active) return;
+          setBpcPendencias(persistedPendencias);
+          setPendenciasError('');
+        },
+        () => {
+          if (!active) return;
+          setPendenciasError('Não foi possível carregar as pendências BPC do Firestore.');
+        }
+      );
     };
 
-    void connectToBpcCases().catch((error) => {
-      console.error('Erro ao inicializar casos BPC:', error);
+    void connectToBpcData().catch((error) => {
+      console.error('Erro ao inicializar dados BPC:', error);
       if (active) {
         setLoadError('Não foi possível inicializar a carteira BPC.');
         setIsLoadingCases(false);
@@ -90,7 +111,8 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
 
     return () => {
       active = false;
-      unsubscribe?.();
+      unsubscribeCases?.();
+      unsubscribePendencias?.();
     };
   }, []);
 
@@ -189,6 +211,47 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
     }
   };
 
+  const handleSavePendencia = async (item: BpcPendenciaItem) => {
+    if (!firmId) {
+      window.alert('Não foi possível identificar o escritório para salvar a pendência.');
+      throw new Error('Firm ID ausente ao salvar pendência BPC.');
+    }
+
+    try {
+      await saveBpcPendenciaInFirestore(item, firmId);
+    } catch (error) {
+      console.error('Erro ao salvar pendência BPC:', error);
+      window.alert('Não foi possível salvar a pendência BPC. Tente novamente.');
+      throw error;
+    }
+  };
+
+  const handleTogglePendenciaResolved = async (item: BpcPendenciaItem) => {
+    if (!firmId) {
+      window.alert('Não foi possível identificar o escritório para atualizar a pendência.');
+      throw new Error('Firm ID ausente ao atualizar pendência BPC.');
+    }
+
+    const now = getBrasiliaFormatted();
+    const resolved = !item.resolved;
+
+    try {
+      await saveBpcPendenciaInFirestore(
+        {
+          ...item,
+          resolved,
+          updatedAt: now,
+          resolvedAt: resolved ? now : undefined,
+        },
+        firmId
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar pendência BPC:', error);
+      window.alert('Não foi possível atualizar a pendência BPC. Tente novamente.');
+      throw error;
+    }
+  };
+
   const navItems: { id: BpcSubTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'cases', label: 'Casos', icon: 'folder_open' },
@@ -240,6 +303,12 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
         {loadError && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
             {loadError}
+          </div>
+        )}
+
+        {activeSubTab === 'pendencias' && pendenciasError && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+            {pendenciasError}
           </div>
         )}
 
@@ -303,7 +372,10 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           {activeSubTab === 'pendencias' && (
             <BpcPendenciasSection
               cases={activeBpcCases}
+              pendencias={bpcPendencias}
               onOpenNewCase={() => navigateToSubTab('new-case')}
+              onSavePendencia={handleSavePendencia}
+              onToggleResolved={handleTogglePendenciaResolved}
             />
           )}
 
