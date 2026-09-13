@@ -6,7 +6,7 @@ interface ClientsViewProps {
   clients: Client[];
   searchQuery: string;
   onOpenAddClientModal: () => void;
-  onSelectClientForDoc: (clientName: string, clientCpf: string) => void;
+  onSelectClientForDoc: (client: Client) => void;
   onSaveClient?: (updatedClient: Client) => void;
   onDeleteClient?: (clientId: string) => void;
   clientCategories?: string[];
@@ -29,11 +29,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
   const filteredClients = clients.filter((c) => {
+    const normalizedSearch = searchQuery.toLowerCase();
     const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.cpf.includes(searchQuery) ||
-      c.typePill.toLowerCase().includes(searchQuery.toLowerCase());
+      c.name.toLowerCase().includes(normalizedSearch) ||
+      (c.code || '').toLowerCase().includes(normalizedSearch) ||
+      (c.cpf || '').includes(searchQuery) ||
+      (c.typePill || '').toLowerCase().includes(normalizedSearch);
 
     if (filterStatus === 'all') return matchesSearch;
     return matchesSearch && c.status.toLowerCase() === filterStatus.toLowerCase();
@@ -185,7 +186,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <div className="flex items-center space-x-4 md:space-x-6 self-end md:self-center shrink-0">
                 {/* Pill */}
                 <div className="px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">
-                  <span>{client.typePill}</span>
+                  <span>{client.typePill || 'Sem categoria'}</span>
                 </div>
 
                 {/* Status Indicator */}
@@ -209,6 +210,19 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
                 {/* Action buttons */}
                 <div className="flex items-center space-x-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectClientForDoc(client);
+                    }}
+                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-bold rounded-xl flex items-center gap-1 transition-colors"
+                    title="Preparar documentos para este cliente"
+                  >
+                    <span className="material-symbols-outlined text-sm">description</span>
+                    <span className="hidden sm:inline">Documentos</span>
+                  </button>
+
                   <button 
                     type="button"
                     onClick={(e) => {
@@ -269,7 +283,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           setSelectedClient(updated);
         }}
         onDeleteClient={onDeleteClient}
-        onSelectClientForDoc={onSelectClientForDoc}
+        onSelectClientForDoc={() => {
+          if (selectedClient) {
+            onSelectClientForDoc(selectedClient);
+          }
+        }}
         clientCategories={clientCategories}
       />
 
