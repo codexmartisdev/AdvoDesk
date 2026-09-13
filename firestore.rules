@@ -60,7 +60,8 @@ service cloud.firestore {
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
 
-      allow delete: if hasFirmAccess(resource.data.firmId);
+      // Clientes usam ciclo de vida por arquivamento/restauração para preservar vínculos.
+      allow delete: if false;
     }
 
     // ==========================================
