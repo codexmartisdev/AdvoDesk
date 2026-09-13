@@ -2,9 +2,13 @@
 set -euo pipefail
 
 PROJECT_ID="gen-lang-client-0365371352"
+PROJECT_NUMBER="157712620388"
 DATABASE_ID="ai-studio-bizerranetoadvoc-3ceabbf7-259b-4a9e-b48e-0ede91e287be"
 RULES_FILE="${1:-firestore.rules}"
 API_BASE="https://firebaserules.googleapis.com/v1"
+ATTACHMENT_POINT="firestore.googleapis.com/projects/${PROJECT_NUMBER}/databases/${DATABASE_ID}"
+RELEASE_NAME="projects/${PROJECT_ID}/releases/cloud.firestore/${DATABASE_ID}"
+RELEASE_URL="${API_BASE}/${RELEASE_NAME}"
 
 fail() {
   echo "ERRO: $*" >&2
@@ -17,23 +21,22 @@ done
 
 [[ -f "${RULES_FILE}" ]] || fail "Arquivo de regras não encontrado: ${RULES_FILE}"
 
-# Confirma acesso ao projeto e resolve o número do projeto diretamente no Google Cloud.
-PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)' 2>/dev/null || true)"
-[[ -n "${PROJECT_NUMBER}" ]] \
-  || fail "A conta ativa do gcloud não possui acesso ao projeto ${PROJECT_ID}."
-
-ATTACHMENT_POINT="firestore.googleapis.com/projects/${PROJECT_NUMBER}/databases/${DATABASE_ID}"
-RELEASE_NAME="projects/${PROJECT_ID}/releases/cloud.firestore/${DATABASE_ID}"
-RELEASE_URL="${API_BASE}/${RELEASE_NAME}"
-
 echo "Projeto: ${PROJECT_ID}"
 echo "Número do projeto: ${PROJECT_NUMBER}"
 echo "Banco Firestore: ${DATABASE_ID}"
 echo "Arquivo: ${RULES_FILE}"
 echo
 
-ACCESS_TOKEN="$(gcloud auth print-access-token)"
+# Usa diretamente a identidade já autenticada no Cloud Shell.
+# A Firebase Rules API será a autoridade para confirmar se essa identidade
+# possui permissão real de leitura/publicação no projeto.
+ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null || true)"
 [[ -n "${ACCESS_TOKEN}" ]] || fail "Não foi possível obter access token da conta ativa do gcloud."
+
+ACTIVE_ACCOUNT="$(gcloud config get account 2>/dev/null || true)"
+if [[ -n "${ACTIVE_ACCOUNT}" ]]; then
+  echo "Conta ativa do gcloud: ${ACTIVE_ACCOUNT}"
+fi
 
 # Descobre a release atualmente ativa para permitir rollback manual se necessário.
 CURRENT_RELEASE_FILE="$(mktemp)"
@@ -47,6 +50,9 @@ if [[ "${CURRENT_STATUS}" == "200" ]]; then
   if [[ -n "${PREVIOUS_RULESET}" ]]; then
     echo "Ruleset atualmente publicado: ${PREVIOUS_RULESET}"
   fi
+elif [[ "${CURRENT_STATUS}" == "403" ]]; then
+  cat "${CURRENT_RELEASE_FILE}" >&2
+  fail "A conta ativa não possui permissão suficiente na Firebase Rules API para este projeto."
 elif [[ "${CURRENT_STATUS}" != "404" ]]; then
   cat "${CURRENT_RELEASE_FILE}" >&2
   fail "Não foi possível consultar a release atual (HTTP ${CURRENT_STATUS})."
