@@ -172,16 +172,20 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
   const handleSaveNewCase = async (newCase: BpcCaseItem) => {
     if (!firmId) {
       window.alert('Não foi possível identificar o escritório para salvar o caso BPC.');
-      return;
+      throw new Error('Firm ID ausente ao salvar caso BPC.');
     }
 
     try {
-      await saveBpcCaseInFirestore(newCase, firmId);
+      await saveBpcCaseInFirestore(newCase, firmId, {
+        action: 'Caso criado',
+        description: `Caso BPC ${newCase.modality === 'pcd' ? 'PCD' : 'Idoso'} criado com status ${newCase.status}.`,
+      });
       setEditingCase(null);
       setActiveSubTab('cases');
     } catch (error) {
       console.error('Erro ao salvar caso BPC:', error);
       window.alert('Não foi possível salvar o caso BPC. Tente novamente.');
+      throw error;
     }
   };
 
@@ -193,11 +197,22 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
   const handleSaveEditedCase = async (updatedCase: BpcCaseItem) => {
     if (!firmId) {
       window.alert('Não foi possível identificar o escritório para atualizar o caso BPC.');
-      return;
+      throw new Error('Firm ID ausente ao atualizar caso BPC.');
     }
 
+    const statusChanged = editingCase && editingCase.status !== updatedCase.status;
+    const audit = statusChanged
+      ? {
+          action: 'Status do caso atualizado',
+          description: `Status alterado de ${editingCase.status} para ${updatedCase.status}.`,
+        }
+      : {
+          action: 'Caso atualizado',
+          description: 'Dados do caso BPC atualizados.',
+        };
+
     try {
-      await saveBpcCaseInFirestore(updatedCase, firmId);
+      await saveBpcCaseInFirestore(updatedCase, firmId, audit);
       setEditingCase(null);
     } catch (error) {
       console.error('Erro ao atualizar caso BPC:', error);
@@ -227,7 +242,11 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           archivedAt: now,
           updatedAt: now,
         },
-        firmId
+        firmId,
+        {
+          action: 'Caso arquivado',
+          description: 'Caso BPC arquivado e retirado da operação diária.',
+        }
       );
       setEditingCase(null);
     } catch (error) {
@@ -251,7 +270,11 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           archivedAt: undefined,
           updatedAt: now,
         },
-        firmId
+        firmId,
+        {
+          action: 'Caso restaurado',
+          description: 'Caso BPC restaurado para a operação diária.',
+        }
       );
     } catch (error) {
       console.error('Erro ao restaurar caso BPC:', error);
@@ -266,7 +289,10 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
     }
 
     try {
-      await saveBpcPendenciaInFirestore(item, firmId);
+      await saveBpcPendenciaInFirestore(item, firmId, {
+        action: 'Pendência criada',
+        description: `${item.type}: ${item.description}`,
+      });
     } catch (error) {
       console.error('Erro ao salvar pendência BPC:', error);
       window.alert('Não foi possível salvar a pendência BPC. Tente novamente.');
@@ -291,7 +317,11 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           updatedAt: now,
           resolvedAt: resolved ? now : undefined,
         },
-        firmId
+        firmId,
+        {
+          action: resolved ? 'Pendência resolvida' : 'Pendência reaberta',
+          description: `${item.type}: ${item.description}`,
+        }
       );
     } catch (error) {
       console.error('Erro ao atualizar pendência BPC:', error);
@@ -307,7 +337,10 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
     }
 
     try {
-      await saveBpcDeadlineInFirestore(item, firmId);
+      await saveBpcDeadlineInFirestore(item, firmId, {
+        action: 'Prazo criado',
+        description: `${item.title} — ${item.type} — data ${item.date}.`,
+      });
     } catch (error) {
       console.error('Erro ao salvar prazo BPC:', error);
       window.alert('Não foi possível salvar o prazo BPC. Tente novamente.');
@@ -332,7 +365,11 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           updatedAt: now,
           completedAt: completed ? now : undefined,
         },
-        firmId
+        firmId,
+        {
+          action: completed ? 'Prazo concluído' : 'Prazo reaberto',
+          description: `${item.title} — ${item.type} — data ${item.date}.`,
+        }
       );
     } catch (error) {
       console.error('Erro ao atualizar prazo BPC:', error);
@@ -348,7 +385,10 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
     }
 
     try {
-      await saveBpcAvaliacaoInFirestore(item, firmId);
+      await saveBpcAvaliacaoInFirestore(item, firmId, {
+        action: 'Avaliação criada',
+        description: `${item.type} registrada para ${item.date} com situação ${item.status}.`,
+      });
     } catch (error) {
       console.error('Erro ao salvar avaliação BPC:', error);
       window.alert('Não foi possível salvar a avaliação BPC. Tente novamente.');
@@ -375,7 +415,11 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           updatedAt: now,
           completedAt: status === 'Realizada' ? item.completedAt || now : undefined,
         },
-        firmId
+        firmId,
+        {
+          action: 'Situação da avaliação atualizada',
+          description: `${item.type}: situação alterada de ${item.status} para ${status}.`,
+        }
       );
     } catch (error) {
       console.error('Erro ao atualizar avaliação BPC:', error);
@@ -482,6 +526,9 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           {activeSubTab === 'dashboard' && (
             <BpcDashboardSection
               cases={activeBpcCases}
+              pendencias={bpcPendencias}
+              deadlines={bpcDeadlines}
+              avaliacoes={bpcAvaliacoes}
               onNavigateSubTab={navigateToSubTab}
               onOpenNewCase={() => navigateToSubTab('new-case')}
             />
