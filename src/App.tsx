@@ -246,7 +246,7 @@ export default function App() {
   const handleSaveTemplate = (tpl: DocumentTemplate) => {
     const exists = templates.some((t) => t.id === tpl.id);
     if (exists) {
-      setTemplates(templates.map((t) => (t.id === tpl.id ? tpl : t));
+      setTemplates(templates.map((t) => (t.id === tpl.id ? tpl : t)));
     } else {
       setTemplates([tpl, ...templates]);
     }
@@ -291,7 +291,7 @@ export default function App() {
   };
 
   const handleEditFormat = (oldFmt: string, newFmt: string) => {
-    setDocFormats(docFormats.map((f) => (f === oldFmt ? { ...f, category: newFmt } : f) as any));
+    setDocFormats(docFormats.map((f) => (f === oldFmt ? newFmt : f)));
     const updated = templates.map((t) => (t.format === oldFmt ? { ...t, format: newFmt } : t));
     setTemplates(updated);
     if (!userProfile?.firmId) {
@@ -340,7 +340,7 @@ export default function App() {
   };
 
   const handleUpdateEvent = (updatedEv: ScheduledEvent) => {
-    setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e)));
+    setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e));
     if (!userProfile?.firmId) {
       console.error('[Firestore Write Error] Cannot save updated event: userProfile.firmId is not defined.');
       return;
