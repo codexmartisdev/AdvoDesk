@@ -15,12 +15,28 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
 }) => {
   const idosoCount = cases.filter((c) => c.modality === 'idoso').length;
   const pcdCount = cases.filter((c) => c.modality === 'pcd').length;
-  const pendenciasCount = cases.filter((c) => 
-    c.status === 'Exigência Aberta' || c.status === 'CadÚnico Pendente' || c.status === 'Coleta de Documentos'
-  ).length;
-  const prazosCount = cases.filter((c) => 
-    c.status === 'Perícia Agendada' || c.status === 'Avaliação Social Agendada' || c.status === 'Exigência Aberta'
-  ).length;
+
+  const pendingCases = cases.filter((c) =>
+    c.status === 'Exigência Aberta' ||
+    c.status === 'CadÚnico Pendente' ||
+    c.status === 'Coleta de Documentos' ||
+    c.cadUnicoStatus === 'Desatualizado' ||
+    c.cadUnicoStatus === 'Não Inscrito' ||
+    c.cadUnicoStatus === 'Pendente'
+  );
+
+  const casesWithRegisteredDates = cases.filter((c) =>
+    Boolean(c.periciaDate || c.avaliacaoSocialDate || c.exigenciaDeadline)
+  );
+
+  const attentionCaseIds = new Set([
+    ...pendingCases.map((c) => c.id),
+    ...casesWithRegisteredDates.map((c) => c.id),
+  ]);
+
+  const pendenciasCount = pendingCases.length;
+  const prazosCount = casesWithRegisteredDates.length;
+  const attentionCount = attentionCaseIds.size;
 
   const quickNavCards: {
     tab: BpcSubTab;
@@ -46,16 +62,16 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
     {
       tab: 'pendencias',
       title: 'Pendências & Exigências',
-      description: 'Controle de CadÚnico desatualizado, biometria e cartas de exigência.',
+      description: 'Controle dos alertas identificados nos dados cadastrados do caso.',
       icon: 'warning',
-      badge: pendenciasCount > 0 ? `${pendenciasCount} ativas` : 'Em dia',
+      badge: pendenciasCount > 0 ? `${pendenciasCount} registradas` : 'Sem registros',
     },
     {
       tab: 'prazos',
       title: 'Prazos & Agendamentos',
-      description: 'Datas de perícia médica, avaliação social e prazos recursais.',
+      description: 'Datas de perícia, avaliação social e exigências informadas nos casos.',
       icon: 'event',
-      badge: prazosCount > 0 ? `${prazosCount} próximos` : undefined,
+      badge: prazosCount > 0 ? `${prazosCount} com datas` : undefined,
     },
     {
       tab: 'avaliacoes',
@@ -84,7 +100,7 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{cases.length}</span>
-            <span className="text-[11px] text-slate-500 block mt-0.5">Carteira LOAS ativa</span>
+            <span className="text-[11px] text-slate-500 block mt-0.5">Casos persistidos</span>
           </div>
         </div>
 
@@ -97,7 +113,7 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{idosoCount}</span>
-            <span className="text-[11px] text-amber-700 font-medium block mt-0.5">Requisitos etários</span>
+            <span className="text-[11px] text-amber-700 font-medium block mt-0.5">Modalidade informada</span>
           </div>
         </div>
 
@@ -110,20 +126,20 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{pcdCount}</span>
-            <span className="text-[11px] text-blue-700 font-medium block mt-0.5">Perícia & Social</span>
+            <span className="text-[11px] text-blue-700 font-medium block mt-0.5">Modalidade informada</span>
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Pendências & Prazos</span>
+            <span className="text-xs font-semibold text-slate-500">Casos com Atenção</span>
             <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-200/60 flex items-center justify-center text-red-600">
               <span className="material-symbols-outlined text-base">schedule</span>
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-black text-slate-900">{pendenciasCount + prazosCount}</span>
-            <span className="text-[11px] text-red-600 font-medium block mt-0.5">Ações prioritárias</span>
+            <span className="text-2xl font-black text-slate-900">{attentionCount}</span>
+            <span className="text-[11px] text-red-600 font-medium block mt-0.5">Com pendência ou data registrada</span>
           </div>
         </div>
       </div>
@@ -223,7 +239,7 @@ export const BpcDashboardSection: React.FC<BpcDashboardSectionProps> = ({
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-600 text-sm">info</span>
             <span>
-              Todas as 18 etapas (CadÚnico, Renda, Perícia, Exigências e Recursos) já estão mapeadas na arquitetura.
+              As etapas do fluxo estão mapeadas como referência estrutural e serão ativadas progressivamente.
             </span>
           </div>
           <button
