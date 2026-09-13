@@ -28,8 +28,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const [formData, setFormData] = useState<Partial<Client>>({});
   const [family, setFamily] = useState<FamilyMember[]>([]);
   const [docs, setDocs] = useState<ClientDocumentChecklist>({
-    rgCpf: true,
-    comprovanteResidencia: true,
+    rgCpf: false,
+    comprovanteResidencia: false,
     carteiraTrabalhoCnis: false,
     comprovantesRendaFamilia: false,
     laudosMedicos: false,
@@ -43,15 +43,14 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const [newFmKinship, setNewFmKinship] = useState('Filho(a)');
   const [newFmIncome, setNewFmIncome] = useState('R$ 0,00');
 
-
   useEffect(() => {
     if (client) {
       setFormData({ ...client });
       setFamily(client.familyMembers || []);
       setDocs(
         client.documentChecklist || {
-          rgCpf: true,
-          comprovanteResidencia: true,
+          rgCpf: false,
+          comprovanteResidencia: false,
           carteiraTrabalhoCnis: false,
           comprovantesRendaFamilia: false,
           laudosMedicos: false,
@@ -153,15 +152,16 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 Código: <span className="font-mono font-bold text-slate-700">{formData.code}</span> • CPF:{' '}
                 <span className="font-mono font-bold text-slate-700">{formData.cpf}</span>
               </p>
-              
+
               {isEditing ? (
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <label className="text-[11px] font-bold text-slate-500">Categoria:</label>
                   <select
-                    value={formData.typePill || 'BPC Loas'}
+                    value={formData.typePill || ''}
                     onChange={(e) => handleChange('typePill', e.target.value)}
                     className="bg-blue-50 text-blue-900 border border-blue-200 rounded-lg px-2.5 py-1 text-xs font-bold"
                   >
+                    <option value="">Selecione</option>
                     {clientCategories.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -184,7 +184,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               ) : (
                 <div className="flex items-center space-x-2 mt-2">
                   <span className="px-3 py-0.5 rounded-full bg-blue-50 text-blue-900 text-xs font-bold border border-blue-200">
-                    {formData.typePill || 'BPC Loas'}
+                    {formData.typePill || 'Sem categoria'}
                   </span>
                   <span className="px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
                     {formData.status || 'Ativo'}
@@ -377,55 +377,6 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">RG (Número)</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={formData.rgNumber || ''}
-                      onChange={(e) => handleChange('rgNumber', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
-                    />
-                  ) : (
-                    <p className="bg-slate-50 p-2.5 rounded-xl text-slate-800 font-medium border border-slate-200">
-                      {formData.rgNumber || '—'}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Órgão Emissor / UF / Expedição</label>
-                  {isEditing ? (
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        placeholder="SSP"
-                        value={formData.rgIssuer || ''}
-                        onChange={(e) => handleChange('rgIssuer', e.target.value)}
-                        className="w-1/3 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900"
-                      />
-                      <input
-                        type="text"
-                        placeholder="PI"
-                        value={formData.rgUf || ''}
-                        onChange={(e) => handleChange('rgUf', e.target.value)}
-                        className="w-1/4 bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-slate-900 text-center"
-                      />
-                      <input
-                        type="date"
-                        value={formData.rgIssueDate || ''}
-                        onChange={(e) => handleChange('rgIssueDate', e.target.value)}
-                        className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-slate-900"
-                      />
-                    </div>
-                  ) : (
-                    <p className="bg-slate-50 p-2.5 rounded-xl text-slate-800 font-medium border border-slate-200">
-                      {formData.rgIssuer || '—'} / {formData.rgUf || '—'}{' '}
-                      {formData.rgIssueDate ? `(${formData.rgIssueDate})` : ''}
-                    </p>
-                  )}
-                </div>
-
-                <div>
                   <label className="block font-bold text-slate-700 mb-1">Data de Nascimento</label>
                   {isEditing ? (
                     <input
@@ -446,13 +397,13 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   {isEditing ? (
                     <input
                       type="text"
-                      value={formData.nationality || 'Brasileiro(a)'}
+                      value={formData.nationality || ''}
                       onChange={(e) => handleChange('nationality', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                     />
                   ) : (
                     <p className="bg-slate-50 p-2.5 rounded-xl text-slate-800 font-medium border border-slate-200">
-                      {formData.nationality || 'Brasileiro(a)'}
+                      {formData.nationality || '—'}
                     </p>
                   )}
                 </div>
@@ -478,10 +429,11 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Sexo / Gênero (INSS)</label>
                   {isEditing ? (
                     <select
-                      value={formData.gender || 'Feminino'}
+                      value={formData.gender || ''}
                       onChange={(e) => handleChange('gender', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                     >
+                      <option value="">Selecione</option>
                       <option value="Feminino">Feminino</option>
                       <option value="Masculino">Masculino</option>
                       <option value="Outro">Outro</option>
@@ -525,7 +477,6 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   )}
                 </div>
               </div>
-
             </div>
           )}
 
@@ -544,10 +495,11 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Estado Civil</label>
                   {isEditing ? (
                     <select
-                      value={formData.maritalStatus || 'Solteiro(a)'}
+                      value={formData.maritalStatus || ''}
                       onChange={(e) => handleChange('maritalStatus', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                     >
+                      <option value="">Selecione</option>
                       <option value="Solteiro(a)">Solteiro(a)</option>
                       <option value="Casado(a)">Casado(a)</option>
                       <option value="União Estável">União Estável</option>
@@ -556,7 +508,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                     </select>
                   ) : (
                     <p className="bg-slate-50 p-2.5 rounded-xl text-slate-800 font-medium border border-slate-200">
-                      {formData.maritalStatus || 'Solteiro(a)'}
+                      {formData.maritalStatus || '—'}
                     </p>
                   )}
                 </div>
@@ -857,16 +809,17 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                     <label className="block font-bold text-slate-700 mb-1">Zona (Rural / Urbana)</label>
                     {isEditing ? (
                       <select
-                        value={formData.addressZone || 'Urbana'}
+                        value={formData.addressZone || ''}
                         onChange={(e) => handleChange('addressZone', e.target.value)}
                         className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                       >
+                        <option value="">Selecione</option>
                         <option value="Urbana">Urbana</option>
                         <option value="Rural">Rural (Segurado Especial)</option>
                       </select>
                     ) : (
                       <p className="bg-slate-50 p-2.5 rounded-xl text-slate-800 font-bold border border-slate-200">
-                        {formData.addressZone || 'Urbana'}
+                        {formData.addressZone || '—'}
                       </p>
                     )}
                   </div>
@@ -924,10 +877,11 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Vínculo Empregatício Atual</label>
                   {isEditing ? (
                     <select
-                      value={formData.employmentStatus || 'Desempregado'}
+                      value={formData.employmentStatus || ''}
                       onChange={(e) => handleChange('employmentStatus', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                     >
+                      <option value="">Selecione</option>
                       <option value="CLT">CLT / Empregado Formal</option>
                       <option value="Autônomo">Autônomo / Informal</option>
                       <option value="Rural">Trabalhador Rural / Lavrador</option>
@@ -946,10 +900,11 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Regime Contribuição INSS</label>
                   {isEditing ? (
                     <select
-                      value={formData.inssContributionRegime || 'Empregado'}
+                      value={formData.inssContributionRegime || ''}
                       onChange={(e) => handleChange('inssContributionRegime', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                     >
+                      <option value="">Selecione</option>
                       <option value="Empregado">Empregado (CLT)</option>
                       <option value="Contribuinte Individual">Contribuinte Individual (Carnê/MEI)</option>
                       <option value="Segurado Especial">Segurado Especial (Rural)</option>
@@ -1021,7 +976,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                   {[
-                    { key: 'rgCpf', label: 'RG e CPF (frente/verso)' },
+                    { key: 'rgCpf', label: 'CPF' },
                     { key: 'comprovanteResidencia', label: 'Comprovante de residência atualizado' },
                     { key: 'carteiraTrabalhoCnis', label: 'Carteira de Trabalho / Extrato CNIS' },
                     { key: 'comprovantesRendaFamilia', label: 'Comprovantes de renda familiar (BPC)' },
