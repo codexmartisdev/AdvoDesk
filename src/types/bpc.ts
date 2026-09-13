@@ -122,3 +122,17 @@ export interface BpcAvaliacaoItem {
   updatedAt: string;
   completedAt?: string;
 }
+
+export type BpcAuditCategory = 'Caso' | 'Pendência' | 'Prazo' | 'Avaliação';
+
+export interface BpcAuditItem {
+  id: string;
+  caseId: string;
+  clientName: string;
+  category: BpcAuditCategory;
+  action: string;
+  description: string;
+  actorUid: string;
+  actorLabel: string;
+  occurredAt: string;
+}
