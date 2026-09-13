@@ -54,12 +54,12 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [addressNeighborhood, setAddressNeighborhood] = useState('');
   const [addressCityUf, setAddressCityUf] = useState('');
   const [addressZip, setAddressZip] = useState('');
-  const [addressZone, setAddressZone] = useState('Urbana');
+  const [addressZone, setAddressZone] = useState('');
 
   const [occupation, setOccupation] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [employmentStatus, setEmploymentStatus] = useState('CLT');
-  const [inssContributionRegime, setInssContributionRegime] = useState('Empregado');
+  const [employmentStatus, setEmploymentStatus] = useState('');
+  const [inssContributionRegime, setInssContributionRegime] = useState('');
 
   const [nitPisPasep, setNitPisPasep] = useState('');
   const [benefitNumber, setBenefitNumber] = useState('');
@@ -479,6 +479,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setAddressZone(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   >
+                    <option value="">Selecione</option>
                     <option value="Urbana">Urbana</option>
                     <option value="Rural">Rural (Segurado Especial)</option>
                   </select>
@@ -523,6 +524,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setEmploymentStatus(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   >
+                    <option value="">Selecione</option>
                     <option value="CLT">CLT / Empregado Formal</option>
                     <option value="Autônomo">Autônomo / Informal</option>
                     <option value="Rural">Trabalhador Rural / Lavrador</option>
