@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   setDoc,
@@ -13,6 +12,11 @@ import { appendBpcAuditEventSafely } from './bpcAuditFirestoreService';
 
 type PersistedBpcDeadline = BpcDeadlineItem & {
   firmId: string;
+};
+
+type BpcDeadlineAudit = {
+  action: string;
+  description: string;
 };
 
 function removeUndefined<T>(value: T): T {
@@ -72,17 +76,13 @@ export function subscribeToBpcDeadlines(
 
 export async function saveBpcDeadlineInFirestore(
   item: BpcDeadlineItem,
-  firmId: string
+  firmId: string,
+  audit?: BpcDeadlineAudit
 ): Promise<void> {
   const path = `bpcPrazos/${item.id}`;
   const itemRef = doc(db, 'bpcPrazos', item.id);
 
   try {
-    const previousSnapshot = await getDoc(itemRef);
-    const previousItem = previousSnapshot.exists()
-      ? (previousSnapshot.data() as PersistedBpcDeadline)
-      : null;
-
     const persistedItem: PersistedBpcDeadline = {
       ...item,
       firmId,
@@ -90,28 +90,13 @@ export async function saveBpcDeadlineInFirestore(
 
     await setDoc(itemRef, removeUndefined(persistedItem));
 
-    let action = 'Prazo criado';
-    let description = `${item.title} — ${item.type} — data ${item.date}.`;
-
-    if (previousItem) {
-      if (previousItem.status !== 'Concluído' && item.status === 'Concluído') {
-        action = 'Prazo concluído';
-      } else if (previousItem.status === 'Concluído' && item.status === 'Pendente') {
-        action = 'Prazo reaberto';
-      } else {
-        action = 'Prazo atualizado';
-      }
-
-      description = `${item.title} — ${item.type} — data ${item.date}.`;
-    }
-
     await appendBpcAuditEventSafely(
       {
         caseId: item.caseId,
         clientName: item.clientName,
         category: 'Prazo',
-        action,
-        description,
+        action: audit?.action || 'Prazo atualizado',
+        description: audit?.description || `${item.title} — ${item.type} — data ${item.date}.`,
       },
       firmId
     );
