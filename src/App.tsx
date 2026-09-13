@@ -340,7 +340,7 @@ export default function App() {
   };
 
   const handleUpdateEvent = (updatedEv: ScheduledEvent) => {
-    setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e));
+    setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e)));
     if (!userProfile?.firmId) {
       console.error('[Firestore Write Error] Cannot save updated event: userProfile.firmId is not defined.');
       return;
