@@ -2,174 +2,51 @@
 set -euo pipefail
 
 PROJECT_ID="gen-lang-client-0365371352"
-PROJECT_NUMBER="157712620388"
 DATABASE_ID="ai-studio-bizerranetoadvoc-3ceabbf7-259b-4a9e-b48e-0ede91e287be"
-RULES_FILE="${1:-firestore.rules}"
-API_BASE="https://firebaserules.googleapis.com/v1"
-ATTACHMENT_POINT="firestore.googleapis.com/projects/${PROJECT_NUMBER}/databases/${DATABASE_ID}"
-RELEASE_NAME="projects/${PROJECT_ID}/releases/cloud.firestore/${DATABASE_ID}"
-RELEASE_URL="${API_BASE}/${RELEASE_NAME}"
+RULES_FILE="firestore.rules"
 
 fail() {
   echo "ERRO: $*" >&2
   exit 1
 }
 
-for command_name in gcloud curl jq; do
-  command -v "${command_name}" >/dev/null 2>&1 || fail "Comando obrigatório não encontrado: ${command_name}"
-done
-
+command -v firebase >/dev/null 2>&1 || fail "Firebase CLI não encontrado. No Cloud Shell ele normalmente já vem instalado."
 [[ -f "${RULES_FILE}" ]] || fail "Arquivo de regras não encontrado: ${RULES_FILE}"
+[[ -f "firebase.json" ]] || fail "firebase.json não encontrado no diretório atual."
 
-echo "Projeto: ${PROJECT_ID}"
-echo "Número do projeto: ${PROJECT_NUMBER}"
+echo "Projeto Firebase: ${PROJECT_ID}"
 echo "Banco Firestore: ${DATABASE_ID}"
-echo "Arquivo: ${RULES_FILE}"
+echo "Arquivo de regras: ${RULES_FILE}"
+echo "Firebase CLI: $(firebase --version)"
 echo
 
-ACTIVE_ACCOUNT="$(gcloud config get account 2>/dev/null || true)"
-if [[ -n "${ACTIVE_ACCOUNT}" && "${ACTIVE_ACCOUNT}" != "(unset)" ]]; then
-  echo "Conta ativa do gcloud: ${ACTIVE_ACCOUNT}"
+# Confirma que o Firebase CLI consegue enxergar os projetos da conta autenticada.
+# Se a sessão não estiver autenticada, não tenta publicar nada.
+if ! firebase projects:list --json >/tmp/advodesk-firebase-projects.json 2>/tmp/advodesk-firebase-auth-error.log; then
+  cat /tmp/advodesk-firebase-auth-error.log >&2 || true
+  echo >&2
+  echo "A sessão do Firebase CLI não está autenticada ou não possui acesso aos projetos." >&2
+  echo "Execute: firebase login --no-localhost" >&2
+  echo "Depois execute este script novamente." >&2
+  exit 1
 fi
 
-# Primeiro tenta as credenciais normais da conta ativa do gcloud.
-ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null || true)"
-TOKEN_SOURCE="gcloud"
-
-# Em algumas sessões do Cloud Shell a identidade disponível está exposta apenas
-# como Application Default Credentials (ADC). Usa ADC como fallback seguro.
-if [[ -z "${ACCESS_TOKEN}" ]]; then
-  ACCESS_TOKEN="$(gcloud auth application-default print-access-token 2>/dev/null || true)"
-  TOKEN_SOURCE="adc"
+if ! jq -e --arg projectId "${PROJECT_ID}" '.result[]? | select(.projectId == $projectId)' /tmp/advodesk-firebase-projects.json >/dev/null 2>&1; then
+  echo "ERRO: O projeto ${PROJECT_ID} não aparece entre os projetos acessíveis pela conta autenticada no Firebase CLI." >&2
+  echo "Confira com: firebase projects:list" >&2
+  exit 1
 fi
 
-[[ -n "${ACCESS_TOKEN}" ]] || {
-  echo "Nenhum token OAuth disponível nesta sessão." >&2
-  echo "Contas conhecidas pelo gcloud:" >&2
-  gcloud auth list 2>/dev/null || true
-  fail "Autorize novamente o Cloud Shell com 'gcloud auth login' e execute o script de novo."
-}
+echo "Conta autenticada com acesso ao projeto confirmado."
+echo "Publicando somente as regras do banco Firestore nomeado..."
+echo
 
-echo "Fonte de autenticação: ${TOKEN_SOURCE}"
-
-# Descobre a release atualmente ativa para permitir rollback manual se necessário.
-CURRENT_RELEASE_FILE="$(mktemp)"
-CURRENT_STATUS="$(curl -sS -o "${CURRENT_RELEASE_FILE}" -w '%{http_code}' \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  "${RELEASE_URL}")"
-
-PREVIOUS_RULESET=""
-if [[ "${CURRENT_STATUS}" == "200" ]]; then
-  PREVIOUS_RULESET="$(jq -r '.rulesetName // empty' "${CURRENT_RELEASE_FILE}")"
-  if [[ -n "${PREVIOUS_RULESET}" ]]; then
-    echo "Ruleset atualmente publicado: ${PREVIOUS_RULESET}"
-  fi
-elif [[ "${CURRENT_STATUS}" == "403" ]]; then
-  cat "${CURRENT_RELEASE_FILE}" >&2
-  fail "A identidade autenticada não possui permissão suficiente na Firebase Rules API para este projeto."
-elif [[ "${CURRENT_STATUS}" == "401" ]]; then
-  cat "${CURRENT_RELEASE_FILE}" >&2
-  fail "O token da sessão não foi aceito. Execute 'gcloud auth login' no Cloud Shell e tente novamente."
-elif [[ "${CURRENT_STATUS}" != "404" ]]; then
-  cat "${CURRENT_RELEASE_FILE}" >&2
-  fail "Não foi possível consultar a release atual (HTTP ${CURRENT_STATUS})."
-fi
-
-RULESET_PAYLOAD="$(mktemp)"
-jq -n \
-  --rawfile content "${RULES_FILE}" \
-  --arg attachmentPoint "${ATTACHMENT_POINT}" \
-  '{
-    source: {
-      files: [
-        {
-          name: "firestore.rules",
-          content: $content
-        }
-      ]
-    },
-    attachmentPoint: $attachmentPoint
-  }' > "${RULESET_PAYLOAD}"
-
-RULESET_RESPONSE="$(mktemp)"
-echo "Validando e criando novo ruleset..."
-curl --fail-with-body -sS \
-  -X POST \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H 'Content-Type: application/json' \
-  --data-binary "@${RULESET_PAYLOAD}" \
-  "${API_BASE}/projects/${PROJECT_ID}/rulesets" \
-  -o "${RULESET_RESPONSE}" \
-  || {
-    cat "${RULESET_RESPONSE}" >&2 || true
-    fail "A Rules API rejeitou o novo ruleset. A release ativa não foi alterada."
-  }
-
-NEW_RULESET="$(jq -r '.name // empty' "${RULESET_RESPONSE}")"
-[[ -n "${NEW_RULESET}" ]] || {
-  cat "${RULESET_RESPONSE}" >&2
-  fail "A API não retornou o nome do ruleset criado."
-}
-
-echo "Novo ruleset válido: ${NEW_RULESET}"
-
-if [[ "${CURRENT_STATUS}" == "200" ]]; then
-  RELEASE_PAYLOAD="$(mktemp)"
-  jq -n \
-    --arg name "${RELEASE_NAME}" \
-    --arg rulesetName "${NEW_RULESET}" \
-    '{
-      release: {
-        name: $name,
-        rulesetName: $rulesetName
-      },
-      updateMask: "rulesetName"
-    }' > "${RELEASE_PAYLOAD}"
-
-  echo "Atualizando a release do Firestore..."
-  curl --fail-with-body -sS \
-    -X PATCH \
-    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-    -H 'Content-Type: application/json' \
-    --data-binary "@${RELEASE_PAYLOAD}" \
-    "${RELEASE_URL}" \
-    >/dev/null
-else
-  RELEASE_PAYLOAD="$(mktemp)"
-  jq -n \
-    --arg name "${RELEASE_NAME}" \
-    --arg rulesetName "${NEW_RULESET}" \
-    '{
-      name: $name,
-      rulesetName: $rulesetName
-    }' > "${RELEASE_PAYLOAD}"
-
-  echo "Criando a release do Firestore..."
-  curl --fail-with-body -sS \
-    -X POST \
-    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-    -H 'Content-Type: application/json' \
-    --data-binary "@${RELEASE_PAYLOAD}" \
-    "${API_BASE}/projects/${PROJECT_ID}/releases" \
-    >/dev/null
-fi
-
-VERIFY_RESPONSE="$(mktemp)"
-curl --fail-with-body -sS \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  "${RELEASE_URL}" \
-  -o "${VERIFY_RESPONSE}"
-
-PUBLISHED_RULESET="$(jq -r '.rulesetName // empty' "${VERIFY_RESPONSE}")"
-[[ "${PUBLISHED_RULESET}" == "${NEW_RULESET}" ]] \
-  || fail "A verificação final não encontrou o novo ruleset na release."
+firebase deploy \
+  --only "firestore:${DATABASE_ID}" \
+  --project "${PROJECT_ID}"
 
 echo
 echo "PUBLICAÇÃO CONCLUÍDA"
-echo "Release: ${RELEASE_NAME}"
-echo "Ruleset publicado: ${NEW_RULESET}"
-if [[ -n "${PREVIOUS_RULESET}" ]]; then
-  echo "Ruleset anterior (guarde para rollback): ${PREVIOUS_RULESET}"
-fi
-echo
-echo "Observação: regras do Firebase podem levar alguns minutos para se propagar completamente."
+echo "Projeto: ${PROJECT_ID}"
+echo "Banco: ${DATABASE_ID}"
+echo "As regras definidas em ${RULES_FILE} foram enviadas pelo Firebase CLI."
