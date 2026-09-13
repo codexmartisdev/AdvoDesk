@@ -314,7 +314,7 @@ export default function App() {
   };
 
   const handleEditFormat = (oldFmt: string, newFmt: string) => {
-    setDocFormats(docFormats.map((f) => (f === oldFmt ? { ...f, format: newFmt } as any : f)));
+    setDocFormats(docFormats.map((f) => (f === oldFmt ? newFmt : f)));
     const updated = templates.map((t) => (t.format === oldFmt ? { ...t, format: newFmt } : t));
     setTemplates(updated);
     if (!userProfile?.firmId) {
@@ -360,7 +360,7 @@ export default function App() {
   };
 
   const handleUpdateEvent = (updatedEv: ScheduledEvent) => {
-    setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e)));
+    setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e));
     if (!userProfile?.firmId) {
       console.error('[Firestore Write Error] Cannot save updated event: userProfile.firmId is not defined.');
       return;
