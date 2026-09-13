@@ -81,6 +81,8 @@ export const BpcAvaliacoesSection: React.FC<BpcAvaliacoesSectionProps> = ({
     item: BpcAvaliacaoItem,
     nextStatus: BpcAvaliacaoItem['status']
   ) => {
+    if (nextStatus === item.status) return;
+
     setUpdatingId(item.id);
     try {
       await onUpdateStatus(item, nextStatus);
