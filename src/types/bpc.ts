@@ -108,3 +108,17 @@ export interface BpcDeadlineItem {
   updatedAt: string;
   completedAt?: string;
 }
+
+export interface BpcAvaliacaoItem {
+  id: string;
+  caseId: string;
+  clientName: string;
+  type: 'Perícia Médica' | 'Avaliação Social';
+  date: string;
+  status: 'Agendada' | 'Realizada' | 'Cancelada';
+  observacoes?: string;
+  resultado?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
