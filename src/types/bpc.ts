@@ -68,6 +68,7 @@ export interface BpcCaseItem {
   currentStep: BpcWorkflowPhaseId;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
   
   // Metadados específicos do processo BPC (preparados para preenchimento posterior)
   cadUnicoStatus?: 'Atualizado' | 'Desatualizado' | 'Não Inscrito' | 'Pendente';
