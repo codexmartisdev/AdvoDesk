@@ -80,10 +80,11 @@ export async function saveBpcCaseInFirestore(
       firmId,
     };
 
+    // O caso BPC é salvo como registro completo. Assim, campos opcionais
+    // removidos na edição também deixam de existir no Firestore.
     await setDoc(
       doc(db, 'bpcCases', bpcCase.id),
-      removeUndefined(persistedCase),
-      { merge: true }
+      removeUndefined(persistedCase)
     );
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
