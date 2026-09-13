@@ -4,12 +4,13 @@ import { BpcCaseItem, BpcModality } from '../../types/bpc';
 interface BpcCasesSectionProps {
   cases: BpcCaseItem[];
   onOpenNewCase: () => void;
-  onSelectCase?: (bpcCase: BpcCaseItem) => void;
+  onSelectCase: (bpcCase: BpcCaseItem) => void;
 }
 
 export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
   cases,
   onOpenNewCase,
+  onSelectCase,
 }) => {
   const [filterModality, setFilterModality] = useState<'all' | BpcModality>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,9 +31,7 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Top Filter and Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
-        {/* Modality Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-full md:w-auto">
           <button
             onClick={() => setFilterModality('all')}
@@ -68,12 +67,9 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
           </button>
         </div>
 
-        {/* Search Input & Action */}
         <div className="flex items-center gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
-            <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">
-              search
-            </span>
+            <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
             <input
               type="text"
               placeholder="Buscar requerente ou CPF..."
@@ -93,7 +89,6 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
         </div>
       </div>
 
-      {/* Cases List / Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {filteredCases.length === 0 ? (
           <div className="p-12 text-center">
@@ -119,7 +114,7 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
               <div className="col-span-2">CadÚnico & NIS</div>
               <div className="col-span-3">Status / Etapa Atual</div>
               <div className="col-span-2">Protocolo INSS</div>
-              <div className="col-span-1 text-right">Registro</div>
+              <div className="col-span-1 text-right">Ação</div>
             </div>
 
             {filteredCases.map((item) => (
@@ -127,7 +122,6 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
                 key={item.id}
                 className="p-4 md:px-5 md:py-3.5 flex flex-col md:grid md:grid-cols-12 gap-2 md:gap-4 items-start md:items-center hover:bg-slate-50/80 transition-colors"
               >
-                {/* Requerente & Modalidade */}
                 <div className="col-span-4 min-w-0">
                   <div className="flex items-center gap-2">
                     <div
@@ -142,17 +136,11 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <span className="font-bold text-slate-900 text-xs truncate block">
-                        {item.clientName}
-                      </span>
+                      <span className="font-bold text-slate-900 text-xs truncate block">{item.clientName}</span>
                       <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
                         <span>CPF: {item.clientCpf || 'Não informado'}</span>
                         <span>•</span>
-                        <span
-                          className={`font-semibold ${
-                            item.modality === 'idoso' ? 'text-amber-700' : 'text-blue-700'
-                          }`}
-                        >
+                        <span className={`font-semibold ${item.modality === 'idoso' ? 'text-amber-700' : 'text-blue-700'}`}>
                           {item.modality === 'idoso' ? 'BPC Idoso' : 'BPC PCD'}
                         </span>
                       </div>
@@ -160,11 +148,8 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
                   </div>
                 </div>
 
-                {/* CadÚnico & NIS */}
                 <div className="col-span-2 text-xs">
-                  <span className="text-[11px] font-medium text-slate-700 block">
-                    NIS: {item.nisNumber || 'Não informado'}
-                  </span>
+                  <span className="text-[11px] font-medium text-slate-700 block">NIS: {item.nisNumber || 'Não informado'}</span>
                   <span
                     className={`text-[10px] font-bold inline-block px-1.5 py-0.5 rounded-md mt-0.5 ${
                       item.cadUnicoStatus === 'Atualizado'
@@ -176,31 +161,25 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
                   </span>
                 </div>
 
-                {/* Status / Etapa Atual */}
                 <div className="col-span-3">
-                  <span className="text-xs font-bold text-slate-900 block truncate">
-                    {item.status}
-                  </span>
-                  <span className="text-[10px] text-slate-500 block truncate mt-0.5">
-                    Atualizado: {item.updatedAt}
-                  </span>
+                  <span className="text-xs font-bold text-slate-900 block truncate">{item.status}</span>
+                  <span className="text-[10px] text-slate-500 block truncate mt-0.5">Atualizado: {item.updatedAt}</span>
                 </div>
 
-                {/* Protocolo INSS */}
                 <div className="col-span-2 text-xs text-slate-600">
-                  <span className="font-mono text-[11px] block">
-                    {item.protocolNumber || 'Não informado'}
-                  </span>
-                  {item.derDate && (
-                    <span className="text-[10px] text-slate-400 block">DER: {item.derDate}</span>
-                  )}
+                  <span className="font-mono text-[11px] block">{item.protocolNumber || 'Não informado'}</span>
+                  {item.derDate && <span className="text-[10px] text-slate-400 block">DER: {item.derDate}</span>}
                 </div>
 
-                {/* Record marker */}
                 <div className="col-span-1 flex justify-end w-full md:w-auto">
-                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
-                    Registrado
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onSelectCase(item)}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold inline-flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    <span>Editar</span>
+                  </button>
                 </div>
               </div>
             ))}
