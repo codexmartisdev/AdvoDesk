@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import { LegalCase, Client } from '../types';
 import { getBrasiliaISO, getBrasiliaFormatted } from '../utils/dateUtils';
+import {
+  formatCep,
+  formatCpf,
+  formatPhone,
+  isValidCep,
+  isValidCpf,
+  isValidEmail,
+  isValidPhone,
+  normalizeWhitespace,
+  onlyDigits,
+} from '../utils/clientDataUtils';
 
 interface NewCaseModalProps {
   isOpen: boolean;
@@ -24,31 +35,6 @@ const createClientIdentity = () => {
     id: `client-${rawId}`,
     code: `CLI-${compactId.slice(-8)}`,
   };
-};
-
-const onlyDigits = (value: string) => value.replace(/\D/g, '');
-
-const formatCpf = (value: string) => {
-  const digits = onlyDigits(value).slice(0, 11);
-  return digits
-    .replace(/^(\d{3})(\d)/, '$1.$2')
-    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1-$2');
-};
-
-const isValidCpf = (value: string) => {
-  const cpf = onlyDigits(value);
-  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-
-  const calculateDigit = (base: string, factor: number) => {
-    const total = base.split('').reduce((sum, digit) => sum + Number(digit) * factor--, 0);
-    const remainder = (total * 10) % 11;
-    return remainder === 10 ? 0 : remainder;
-  };
-
-  const firstDigit = calculateDigit(cpf.slice(0, 9), 10);
-  const secondDigit = calculateDigit(cpf.slice(0, 10), 11);
-  return firstDigit === Number(cpf[9]) && secondDigit === Number(cpf[10]);
 };
 
 export const NewCaseModal: React.FC<NewCaseModalProps> = ({
@@ -119,17 +105,20 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const normalizedName = clientName.trim().replace(/\s+/g, ' ');
+    const normalizedName = normalizeWhitespace(clientName);
     const normalizedCpf = formatCpf(clientCpf);
     const cpfDigits = onlyDigits(clientCpf);
-    const phoneDigits = onlyDigits(clientPhone);
+    const normalizedPhone = formatPhone(clientPhone);
+    const normalizedSecondaryPhone = formatPhone(phoneSecondary);
+    const normalizedZip = formatCep(addressZip);
+    const normalizedEmail = clientEmail.trim();
 
     if (normalizedName.length < 3) {
       setValidationError('Informe o nome completo do cliente.');
       return;
     }
 
-    if (!isValidCpf(cpfDigits)) {
+    if (!isValidCpf(normalizedCpf)) {
       setValidationError('Informe um CPF válido com 11 dígitos.');
       return;
     }
@@ -140,8 +129,23 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       return;
     }
 
-    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+    if (!isValidPhone(normalizedPhone)) {
       setValidationError('Informe um telefone ou WhatsApp válido com DDD.');
+      return;
+    }
+
+    if (normalizedSecondaryPhone && !isValidPhone(normalizedSecondaryPhone)) {
+      setValidationError('O telefone secundário deve possuir DDD e 10 ou 11 dígitos.');
+      return;
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      setValidationError('Informe um endereço de e-mail válido ou deixe o campo vazio.');
+      return;
+    }
+
+    if (normalizedZip && !isValidCep(normalizedZip)) {
+      setValidationError('O CEP deve possuir 8 dígitos.');
       return;
     }
 
@@ -157,38 +161,38 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       id: identity.id,
       code: identity.code,
       name: normalizedName,
-      socialName: socialName.trim(),
+      socialName: normalizeWhitespace(socialName),
       typePill,
       // Regra operacional: um cadastro concluído entra na carteira como cliente ativo.
       status: 'Ativo',
       updatedAt: 'Criado agora',
       cpf: normalizedCpf,
       birthDate,
-      nationality,
-      birthplace,
+      nationality: normalizeWhitespace(nationality),
+      birthplace: normalizeWhitespace(birthplace),
       gender,
-      motherName,
-      fatherName,
+      motherName: normalizeWhitespace(motherName),
+      fatherName: normalizeWhitespace(fatherName),
       maritalStatus,
-      propertyRegime,
-      spouseName,
+      propertyRegime: normalizeWhitespace(propertyRegime),
+      spouseName: normalizeWhitespace(spouseName),
       familyMembers: [],
-      email: clientEmail.trim(),
-      phone: clientPhone.trim(),
-      phoneSecondary,
-      addressStreet,
-      addressNumber,
-      addressComplement,
-      addressNeighborhood,
-      addressCityUf,
-      addressZip,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      phoneSecondary: normalizedSecondaryPhone,
+      addressStreet: normalizeWhitespace(addressStreet),
+      addressNumber: normalizeWhitespace(addressNumber),
+      addressComplement: normalizeWhitespace(addressComplement),
+      addressNeighborhood: normalizeWhitespace(addressNeighborhood),
+      addressCityUf: normalizeWhitespace(addressCityUf),
+      addressZip: normalizedZip,
       addressZone,
-      occupation,
-      monthlyIncome,
+      occupation: normalizeWhitespace(occupation),
+      monthlyIncome: monthlyIncome.trim(),
       employmentStatus,
       inssContributionRegime,
-      nitPisPasep,
-      benefitNumber,
+      nitPisPasep: nitPisPasep.trim(),
+      benefitNumber: benefitNumber.trim(),
       documentChecklist: {
         rgCpf: docCpf,
         comprovanteResidencia: docComprovanteResidencia,
@@ -197,10 +201,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
         laudosMedicos: docLaudosMedicos,
         comprovacaoRural: docComprovacaoRural,
       },
-      bankName,
-      bankAgency,
-      bankAccount,
-      pixKey,
+      bankName: normalizeWhitespace(bankName),
+      bankAgency: bankAgency.trim(),
+      bankAccount: bankAccount.trim(),
+      pixKey: pixKey.trim(),
       casesCount: 0,
     };
 
@@ -421,9 +425,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     type="text"
                     required
                     inputMode="tel"
+                    maxLength={15}
                     value={clientPhone}
                     onChange={(e) => {
-                      setClientPhone(e.target.value);
+                      setClientPhone(formatPhone(e.target.value));
                       setValidationError('');
                     }}
                     placeholder="(00) 00000-0000"
@@ -435,8 +440,13 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Telefone Secundário</label>
                   <input
                     type="text"
+                    inputMode="tel"
+                    maxLength={15}
                     value={phoneSecondary}
-                    onChange={(e) => setPhoneSecondary(e.target.value)}
+                    onChange={(e) => {
+                      setPhoneSecondary(formatPhone(e.target.value));
+                      setValidationError('');
+                    }}
                     placeholder="(00) 00000-0000"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   />
@@ -447,7 +457,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <input
                     type="email"
                     value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
+                    onChange={(e) => {
+                      setClientEmail(e.target.value);
+                      setValidationError('');
+                    }}
                     placeholder="nome@email.com"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   />
@@ -514,9 +527,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">CEP</label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    maxLength={9}
                     placeholder="00000-000"
                     value={addressZip}
-                    onChange={(e) => setAddressZip(e.target.value)}
+                    onChange={(e) => {
+                      setAddressZip(formatCep(e.target.value));
+                      setValidationError('');
+                    }}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono"
                   />
                 </div>
