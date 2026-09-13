@@ -8,11 +8,14 @@ interface BpcPendenciasSectionProps {
 
 export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
   cases,
-  onOpenNewCase,
 }) => {
-  // Casos com algum tipo de alerta ou pendência comum de BPC
+  // Apenas sinaliza atenção com base em dados efetivamente registrados no caso.
   const casesWithIssues = cases.filter(
-    (c) => c.cadUnicoStatus !== 'Atualizado' || c.status.includes('Exigência') || c.status.includes('Pendente') || !c.nisNumber
+    (c) =>
+      c.cadUnicoStatus !== 'Atualizado' ||
+      c.status.includes('Exigência') ||
+      c.status.includes('Pendente') ||
+      !c.nisNumber
   );
 
   return (
@@ -25,7 +28,7 @@ export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
             <span>Controle de Pendências e Exigências BPC</span>
           </h3>
           <p className="text-slate-500 text-xs mt-0.5">
-            Monitoramento de CadÚnico, biometria obrigatória, documentos faltantes e cartas de exigência do INSS
+            Monitoramento de informações cadastradas sobre CadÚnico, NIS e exigências do INSS
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -42,9 +45,9 @@ export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-emerald-600 mb-3">
               <span className="material-symbols-outlined text-2xl">verified</span>
             </div>
-            <h4 className="font-bold text-slate-900 text-sm">Nenhuma pendência crítica</h4>
+            <h4 className="font-bold text-slate-900 text-sm">Nenhuma pendência identificada</h4>
             <p className="text-slate-500 text-xs mt-1 max-w-md mx-auto">
-              Todos os requerimentos BPC cadastrados estão com dados atualizados e sem cartas de exigência pendentes.
+              Nenhum alerta foi identificado pelos campos atualmente monitorados nos casos cadastrados.
             </p>
           </div>
         ) : (
@@ -58,7 +61,7 @@ export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
                   <div>
                     <span className="font-bold text-slate-900 text-xs">{item.clientName}</span>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                      <span>CPF: {item.clientCpf}</span>
+                      <span>CPF: {item.clientCpf || 'Não informado'}</span>
                       <span>•</span>
                       <span className="font-semibold text-slate-700">{item.modality === 'idoso' ? 'BPC Idoso' : 'BPC PCD'}</span>
                     </div>
@@ -68,7 +71,7 @@ export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
                       {item.cadUnicoStatus !== 'Atualizado' && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
                           <span className="material-symbols-outlined text-xs">badge</span>
-                          <span>CadÚnico: {item.cadUnicoStatus || 'Verificação Necessária'}</span>
+                          <span>CadÚnico: {item.cadUnicoStatus || 'Não informado'}</span>
                         </span>
                       )}
                       {!item.nisNumber && (
@@ -78,7 +81,9 @@ export const BpcPendenciasSection: React.FC<BpcPendenciasSectionProps> = ({
                       )}
                       {item.status.includes('Exigência') && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200">
-                          Cumprimento de Exigência (Prazo 30 dias)
+                          {item.exigenciaDeadline
+                            ? `Exigência — prazo: ${item.exigenciaDeadline}`
+                            : 'Exigência aberta — prazo não informado'}
                         </span>
                       )}
                     </div>
