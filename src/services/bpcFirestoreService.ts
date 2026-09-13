@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   setDoc,
@@ -8,6 +9,7 @@ import {
 } from '@firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { BpcCaseItem } from '../types/bpc';
+import { appendBpcAuditEventSafely } from './bpcAuditFirestoreService';
 
 type PersistedBpcCase = BpcCaseItem & {
   firmId: string;
@@ -73,8 +75,14 @@ export async function saveBpcCaseInFirestore(
   firmId: string
 ): Promise<void> {
   const path = `bpcCases/${bpcCase.id}`;
+  const caseRef = doc(db, 'bpcCases', bpcCase.id);
 
   try {
+    const previousSnapshot = await getDoc(caseRef);
+    const previousCase = previousSnapshot.exists()
+      ? (previousSnapshot.data() as PersistedBpcCase)
+      : null;
+
     const persistedCase: PersistedBpcCase = {
       ...bpcCase,
       firmId,
@@ -82,9 +90,36 @@ export async function saveBpcCaseInFirestore(
 
     // O caso BPC é salvo como registro completo. Assim, campos opcionais
     // removidos na edição também deixam de existir no Firestore.
-    await setDoc(
-      doc(db, 'bpcCases', bpcCase.id),
-      removeUndefined(persistedCase)
+    await setDoc(caseRef, removeUndefined(persistedCase));
+
+    let action = 'Caso criado';
+    let description = `Caso BPC ${bpcCase.modality === 'pcd' ? 'PCD' : 'Idoso'} criado com status ${bpcCase.status}.`;
+
+    if (previousCase) {
+      if (!previousCase.archivedAt && bpcCase.archivedAt) {
+        action = 'Caso arquivado';
+        description = 'Caso BPC arquivado e retirado da operação diária.';
+      } else if (previousCase.archivedAt && !bpcCase.archivedAt) {
+        action = 'Caso restaurado';
+        description = 'Caso BPC restaurado para a operação diária.';
+      } else if (previousCase.status !== bpcCase.status) {
+        action = 'Status do caso atualizado';
+        description = `Status alterado de ${previousCase.status} para ${bpcCase.status}.`;
+      } else {
+        action = 'Caso atualizado';
+        description = 'Dados do caso BPC atualizados.';
+      }
+    }
+
+    await appendBpcAuditEventSafely(
+      {
+        caseId: bpcCase.id,
+        clientName: bpcCase.clientName,
+        category: 'Caso',
+        action,
+        description,
+      },
+      firmId
     );
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
