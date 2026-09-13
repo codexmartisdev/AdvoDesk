@@ -202,15 +202,15 @@ export default function App() {
   const [variablesGuideModalOpen, setVariablesGuideModalOpen] = useState(false);
 
   const [selectedTemplateForDoc, setSelectedTemplateForDoc] = useState<DocumentTemplate | null>(null);
+  const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null);
   const [docClientName, setDocClientName] = useState('');
   const [docClientCpf, setDocClientCpf] = useState('');
   const [prefilledGeneratedText, setPrefilledGeneratedText] = useState<string | null>(null);
 
-  const openDefaultTenantTemplate = (
-    clientName?: string,
-    clientCpf?: string
-  ) => {
+  const openDefaultTenantTemplate = () => {
     const tenantTemplate = templates[0];
+
+    setSelectedClientForDoc(null);
 
     if (!tenantTemplate) {
       console.warn(
@@ -228,8 +228,8 @@ export default function App() {
 
     setSelectedTemplateForDoc(tenantTemplate);
     setPrefilledGeneratedText(null);
-    setDocClientName(clientName || '');
-    setDocClientCpf(clientCpf || '');
+    setDocClientName('');
+    setDocClientCpf('');
     setDocModalOpen(true);
   };
 
@@ -246,7 +246,7 @@ export default function App() {
   const handleSaveTemplate = (tpl: DocumentTemplate) => {
     const exists = templates.some((t) => t.id === tpl.id);
     if (exists) {
-      setTemplates(templates.map((t) => (t.id === tpl.id ? tpl : t)));
+      setTemplates(templates.map((t) => (t.id === tpl.id ? tpl : t));
     } else {
       setTemplates([tpl, ...templates]);
     }
@@ -291,7 +291,7 @@ export default function App() {
   };
 
   const handleEditFormat = (oldFmt: string, newFmt: string) => {
-    setDocFormats(docFormats.map((f) => (f === oldFmt ? newFmt : f)));
+    setDocFormats(docFormats.map((f) => (f === oldFmt ? { ...f, category: newFmt } : f) as any));
     const updated = templates.map((t) => (t.format === oldFmt ? { ...t, format: newFmt } : t));
     setTemplates(updated);
     if (!userProfile?.firmId) {
@@ -355,6 +355,16 @@ export default function App() {
 
   const handleOpenDocModalForTemplate = (template: DocumentTemplate) => {
     setSelectedTemplateForDoc(template);
+
+    if (selectedClientForDoc) {
+      setDocClientName(selectedClientForDoc.name);
+      setDocClientCpf(selectedClientForDoc.cpf);
+      setPrefilledGeneratedText(null);
+      setClientSelectorModalOpen(false);
+      setDocModalOpen(true);
+      return;
+    }
+
     setClientSelectorModalOpen(true);
   };
 
@@ -363,6 +373,7 @@ export default function App() {
     client: Client,
     template: DocumentTemplate
   ) => {
+    setSelectedClientForDoc(client);
     setDocClientName(client.name);
     setDocClientCpf(client.cpf);
     setSelectedTemplateForDoc(template);
@@ -386,8 +397,15 @@ export default function App() {
     });
   };
 
-  const handleSelectClientForDoc = (clientName: string, clientCpf: string) => {
-    openDefaultTenantTemplate(clientName, clientCpf);
+  const handleSelectClientForDoc = (client: Client) => {
+    setSelectedClientForDoc(client);
+    setDocClientName(client.name);
+    setDocClientCpf(client.cpf);
+    setSelectedTemplateForDoc(null);
+    setPrefilledGeneratedText(null);
+    setClientSelectorModalOpen(false);
+    setDocModalOpen(false);
+    setCurrentTab('documents');
   };
 
   if (authLoading) {
@@ -620,6 +638,9 @@ export default function App() {
         isOpen={docModalOpen}
         onClose={() => {
           setDocModalOpen(false);
+          setSelectedClientForDoc(null);
+          setDocClientName('');
+          setDocClientCpf('');
           setPrefilledGeneratedText(null);
         }}
         template={selectedTemplateForDoc}
