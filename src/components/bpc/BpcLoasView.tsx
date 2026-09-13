@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Client } from '../../types';
 import { BpcCaseItem, BpcSubTab } from '../../types/bpc';
 import { auth } from '../../lib/firebase';
+import { getBrasiliaFormatted } from '../../utils/dateUtils';
 import { getUserProfileInFirestore } from '../../services/firestoreService';
 import {
   saveBpcCaseInFirestore,
@@ -31,6 +32,8 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
   const [firmId, setFirmId] = useState<string | null>(null);
   const [isLoadingCases, setIsLoadingCases] = useState(true);
   const [loadError, setLoadError] = useState('');
+
+  const activeBpcCases = bpcCases.filter((bpcCase) => !bpcCase.archivedAt);
 
   useEffect(() => {
     let active = true;
@@ -133,6 +136,59 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
     }
   };
 
+  const handleArchiveCase = async (bpcCase: BpcCaseItem) => {
+    if (!firmId) {
+      window.alert('Não foi possível identificar o escritório para arquivar o caso BPC.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Arquivar o caso BPC de ${bpcCase.clientName}? O registro poderá ser restaurado depois.`
+    );
+
+    if (!confirmed) return;
+
+    const now = getBrasiliaFormatted();
+
+    try {
+      await saveBpcCaseInFirestore(
+        {
+          ...bpcCase,
+          archivedAt: now,
+          updatedAt: now,
+        },
+        firmId
+      );
+      setEditingCase(null);
+    } catch (error) {
+      console.error('Erro ao arquivar caso BPC:', error);
+      window.alert('Não foi possível arquivar o caso BPC. Tente novamente.');
+    }
+  };
+
+  const handleRestoreCase = async (bpcCase: BpcCaseItem) => {
+    if (!firmId) {
+      window.alert('Não foi possível identificar o escritório para restaurar o caso BPC.');
+      return;
+    }
+
+    const now = getBrasiliaFormatted();
+
+    try {
+      await saveBpcCaseInFirestore(
+        {
+          ...bpcCase,
+          archivedAt: undefined,
+          updatedAt: now,
+        },
+        firmId
+      );
+    } catch (error) {
+      console.error('Erro ao restaurar caso BPC:', error);
+      window.alert('Não foi possível restaurar o caso BPC. Tente novamente.');
+    }
+  };
+
   const navItems: { id: BpcSubTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'cases', label: 'Casos', icon: 'folder_open' },
@@ -212,7 +268,7 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
         <div>
           {activeSubTab === 'dashboard' && (
             <BpcDashboardSection
-              cases={bpcCases}
+              cases={activeBpcCases}
               onNavigateSubTab={navigateToSubTab}
               onOpenNewCase={() => navigateToSubTab('new-case')}
             />
@@ -230,6 +286,8 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
                 cases={bpcCases}
                 onOpenNewCase={() => navigateToSubTab('new-case')}
                 onSelectCase={handleOpenCaseEditor}
+                onArchiveCase={handleArchiveCase}
+                onRestoreCase={handleRestoreCase}
               />
             )
           )}
@@ -244,16 +302,16 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
 
           {activeSubTab === 'pendencias' && (
             <BpcPendenciasSection
-              cases={bpcCases}
+              cases={activeBpcCases}
               onOpenNewCase={() => navigateToSubTab('new-case')}
             />
           )}
 
-          {activeSubTab === 'prazos' && <BpcPrazosSection cases={bpcCases} />}
+          {activeSubTab === 'prazos' && <BpcPrazosSection cases={activeBpcCases} />}
 
-          {activeSubTab === 'avaliacoes' && <BpcAvaliacoesSection cases={bpcCases} />}
+          {activeSubTab === 'avaliacoes' && <BpcAvaliacoesSection cases={activeBpcCases} />}
 
-          {activeSubTab === 'auditorias' && <BpcAuditoriasSection cases={bpcCases} />}
+          {activeSubTab === 'auditorias' && <BpcAuditoriasSection cases={activeBpcCases} />}
         </div>
       </div>
     </main>
