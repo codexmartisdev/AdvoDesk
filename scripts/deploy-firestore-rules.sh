@@ -27,16 +27,30 @@ echo "Banco Firestore: ${DATABASE_ID}"
 echo "Arquivo: ${RULES_FILE}"
 echo
 
-# Usa diretamente a identidade já autenticada no Cloud Shell.
-# A Firebase Rules API será a autoridade para confirmar se essa identidade
-# possui permissão real de leitura/publicação no projeto.
-ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null || true)"
-[[ -n "${ACCESS_TOKEN}" ]] || fail "Não foi possível obter access token da conta ativa do gcloud."
-
 ACTIVE_ACCOUNT="$(gcloud config get account 2>/dev/null || true)"
-if [[ -n "${ACTIVE_ACCOUNT}" ]]; then
+if [[ -n "${ACTIVE_ACCOUNT}" && "${ACTIVE_ACCOUNT}" != "(unset)" ]]; then
   echo "Conta ativa do gcloud: ${ACTIVE_ACCOUNT}"
 fi
+
+# Primeiro tenta as credenciais normais da conta ativa do gcloud.
+ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null || true)"
+TOKEN_SOURCE="gcloud"
+
+# Em algumas sessões do Cloud Shell a identidade disponível está exposta apenas
+# como Application Default Credentials (ADC). Usa ADC como fallback seguro.
+if [[ -z "${ACCESS_TOKEN}" ]]; then
+  ACCESS_TOKEN="$(gcloud auth application-default print-access-token 2>/dev/null || true)"
+  TOKEN_SOURCE="adc"
+fi
+
+[[ -n "${ACCESS_TOKEN}" ]] || {
+  echo "Nenhum token OAuth disponível nesta sessão." >&2
+  echo "Contas conhecidas pelo gcloud:" >&2
+  gcloud auth list 2>/dev/null || true
+  fail "Autorize novamente o Cloud Shell com 'gcloud auth login' e execute o script de novo."
+}
+
+echo "Fonte de autenticação: ${TOKEN_SOURCE}"
 
 # Descobre a release atualmente ativa para permitir rollback manual se necessário.
 CURRENT_RELEASE_FILE="$(mktemp)"
@@ -52,7 +66,10 @@ if [[ "${CURRENT_STATUS}" == "200" ]]; then
   fi
 elif [[ "${CURRENT_STATUS}" == "403" ]]; then
   cat "${CURRENT_RELEASE_FILE}" >&2
-  fail "A conta ativa não possui permissão suficiente na Firebase Rules API para este projeto."
+  fail "A identidade autenticada não possui permissão suficiente na Firebase Rules API para este projeto."
+elif [[ "${CURRENT_STATUS}" == "401" ]]; then
+  cat "${CURRENT_RELEASE_FILE}" >&2
+  fail "O token da sessão não foi aceito. Execute 'gcloud auth login' no Cloud Shell e tente novamente."
 elif [[ "${CURRENT_STATUS}" != "404" ]]; then
   cat "${CURRENT_RELEASE_FILE}" >&2
   fail "Não foi possível consultar a release atual (HTTP ${CURRENT_STATUS})."
