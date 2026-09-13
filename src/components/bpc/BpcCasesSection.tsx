@@ -119,7 +119,7 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
               <div className="col-span-2">CadÚnico & NIS</div>
               <div className="col-span-3">Status / Etapa Atual</div>
               <div className="col-span-2">Protocolo INSS</div>
-              <div className="col-span-1 text-right">Ação</div>
+              <div className="col-span-1 text-right">Registro</div>
             </div>
 
             {filteredCases.map((item) => (
@@ -163,7 +163,7 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
                 {/* CadÚnico & NIS */}
                 <div className="col-span-2 text-xs">
                   <span className="text-[11px] font-medium text-slate-700 block">
-                    NIS: {item.nisNumber || 'Pendente'}
+                    NIS: {item.nisNumber || 'Não informado'}
                   </span>
                   <span
                     className={`text-[10px] font-bold inline-block px-1.5 py-0.5 rounded-md mt-0.5 ${
@@ -172,7 +172,7 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
                         : 'bg-amber-50 text-amber-700 border border-amber-200'
                     }`}
                   >
-                    {item.cadUnicoStatus || 'Verificar CadÚnico'}
+                    {item.cadUnicoStatus || 'Não informado'}
                   </span>
                 </div>
 
@@ -189,17 +189,17 @@ export const BpcCasesSection: React.FC<BpcCasesSectionProps> = ({
                 {/* Protocolo INSS */}
                 <div className="col-span-2 text-xs text-slate-600">
                   <span className="font-mono text-[11px] block">
-                    {item.protocolNumber || 'Aguardando Protocolo'}
+                    {item.protocolNumber || 'Não informado'}
                   </span>
                   {item.derDate && (
                     <span className="text-[10px] text-slate-400 block">DER: {item.derDate}</span>
                   )}
                 </div>
 
-                {/* Actions */}
+                {/* Record marker */}
                 <div className="col-span-1 flex justify-end w-full md:w-auto">
                   <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
-                    Ativo
+                    Registrado
                   </span>
                 </div>
               </div>
