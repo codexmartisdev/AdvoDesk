@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Client, FamilyMember, ClientDocumentChecklist } from '../types';
+import {
+  formatCep,
+  formatCpf,
+  formatPhone,
+  isValidCep,
+  isValidCpf,
+  isValidEmail,
+  isValidPhone,
+  normalizeWhitespace,
+  onlyDigits,
+} from '../utils/clientDataUtils';
 
 interface ClientDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   client: Client | null;
+  existingClients?: Client[];
   onSaveClient: (updatedClient: Client) => void;
   onDeleteClient?: (clientId: string) => void;
-  onSelectClientForDoc?: (clientName: string, clientCpf: string) => void;
+  onSelectClientForDoc?: () => void;
   clientCategories?: string[];
 }
 
@@ -15,6 +27,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   isOpen,
   onClose,
   client,
+  existingClients = [],
   onSaveClient,
   onDeleteClient,
   onSelectClientForDoc,
@@ -23,6 +36,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<'pessoal' | 'familia' | 'contato_endereco' | 'previdência' | 'docs_banco'>('pessoal');
+  const [validationError, setValidationError] = useState('');
+  const [familyValidationError, setFamilyValidationError] = useState('');
 
   // Form State
   const [formData, setFormData] = useState<Partial<Client>>({});
@@ -59,13 +74,22 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
       );
       setIsEditing(false);
       setShowDeleteConfirm(false);
+      setValidationError('');
+      setFamilyValidationError('');
     }
   }, [client]);
 
   if (!isOpen || !client) return null;
 
   const handleChange = (field: keyof Client, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    let nextValue = value;
+    if (typeof value === 'string') {
+      if (field === 'cpf') nextValue = formatCpf(value);
+      if (field === 'phone' || field === 'phoneSecondary') nextValue = formatPhone(value);
+      if (field === 'addressZip') nextValue = formatCep(value);
+    }
+    setValidationError('');
+    setFormData((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const handleToggleDoc = (key: keyof ClientDocumentChecklist) => {
@@ -73,11 +97,33 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   };
 
   const handleAddFamilyMember = () => {
-    if (!newFmName.trim()) return;
+    const normalizedName = normalizeWhitespace(newFmName);
+    const normalizedCpf = formatCpf(newFmCpf);
+
+    if (!normalizedName) {
+      setFamilyValidationError('Informe o nome do membro familiar.');
+      return;
+    }
+
+    if (normalizedCpf && !isValidCpf(normalizedCpf)) {
+      setFamilyValidationError('O CPF do membro familiar é inválido.');
+      return;
+    }
+
+    if (normalizedCpf) {
+      const cpfDigits = onlyDigits(normalizedCpf);
+      const duplicatesClient = cpfDigits === onlyDigits(formData.cpf || '');
+      const duplicatesFamily = family.some((member) => onlyDigits(member.cpf || '') === cpfDigits);
+      if (duplicatesClient || duplicatesFamily) {
+        setFamilyValidationError('Este CPF já está vinculado à ficha ou à composição familiar.');
+        return;
+      }
+    }
+
     const newMember: FamilyMember = {
       id: `fm-${Date.now()}`,
-      name: newFmName.trim(),
-      cpf: newFmCpf.trim(),
+      name: normalizedName,
+      cpf: normalizedCpf,
       birthDate: newFmBirth,
       kinship: newFmKinship,
       income: newFmIncome || 'R$ 0,00',
@@ -87,6 +133,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
     setNewFmCpf('');
     setNewFmBirth('');
     setNewFmIncome('R$ 0,00');
+    setFamilyValidationError('');
   };
 
   const handleRemoveFamilyMember = (id: string) => {
@@ -94,12 +141,103 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   };
 
   const handleSave = () => {
+    const normalizedName = normalizeWhitespace(formData.name || '');
+    const normalizedCpf = formatCpf(formData.cpf || '');
+    const normalizedPhone = formatPhone(formData.phone || '');
+    const normalizedSecondaryPhone = formatPhone(formData.phoneSecondary || '');
+    const normalizedZip = formatCep(formData.addressZip || '');
+    const normalizedEmail = (formData.email || '').trim();
+
+    if (normalizedName.length < 3) {
+      setValidationError('Informe o nome completo do cliente.');
+      setActiveTab('pessoal');
+      return;
+    }
+
+    if (!isValidCpf(normalizedCpf)) {
+      setValidationError('Informe um CPF válido com 11 dígitos.');
+      setActiveTab('pessoal');
+      return;
+    }
+
+    const duplicateCpf = existingClients.some(
+      (item) => item.id !== client.id && onlyDigits(item.cpf || '') === onlyDigits(normalizedCpf)
+    );
+    if (duplicateCpf) {
+      setValidationError('Já existe outro cliente cadastrado com este CPF.');
+      setActiveTab('pessoal');
+      return;
+    }
+
+    if (!isValidPhone(normalizedPhone)) {
+      setValidationError('Informe um telefone principal válido com DDD.');
+      setActiveTab('contato_endereco');
+      return;
+    }
+
+    if (normalizedSecondaryPhone && !isValidPhone(normalizedSecondaryPhone)) {
+      setValidationError('O telefone secundário deve possuir DDD e 10 ou 11 dígitos.');
+      setActiveTab('contato_endereco');
+      return;
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      setValidationError('Informe um endereço de e-mail válido ou deixe o campo vazio.');
+      setActiveTab('contato_endereco');
+      return;
+    }
+
+    if (normalizedZip && !isValidCep(normalizedZip)) {
+      setValidationError('O CEP deve possuir 8 dígitos.');
+      setActiveTab('contato_endereco');
+      return;
+    }
+
+    if (!formData.typePill) {
+      setValidationError('Selecione a categoria ou benefício do cliente.');
+      setActiveTab('pessoal');
+      return;
+    }
+
+    const normalizedFamily = family.map((member) => ({
+      ...member,
+      name: normalizeWhitespace(member.name || ''),
+      cpf: member.cpf ? formatCpf(member.cpf) : '',
+    }));
+
     const updated: Client = {
       ...(formData as Client),
-      familyMembers: family,
+      name: normalizedName,
+      socialName: normalizeWhitespace(formData.socialName || ''),
+      cpf: normalizedCpf,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      phoneSecondary: normalizedSecondaryPhone,
+      nationality: normalizeWhitespace(formData.nationality || ''),
+      birthplace: normalizeWhitespace(formData.birthplace || ''),
+      motherName: normalizeWhitespace(formData.motherName || ''),
+      fatherName: normalizeWhitespace(formData.fatherName || ''),
+      propertyRegime: normalizeWhitespace(formData.propertyRegime || ''),
+      spouseName: normalizeWhitespace(formData.spouseName || ''),
+      addressStreet: normalizeWhitespace(formData.addressStreet || ''),
+      addressNumber: normalizeWhitespace(formData.addressNumber || ''),
+      addressComplement: normalizeWhitespace(formData.addressComplement || ''),
+      addressNeighborhood: normalizeWhitespace(formData.addressNeighborhood || ''),
+      addressCityUf: normalizeWhitespace(formData.addressCityUf || ''),
+      addressZip: normalizedZip,
+      occupation: normalizeWhitespace(formData.occupation || ''),
+      nitPisPasep: (formData.nitPisPasep || '').trim(),
+      benefitNumber: (formData.benefitNumber || '').trim(),
+      bankName: normalizeWhitespace(formData.bankName || ''),
+      bankAgency: (formData.bankAgency || '').trim(),
+      bankAccount: (formData.bankAccount || '').trim(),
+      pixKey: (formData.pixKey || '').trim(),
+      familyMembers: normalizedFamily,
       documentChecklist: docs,
       updatedAt: `Atualizado ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
     };
+    setValidationError('');
+    setFormData(updated);
     onSaveClient(updated);
     setIsEditing(false);
   };
@@ -201,7 +339,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 type="button"
                 onClick={() => {
                   onClose();
-                  onSelectClientForDoc(formData.name || '', formData.cpf || '');
+                  onSelectClientForDoc();
                 }}
                 className="px-3 py-2 rounded-xl bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100 text-xs font-bold flex items-center gap-1.5 transition-colors"
               >
@@ -254,6 +392,13 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
             )}
           </div>
         </div>
+
+        {validationError && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-red-800 font-semibold text-xs flex items-start gap-2" role="alert">
+            <span className="material-symbols-outlined text-base mt-0.5">error</span>
+            <span>{validationError}</span>
+          </div>
+        )}
 
         {/* Section Navigation Tabs */}
         <div className="flex border-b border-slate-200 mt-4 overflow-x-auto text-xs font-bold">
@@ -365,6 +510,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   {isEditing ? (
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={14}
                       value={formData.cpf || ''}
                       onChange={(e) => handleChange('cpf', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono font-bold"
@@ -559,41 +706,56 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 </div>
 
                 {isEditing && (
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-5 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nome do dependente"
-                      value={newFmName}
-                      onChange={(e) => setNewFmName(e.target.value)}
-                      className="sm:col-span-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-slate-900"
-                    />
-                    <input
-                      type="text"
-                      placeholder="CPF"
-                      value={newFmCpf}
-                      onChange={(e) => setNewFmCpf(e.target.value)}
-                      className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-slate-900"
-                    />
-                    <select
-                      value={newFmKinship}
-                      onChange={(e) => setNewFmKinship(e.target.value)}
-                      className="bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-slate-900"
-                    >
-                      <option value="Filho(a)">Filho(a)</option>
-                      <option value="Cônjuge">Cônjuge</option>
-                      <option value="Pai/Mãe">Pai/Mãe</option>
-                      <option value="Irmão(ã)">Irmão(ã)</option>
-                      <option value="Outro">Outro</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleAddFamilyMember}
-                      className="bg-blue-900 text-white font-bold rounded-xl py-1.5 px-3 hover:bg-blue-800 transition-colors flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-sm">add</span>
-                      <span>Incluir</span>
-                    </button>
-                  </div>
+                  <>
+                    {familyValidationError && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-800 font-semibold" role="alert">
+                        {familyValidationError}
+                      </div>
+                    )}
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-5 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nome do dependente"
+                        value={newFmName}
+                        onChange={(e) => {
+                          setNewFmName(e.target.value);
+                          setFamilyValidationError('');
+                        }}
+                        className="sm:col-span-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-slate-900"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={14}
+                        placeholder="CPF"
+                        value={newFmCpf}
+                        onChange={(e) => {
+                          setNewFmCpf(formatCpf(e.target.value));
+                          setFamilyValidationError('');
+                        }}
+                        className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-slate-900 font-mono"
+                      />
+                      <select
+                        value={newFmKinship}
+                        onChange={(e) => setNewFmKinship(e.target.value)}
+                        className="bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-slate-900"
+                      >
+                        <option value="Filho(a)">Filho(a)</option>
+                        <option value="Cônjuge">Cônjuge</option>
+                        <option value="Pai/Mãe">Pai/Mãe</option>
+                        <option value="Irmão(ã)">Irmão(ã)</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAddFamilyMember}
+                        className="bg-blue-900 text-white font-bold rounded-xl py-1.5 px-3 hover:bg-blue-800 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        <span>Incluir</span>
+                      </button>
+                    </div>
+                  </>
                 )}
 
                 <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
@@ -659,6 +821,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   {isEditing ? (
                     <input
                       type="text"
+                      inputMode="tel"
+                      maxLength={15}
                       value={formData.phone || ''}
                       onChange={(e) => handleChange('phone', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
@@ -675,6 +839,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   {isEditing ? (
                     <input
                       type="text"
+                      inputMode="tel"
+                      maxLength={15}
                       value={formData.phoneSecondary || ''}
                       onChange={(e) => handleChange('phoneSecondary', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
@@ -793,7 +959,9 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                     {isEditing ? (
                       <input
                         type="text"
-                        placeholder="64200-000"
+                        inputMode="numeric"
+                        maxLength={9}
+                        placeholder="00000-000"
                         value={formData.addressZip || ''}
                         onChange={(e) => handleChange('addressZip', e.target.value)}
                         className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium font-mono"
