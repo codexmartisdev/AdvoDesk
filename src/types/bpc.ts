@@ -91,6 +91,9 @@ export interface BpcPendenciaItem {
   deadline?: string;
   resolved: boolean;
   severity: 'alta' | 'media' | 'baixa';
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
 }
 
 export interface BpcDeadlineItem {
