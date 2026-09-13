@@ -29,10 +29,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [clientName, setClientName] = useState('');
   const [socialName, setSocialName] = useState('');
   const [clientCpf, setClientCpf] = useState('');
-  const [rgNumber, setRgNumber] = useState('');
-  const [rgIssuer, setRgIssuer] = useState('');
-  const [rgUf, setRgUf] = useState('');
-  const [rgIssueDate, setRgIssueDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [nationality, setNationality] = useState('');
   const [birthplace, setBirthplace] = useState('');
@@ -64,8 +60,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [nitPisPasep, setNitPisPasep] = useState('');
   const [benefitNumber, setBenefitNumber] = useState('');
 
-  const [docRgCpf, setDocRgCpf] = useState(true);
-  const [docComprovanteResidencia, setDocComprovanteResidencia] = useState(true);
+  const [docCpf, setDocCpf] = useState(false);
+  const [docComprovanteResidencia, setDocComprovanteResidencia] = useState(false);
   const [docCarteiraTrabalho, setDocCarteiraTrabalho] = useState(false);
   const [docComprovantesRenda, setDocComprovantesRenda] = useState(false);
   const [docLaudosMedicos, setDocLaudosMedicos] = useState(false);
@@ -76,7 +72,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [bankAccount, setBankAccount] = useState('');
   const [pixKey, setPixKey] = useState('');
 
-  const [typePill, setTypePill] = useState(clientCategories[0] || 'BPC Loas');
+  const [typePill, setTypePill] = useState('');
 
   if (!isOpen) return null;
 
@@ -93,10 +89,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       status: 'Ativo',
       updatedAt: 'Criado agora',
       cpf: clientCpf.trim(),
-      rgNumber,
-      rgIssuer,
-      rgUf,
-      rgIssueDate,
       birthDate,
       nationality,
       birthplace,
@@ -124,7 +116,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       nitPisPasep,
       benefitNumber,
       documentChecklist: {
-        rgCpf: docRgCpf,
+        rgCpf: docCpf,
         comprovanteResidencia: docComprovanteResidencia,
         carteiraTrabalhoCnis: docCarteiraTrabalho,
         comprovantesRendaFamilia: docComprovantesRenda,
@@ -206,43 +198,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     placeholder="000.000.000-00"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono font-bold"
                   />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">RG (Número)</label>
-                  <input
-                    type="text"
-                    value={rgNumber}
-                    onChange={(e) => setRgNumber(e.target.value)}
-                    placeholder="00.000.000-0"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Órgão Emissor / UF / Expedição</label>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      placeholder="SSP"
-                      value={rgIssuer}
-                      onChange={(e) => setRgIssuer(e.target.value)}
-                      className="w-1/3 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900"
-                    />
-                    <input
-                      type="text"
-                      placeholder="UF"
-                      value={rgUf}
-                      onChange={(e) => setRgUf(e.target.value)}
-                      className="w-1/4 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900 text-center uppercase"
-                    />
-                    <input
-                      type="date"
-                      value={rgIssueDate}
-                      onChange={(e) => setRgIssueDate(e.target.value)}
-                      className="flex-1 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900"
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -537,10 +492,12 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Categoria / Benefício *</label>
                   <select
+                    required
                     value={typePill}
                     onChange={(e) => setTypePill(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   >
+                    <option value="">Selecione</option>
                     {clientCategories.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -586,11 +543,11 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-200 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={docRgCpf}
-                      onChange={(e) => setDocRgCpf(e.target.checked)}
+                      checked={docCpf}
+                      onChange={(e) => setDocCpf(e.target.checked)}
                       className="rounded text-blue-900 focus:ring-blue-900"
                     />
-                    <span>RG e CPF</span>
+                    <span>CPF</span>
                   </label>
 
                   <label className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-200 cursor-pointer">
