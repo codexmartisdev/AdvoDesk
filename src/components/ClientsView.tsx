@@ -297,7 +297,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
             <div className="flex items-center space-x-3 text-red-600">
-              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-xl">warning</span>
               </div>
               <div>
