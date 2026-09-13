@@ -13,6 +13,19 @@ interface NewCaseModalProps {
   clientCategories?: string[];
 }
 
+const createClientIdentity = () => {
+  const rawId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const compactId = rawId.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+  return {
+    id: `client-${rawId}`,
+    code: `CLI-${compactId.slice(-8)}`,
+  };
+};
+
 export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   isOpen,
   onClose,
@@ -80,12 +93,15 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
     e.preventDefault();
     if (!clientName.trim()) return;
 
+    const identity = createClientIdentity();
+
     const newClient: Client = {
-      id: `c-${Date.now()}`,
-      code: `${Math.floor(100 + Math.random() * 899)}.${Math.floor(100 + Math.random() * 899)}.${Math.floor(10 + Math.random() * 89)}-X`,
+      id: identity.id,
+      code: identity.code,
       name: clientName,
       socialName,
       typePill,
+      // Regra operacional: um cadastro concluído entra na carteira como cliente ativo.
       status: 'Ativo',
       updatedAt: 'Criado agora',
       cpf: clientCpf.trim(),
