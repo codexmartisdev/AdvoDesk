@@ -92,7 +92,7 @@ export const BpcAvaliacoesSection: React.FC<BpcAvaliacoesSectionProps> = ({ case
               <div key={c.id} className="py-2.5 flex items-center justify-between text-xs">
                 <div>
                   <span className="font-bold text-slate-800">{c.clientName}</span>
-                  <span className="text-slate-500 ml-2 text-[11px]">(CID: {c.cidPrincipal || 'A definir'})</span>
+                  <span className="text-slate-500 ml-2 text-[11px]">(CID: {c.cidPrincipal || 'Não informado'})</span>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700">
                   {c.status}
