@@ -134,6 +134,18 @@ service cloud.firestore {
     }
 
     // ==========================================
+    // 4F. BPC AUDITORIA (/bpcAuditorias/{eventId})
+    // ==========================================
+    match /bpcAuditorias/{eventId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId)
+        && request.resource.data.actorUid == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+
+    // ==========================================
     // 5. WORKFLOW TEMPLATES & VERSIONS
     // ==========================================
     match /workflowTemplates/{templateId} {
