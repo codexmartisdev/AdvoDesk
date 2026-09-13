@@ -65,6 +65,8 @@ export const BpcNewCaseSection: React.FC<BpcNewCaseSectionProps> = ({
     setIsSaving(true);
     try {
       await onSaveCase(newCase);
+    } catch {
+      // O componente pai já exibe a mensagem de erro e mantém o formulário aberto.
     } finally {
       setIsSaving(false);
     }
