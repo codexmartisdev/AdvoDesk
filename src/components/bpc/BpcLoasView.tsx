@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Client } from '../../types';
-import { BpcCaseItem, BpcPendenciaItem, BpcSubTab } from '../../types/bpc';
+import { BpcCaseItem, BpcDeadlineItem, BpcPendenciaItem, BpcSubTab } from '../../types/bpc';
 import { auth } from '../../lib/firebase';
 import { getBrasiliaFormatted } from '../../utils/dateUtils';
 import { getUserProfileInFirestore } from '../../services/firestoreService';
@@ -12,6 +12,10 @@ import {
   saveBpcPendenciaInFirestore,
   subscribeToBpcPendencias,
 } from '../../services/bpcPendenciasFirestoreService';
+import {
+  saveBpcDeadlineInFirestore,
+  subscribeToBpcDeadlines,
+} from '../../services/bpcPrazosFirestoreService';
 import { BpcDashboardSection } from './BpcDashboardSection';
 import { BpcCasesSection } from './BpcCasesSection';
 import { BpcNewCaseSection } from './BpcNewCaseSection';
@@ -33,11 +37,13 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<BpcSubTab>(initialSubTab);
   const [bpcCases, setBpcCases] = useState<BpcCaseItem[]>([]);
   const [bpcPendencias, setBpcPendencias] = useState<BpcPendenciaItem[]>([]);
+  const [bpcDeadlines, setBpcDeadlines] = useState<BpcDeadlineItem[]>([]);
   const [editingCase, setEditingCase] = useState<BpcCaseItem | null>(null);
   const [firmId, setFirmId] = useState<string | null>(null);
   const [isLoadingCases, setIsLoadingCases] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [pendenciasError, setPendenciasError] = useState('');
+  const [prazosError, setPrazosError] = useState('');
 
   const activeBpcCases = bpcCases.filter((bpcCase) => !bpcCase.archivedAt);
 
@@ -45,6 +51,7 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
     let active = true;
     let unsubscribeCases: (() => void) | undefined;
     let unsubscribePendencias: (() => void) | undefined;
+    let unsubscribeDeadlines: (() => void) | undefined;
 
     const connectToBpcData = async () => {
       const currentUser = auth.currentUser;
@@ -99,6 +106,19 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
           setPendenciasError('Não foi possível carregar as pendências BPC do Firestore.');
         }
       );
+
+      unsubscribeDeadlines = subscribeToBpcDeadlines(
+        resolvedFirmId,
+        (persistedDeadlines) => {
+          if (!active) return;
+          setBpcDeadlines(persistedDeadlines);
+          setPrazosError('');
+        },
+        () => {
+          if (!active) return;
+          setPrazosError('Não foi possível carregar os prazos BPC do Firestore.');
+        }
+      );
     };
 
     void connectToBpcData().catch((error) => {
@@ -113,6 +133,7 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
       active = false;
       unsubscribeCases?.();
       unsubscribePendencias?.();
+      unsubscribeDeadlines?.();
     };
   }, []);
 
@@ -252,6 +273,47 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
     }
   };
 
+  const handleSaveDeadline = async (item: BpcDeadlineItem) => {
+    if (!firmId) {
+      window.alert('Não foi possível identificar o escritório para salvar o prazo.');
+      throw new Error('Firm ID ausente ao salvar prazo BPC.');
+    }
+
+    try {
+      await saveBpcDeadlineInFirestore(item, firmId);
+    } catch (error) {
+      console.error('Erro ao salvar prazo BPC:', error);
+      window.alert('Não foi possível salvar o prazo BPC. Tente novamente.');
+      throw error;
+    }
+  };
+
+  const handleToggleDeadlineStatus = async (item: BpcDeadlineItem) => {
+    if (!firmId) {
+      window.alert('Não foi possível identificar o escritório para atualizar o prazo.');
+      throw new Error('Firm ID ausente ao atualizar prazo BPC.');
+    }
+
+    const now = getBrasiliaFormatted();
+    const completed = item.status !== 'Concluído';
+
+    try {
+      await saveBpcDeadlineInFirestore(
+        {
+          ...item,
+          status: completed ? 'Concluído' : 'Pendente',
+          updatedAt: now,
+          completedAt: completed ? now : undefined,
+        },
+        firmId
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar prazo BPC:', error);
+      window.alert('Não foi possível atualizar o prazo BPC. Tente novamente.');
+      throw error;
+    }
+  };
+
   const navItems: { id: BpcSubTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'cases', label: 'Casos', icon: 'folder_open' },
@@ -309,6 +371,12 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
         {activeSubTab === 'pendencias' && pendenciasError && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
             {pendenciasError}
+          </div>
+        )}
+
+        {activeSubTab === 'prazos' && prazosError && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+            {prazosError}
           </div>
         )}
 
@@ -379,7 +447,14 @@ export const BpcLoasView: React.FC<BpcLoasViewProps> = ({
             />
           )}
 
-          {activeSubTab === 'prazos' && <BpcPrazosSection cases={activeBpcCases} />}
+          {activeSubTab === 'prazos' && (
+            <BpcPrazosSection
+              cases={activeBpcCases}
+              deadlines={bpcDeadlines}
+              onSaveDeadline={handleSaveDeadline}
+              onToggleStatus={handleToggleDeadlineStatus}
+            />
+          )}
 
           {activeSubTab === 'avaliacoes' && <BpcAvaliacoesSection cases={activeBpcCases} />}
 
