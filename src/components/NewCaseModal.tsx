@@ -30,17 +30,17 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [socialName, setSocialName] = useState('');
   const [clientCpf, setClientCpf] = useState('');
   const [rgNumber, setRgNumber] = useState('');
-  const [rgIssuer, setRgIssuer] = useState('SSP');
+  const [rgIssuer, setRgIssuer] = useState('');
   const [rgUf, setRgUf] = useState('');
   const [rgIssueDate, setRgIssueDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [nationality, setNationality] = useState('Brasileiro(a)');
+  const [nationality, setNationality] = useState('');
   const [birthplace, setBirthplace] = useState('');
-  const [gender, setGender] = useState('Feminino');
+  const [gender, setGender] = useState('');
   const [motherName, setMotherName] = useState('');
   const [fatherName, setFatherName] = useState('');
 
-  const [maritalStatus, setMaritalStatus] = useState('Solteiro(a)');
+  const [maritalStatus, setMaritalStatus] = useState('');
   const [propertyRegime, setPropertyRegime] = useState('');
   const [spouseName, setSpouseName] = useState('');
 
@@ -282,6 +282,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setGender(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                   >
+                    <option value="">Selecione</option>
                     <option value="Feminino">Feminino</option>
                     <option value="Masculino">Masculino</option>
                     <option value="Outro">Outro</option>
@@ -328,6 +329,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setMaritalStatus(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                   >
+                    <option value="">Selecione</option>
                     <option value="Solteiro(a)">Solteiro(a)</option>
                     <option value="Casado(a)">Casado(a)</option>
                     <option value="União Estável">União Estável</option>
