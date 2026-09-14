@@ -406,7 +406,7 @@ export default function App() {
       <Navigation currentTab={currentTab} onTabChange={setCurrentTab} searchQuery={searchQuery} onSearchChange={setSearchQuery} settings={settings} user={user} onLogout={handleLogout} />
 
       <Suspense fallback={<main className="md:ml-64 pt-24 text-center text-sm text-slate-500">Carregando...</main>}>
-        {currentTab === 'dashboard' && <DashboardView events={events} clients={clients} cases={cases} templates={templates} onNavigateToTab={setCurrentTab} onOpenNewClientModal={() => setNewCaseModalOpen(true)} onOpenDocModal={openDefaultTenantTemplate} onSelectClientForDoc={handleSelectClientForDoc} />}
+        {currentTab === 'dashboard' && <DashboardView events={events} clients={clients} cases={cases} templates={templates} onNavigateToTab={setCurrentTab} onOpenNewClientModal={() => setNewCaseModalOpen(true)} onOpenDocModal={openDefaultTenantTemplate} onSelectClientForDoc={handleSelectClientForDoc} onOpenCase={openCaseFromAgenda} onOpenClient={openClientFromAgenda} />}
         {currentTab === 'bpc-loas' && <BpcLoasView clients={clients} />}
         {currentTab === 'clients' && <ClientsView clients={clients} searchQuery={searchQuery} onOpenAddClientModal={() => setNewCaseModalOpen(true)} onSelectClientForDoc={handleSelectClientForDoc} onSaveClient={handleSaveClient} clientCategories={settings.clientCategories} />}
         {String(currentTab) === 'cases' && <CasesWorkspaceView searchQuery={searchQuery} />}
