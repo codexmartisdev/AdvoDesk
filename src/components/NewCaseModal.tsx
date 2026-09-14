@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import { LegalCase, Client } from '../types';
 import { getBrasiliaISO, getBrasiliaFormatted } from '../utils/dateUtils';
+import {
+  formatCep,
+  formatCpf,
+  formatPhone,
+  isValidCep,
+  isValidCpf,
+  isValidEmail,
+  isValidPhone,
+  normalizeWhitespace,
+  onlyDigits,
+} from '../utils/clientDataUtils';
 
 interface NewCaseModalProps {
   isOpen: boolean;
@@ -13,9 +24,23 @@ interface NewCaseModalProps {
   clientCategories?: string[];
 }
 
+const createClientIdentity = () => {
+  const rawId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const compactId = rawId.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+  return {
+    id: `client-${rawId}`,
+    code: `CLI-${compactId.slice(-8)}`,
+  };
+};
+
 export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   isOpen,
   onClose,
+  clients = [],
   onClientCreated,
   clientCategories = [
     'BPC Loas',
@@ -29,18 +54,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [clientName, setClientName] = useState('');
   const [socialName, setSocialName] = useState('');
   const [clientCpf, setClientCpf] = useState('');
-  const [rgNumber, setRgNumber] = useState('');
-  const [rgIssuer, setRgIssuer] = useState('SSP');
-  const [rgUf, setRgUf] = useState('');
-  const [rgIssueDate, setRgIssueDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [nationality, setNationality] = useState('Brasileiro(a)');
+  const [nationality, setNationality] = useState('');
   const [birthplace, setBirthplace] = useState('');
-  const [gender, setGender] = useState('Feminino');
+  const [gender, setGender] = useState('');
   const [motherName, setMotherName] = useState('');
   const [fatherName, setFatherName] = useState('');
 
-  const [maritalStatus, setMaritalStatus] = useState('Solteiro(a)');
+  const [maritalStatus, setMaritalStatus] = useState('');
   const [propertyRegime, setPropertyRegime] = useState('');
   const [spouseName, setSpouseName] = useState('');
 
@@ -54,18 +75,18 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [addressNeighborhood, setAddressNeighborhood] = useState('');
   const [addressCityUf, setAddressCityUf] = useState('');
   const [addressZip, setAddressZip] = useState('');
-  const [addressZone, setAddressZone] = useState('Urbana');
+  const [addressZone, setAddressZone] = useState('');
 
   const [occupation, setOccupation] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [employmentStatus, setEmploymentStatus] = useState('CLT');
-  const [inssContributionRegime, setInssContributionRegime] = useState('Empregado');
+  const [employmentStatus, setEmploymentStatus] = useState('');
+  const [inssContributionRegime, setInssContributionRegime] = useState('');
 
   const [nitPisPasep, setNitPisPasep] = useState('');
   const [benefitNumber, setBenefitNumber] = useState('');
 
-  const [docRgCpf, setDocRgCpf] = useState(true);
-  const [docComprovanteResidencia, setDocComprovanteResidencia] = useState(true);
+  const [docCpf, setDocCpf] = useState(false);
+  const [docComprovanteResidencia, setDocComprovanteResidencia] = useState(false);
   const [docCarteiraTrabalho, setDocCarteiraTrabalho] = useState(false);
   const [docComprovantesRenda, setDocComprovantesRenda] = useState(false);
   const [docLaudosMedicos, setDocLaudosMedicos] = useState(false);
@@ -76,65 +97,114 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [bankAccount, setBankAccount] = useState('');
   const [pixKey, setPixKey] = useState('');
 
-  const [typePill, setTypePill] = useState(clientCategories[0] || 'BPC Loas');
+  const [typePill, setTypePill] = useState('');
+  const [validationError, setValidationError] = useState('');
 
   if (!isOpen) return null;
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName.trim()) return;
+
+    const normalizedName = normalizeWhitespace(clientName);
+    const normalizedCpf = formatCpf(clientCpf);
+    const cpfDigits = onlyDigits(clientCpf);
+    const normalizedPhone = formatPhone(clientPhone);
+    const normalizedSecondaryPhone = formatPhone(phoneSecondary);
+    const normalizedZip = formatCep(addressZip);
+    const normalizedEmail = clientEmail.trim();
+
+    if (normalizedName.length < 3) {
+      setValidationError('Informe o nome completo do cliente.');
+      return;
+    }
+
+    if (!isValidCpf(normalizedCpf)) {
+      setValidationError('Informe um CPF válido com 11 dígitos.');
+      return;
+    }
+
+    const duplicateCpf = clients.some((client) => onlyDigits(client.cpf || '') === cpfDigits);
+    if (duplicateCpf) {
+      setValidationError('Já existe um cliente cadastrado com este CPF.');
+      return;
+    }
+
+    if (!isValidPhone(normalizedPhone)) {
+      setValidationError('Informe um telefone ou WhatsApp válido com DDD.');
+      return;
+    }
+
+    if (normalizedSecondaryPhone && !isValidPhone(normalizedSecondaryPhone)) {
+      setValidationError('O telefone secundário deve possuir DDD e 10 ou 11 dígitos.');
+      return;
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      setValidationError('Informe um endereço de e-mail válido ou deixe o campo vazio.');
+      return;
+    }
+
+    if (normalizedZip && !isValidCep(normalizedZip)) {
+      setValidationError('O CEP deve possuir 8 dígitos.');
+      return;
+    }
+
+    if (!typePill) {
+      setValidationError('Selecione a categoria ou benefício do cliente.');
+      return;
+    }
+
+    setValidationError('');
+    const identity = createClientIdentity();
 
     const newClient: Client = {
-      id: `c-${Date.now()}`,
-      code: `${Math.floor(100 + Math.random() * 899)}.${Math.floor(100 + Math.random() * 899)}.${Math.floor(10 + Math.random() * 89)}-X`,
-      name: clientName,
-      socialName,
+      id: identity.id,
+      code: identity.code,
+      name: normalizedName,
+      socialName: normalizeWhitespace(socialName),
       typePill,
+      // Regra operacional: um cadastro concluído entra na carteira como cliente ativo.
       status: 'Ativo',
       updatedAt: 'Criado agora',
-      cpf: clientCpf.trim(),
-      rgNumber,
-      rgIssuer,
-      rgUf,
-      rgIssueDate,
+      cpf: normalizedCpf,
       birthDate,
-      nationality,
-      birthplace,
+      nationality: normalizeWhitespace(nationality),
+      birthplace: normalizeWhitespace(birthplace),
       gender,
-      motherName,
-      fatherName,
+      motherName: normalizeWhitespace(motherName),
+      fatherName: normalizeWhitespace(fatherName),
       maritalStatus,
-      propertyRegime,
-      spouseName,
+      propertyRegime: normalizeWhitespace(propertyRegime),
+      spouseName: normalizeWhitespace(spouseName),
       familyMembers: [],
-      email: clientEmail.trim(),
-      phone: clientPhone.trim(),
-      phoneSecondary,
-      addressStreet,
-      addressNumber,
-      addressComplement,
-      addressNeighborhood,
-      addressCityUf,
-      addressZip,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      phoneSecondary: normalizedSecondaryPhone,
+      addressStreet: normalizeWhitespace(addressStreet),
+      addressNumber: normalizeWhitespace(addressNumber),
+      addressComplement: normalizeWhitespace(addressComplement),
+      addressNeighborhood: normalizeWhitespace(addressNeighborhood),
+      addressCityUf: normalizeWhitespace(addressCityUf),
+      addressZip: normalizedZip,
       addressZone,
-      occupation,
-      monthlyIncome,
+      occupation: normalizeWhitespace(occupation),
+      monthlyIncome: monthlyIncome.trim(),
       employmentStatus,
       inssContributionRegime,
-      nitPisPasep,
-      benefitNumber,
+      nitPisPasep: nitPisPasep.trim(),
+      benefitNumber: benefitNumber.trim(),
       documentChecklist: {
-        rgCpf: docRgCpf,
+        rgCpf: docCpf,
         comprovanteResidencia: docComprovanteResidencia,
         carteiraTrabalhoCnis: docCarteiraTrabalho,
         comprovantesRendaFamilia: docComprovantesRenda,
         laudosMedicos: docLaudosMedicos,
         comprovacaoRural: docComprovacaoRural,
       },
-      bankName,
-      bankAgency,
-      bankAccount,
-      pixKey,
+      bankName: normalizeWhitespace(bankName),
+      bankAgency: bankAgency.trim(),
+      bankAccount: bankAccount.trim(),
+      pixKey: pixKey.trim(),
       casesCount: 0,
     };
 
@@ -165,6 +235,13 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
 
         {/* Client Form */}
         <form onSubmit={handleCreateClient} className="space-y-4 text-xs max-h-[70vh] overflow-y-auto pr-1">
+            {validationError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-red-800 font-semibold flex items-start gap-2" role="alert">
+                <span className="material-symbols-outlined text-base mt-0.5">error</span>
+                <span>{validationError}</span>
+              </div>
+            )}
+
             {/* 1. Identificação Pessoal */}
             <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
               <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 border-b border-slate-200 pb-2">
@@ -179,7 +256,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     type="text"
                     required
                     value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
+                    onChange={(e) => {
+                      setClientName(e.target.value);
+                      setValidationError('');
+                    }}
                     placeholder="Ex: Roberto Alves de Souza"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-900"
                   />
@@ -201,48 +281,17 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={14}
                     value={clientCpf}
-                    onChange={(e) => setClientCpf(e.target.value)}
+                    onChange={(e) => {
+                      setClientCpf(formatCpf(e.target.value));
+                      setValidationError('');
+                    }}
                     placeholder="000.000.000-00"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono font-bold"
                   />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">RG (Número)</label>
-                  <input
-                    type="text"
-                    value={rgNumber}
-                    onChange={(e) => setRgNumber(e.target.value)}
-                    placeholder="00.000.000-0"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Órgão Emissor / UF / Expedição</label>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      placeholder="SSP"
-                      value={rgIssuer}
-                      onChange={(e) => setRgIssuer(e.target.value)}
-                      className="w-1/3 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900"
-                    />
-                    <input
-                      type="text"
-                      placeholder="UF"
-                      value={rgUf}
-                      onChange={(e) => setRgUf(e.target.value)}
-                      className="w-1/4 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900 text-center uppercase"
-                    />
-                    <input
-                      type="date"
-                      value={rgIssueDate}
-                      onChange={(e) => setRgIssueDate(e.target.value)}
-                      className="flex-1 bg-white border border-slate-300 rounded-xl px-2 py-2 text-slate-900"
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -282,6 +331,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setGender(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                   >
+                    <option value="">Selecione</option>
                     <option value="Feminino">Feminino</option>
                     <option value="Masculino">Masculino</option>
                     <option value="Outro">Outro</option>
@@ -328,6 +378,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setMaritalStatus(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-medium"
                   >
+                    <option value="">Selecione</option>
                     <option value="Solteiro(a)">Solteiro(a)</option>
                     <option value="Casado(a)">Casado(a)</option>
                     <option value="União Estável">União Estável</option>
@@ -373,8 +424,13 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <input
                     type="text"
                     required
+                    inputMode="tel"
+                    maxLength={15}
                     value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
+                    onChange={(e) => {
+                      setClientPhone(formatPhone(e.target.value));
+                      setValidationError('');
+                    }}
                     placeholder="(00) 00000-0000"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   />
@@ -384,8 +440,13 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Telefone Secundário</label>
                   <input
                     type="text"
+                    inputMode="tel"
+                    maxLength={15}
                     value={phoneSecondary}
-                    onChange={(e) => setPhoneSecondary(e.target.value)}
+                    onChange={(e) => {
+                      setPhoneSecondary(formatPhone(e.target.value));
+                      setValidationError('');
+                    }}
                     placeholder="(00) 00000-0000"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   />
@@ -396,7 +457,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <input
                     type="email"
                     value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
+                    onChange={(e) => {
+                      setClientEmail(e.target.value);
+                      setValidationError('');
+                    }}
                     placeholder="nome@email.com"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   />
@@ -463,9 +527,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">CEP</label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    maxLength={9}
                     placeholder="00000-000"
                     value={addressZip}
-                    onChange={(e) => setAddressZip(e.target.value)}
+                    onChange={(e) => {
+                      setAddressZip(formatCep(e.target.value));
+                      setValidationError('');
+                    }}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono"
                   />
                 </div>
@@ -477,6 +546,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setAddressZone(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   >
+                    <option value="">Selecione</option>
                     <option value="Urbana">Urbana</option>
                     <option value="Rural">Rural (Segurado Especial)</option>
                   </select>
@@ -521,6 +591,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setEmploymentStatus(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900"
                   >
+                    <option value="">Selecione</option>
                     <option value="CLT">CLT / Empregado Formal</option>
                     <option value="Autônomo">Autônomo / Informal</option>
                     <option value="Rural">Trabalhador Rural / Lavrador</option>
@@ -533,10 +604,15 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Categoria / Benefício *</label>
                   <select
+                    required
                     value={typePill}
-                    onChange={(e) => setTypePill(e.target.value)}
+                    onChange={(e) => {
+                      setTypePill(e.target.value);
+                      setValidationError('');
+                    }}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   >
+                    <option value="">Selecione</option>
                     {clientCategories.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -582,11 +658,11 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <label className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-200 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={docRgCpf}
-                      onChange={(e) => setDocRgCpf(e.target.checked)}
+                      checked={docCpf}
+                      onChange={(e) => setDocCpf(e.target.checked)}
                       className="rounded text-blue-900 focus:ring-blue-900"
                     />
-                    <span>RG e CPF</span>
+                    <span>CPF</span>
                   </label>
 
                   <label className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-200 cursor-pointer">

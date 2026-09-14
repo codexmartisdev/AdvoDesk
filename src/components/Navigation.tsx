@@ -32,6 +32,9 @@ export const Navigation: React.FC<NavigationProps> = ({
 
 
   const getSearchPlaceholder = () => {
+    if (String(currentTab) === 'cases') {
+      return 'Buscar casos, processos, clientes ou prazos...';
+    }
     switch (currentTab) {
       case 'clients':
         return 'Pesquisar clientes, CPF ou contatos...';
@@ -163,6 +166,27 @@ export const Navigation: React.FC<NavigationProps> = ({
               group
             </span>
             <span>Clientes</span>
+          </button>
+
+          {/* Cases */}
+          <button
+            onClick={() => {
+              onTabChange('cases' as NavigationTab);
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-left text-xs ${
+              String(currentTab) === 'cases'
+                ? 'text-white bg-[#0D0D0D] font-extrabold border border-[#C9A227]/60 shadow-xs'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span
+              className={`material-symbols-outlined text-[18px] ${String(currentTab) === 'cases' ? 'text-[#C9A227]' : 'text-slate-500'}`}
+              style={{ fontVariationSettings: String(currentTab) === 'cases' ? "'FILL' 1" : "'FILL' 0" }}
+            >
+              folder_open
+            </span>
+            <span>Casos & Processos</span>
           </button>
 
           {/* Documents */}
@@ -342,6 +366,18 @@ export const Navigation: React.FC<NavigationProps> = ({
               >
                 <span className="material-symbols-outlined text-[18px]">group</span>
                 <span>Clientes</span>
+              </button>
+              <button
+                onClick={() => {
+                  onTabChange('cases' as NavigationTab);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
+                  String(currentTab) === 'cases' ? 'bg-slate-100 text-slate-900 font-extrabold' : 'text-slate-600'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">folder_open</span>
+                <span>Casos & Processos</span>
               </button>
               <button
                 onClick={() => {

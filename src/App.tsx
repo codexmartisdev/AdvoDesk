@@ -19,7 +19,6 @@ import {
   ensureUserProfileInFirestore,
   subscribeToUserProfile,
   saveClientInFirestore,
-  deleteClientFromFirestore,
   saveCaseInFirestore,
   deleteCaseFromFirestore,
   saveTemplateInFirestore,
@@ -33,6 +32,7 @@ import { Navigation } from './components/Navigation';
 const DashboardView = lazy(() => import('./components/DashboardView').then((module) => ({ default: module.DashboardView })));
 const BpcLoasView = lazy(() => import('./components/bpc/BpcLoasView').then((module) => ({ default: module.BpcLoasView })));
 const ClientsView = lazy(() => import('./components/ClientsView').then((module) => ({ default: module.ClientsView })));
+const CasesWorkspaceView = lazy(() => import('./components/cases/CasesWorkspaceView').then((module) => ({ default: module.CasesWorkspaceView })));
 const DocumentsView = lazy(() => import('./components/DocumentsView').then((module) => ({ default: module.DocumentsView })));
 const CalendarView = lazy(() => import('./components/CalendarView').then((module) => ({ default: module.CalendarView })));
 const SettingsView = lazy(() => import('./components/SettingsView').then((module) => ({ default: module.SettingsView })));
@@ -202,15 +202,39 @@ export default function App() {
   const [variablesGuideModalOpen, setVariablesGuideModalOpen] = useState(false);
 
   const [selectedTemplateForDoc, setSelectedTemplateForDoc] = useState<DocumentTemplate | null>(null);
+  const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null);
   const [docClientName, setDocClientName] = useState('');
   const [docClientCpf, setDocClientCpf] = useState('');
   const [prefilledGeneratedText, setPrefilledGeneratedText] = useState<string | null>(null);
 
-  const openDefaultTenantTemplate = (
-    clientName?: string,
-    clientCpf?: string
-  ) => {
+  const documentEligibleClients = clients.filter(
+    (client) => String(client.status) !== 'Arquivado'
+  );
+
+  useEffect(() => {
+    if (!selectedClientForDoc) return;
+
+    const currentClient = clients.find((client) => client.id === selectedClientForDoc.id);
+    if (!currentClient || String(currentClient.status) === 'Arquivado') {
+      setSelectedClientForDoc(null);
+      setDocClientName('');
+      setDocClientCpf('');
+      setPrefilledGeneratedText(null);
+      setDocModalOpen(false);
+      return;
+    }
+
+    if (currentClient !== selectedClientForDoc) {
+      setSelectedClientForDoc(currentClient);
+      setDocClientName(currentClient.name);
+      setDocClientCpf(currentClient.cpf);
+    }
+  }, [clients, selectedClientForDoc?.id]);
+
+  const openDefaultTenantTemplate = () => {
     const tenantTemplate = templates[0];
+
+    setSelectedClientForDoc(null);
 
     if (!tenantTemplate) {
       console.warn(
@@ -228,8 +252,8 @@ export default function App() {
 
     setSelectedTemplateForDoc(tenantTemplate);
     setPrefilledGeneratedText(null);
-    setDocClientName(clientName || '');
-    setDocClientCpf(clientCpf || '');
+    setDocClientName('');
+    setDocClientCpf('');
     setDocModalOpen(true);
   };
 
@@ -307,7 +331,7 @@ export default function App() {
   };
 
   const handleClientCreated = (newClient: Client) => {
-    setClients([newClient, ...clients]);
+    setClients((current) => [newClient, ...current]);
     setCurrentTab('clients');
     if (!userProfile?.firmId) {
       console.error('[Firestore Write Error] Cannot save new client: userProfile.firmId is not defined.');
@@ -317,17 +341,14 @@ export default function App() {
   };
 
   const handleSaveClient = (updatedClient: Client) => {
-    setClients(clients.map((c) => (c.id === updatedClient.id ? updatedClient : c)));
+    setClients((current) => current.map((client) => (
+      client.id === updatedClient.id ? updatedClient : client
+    )));
     if (!userProfile?.firmId) {
       console.error('[Firestore Write Error] Cannot save client: userProfile.firmId is not defined.');
       return;
     }
     saveClientInFirestore(updatedClient, userProfile.firmId);
-  };
-
-  const handleDeleteClient = (clientId: string) => {
-    setClients(clients.filter((c) => c.id !== clientId));
-    deleteClientFromFirestore(clientId);
   };
 
   const handleAddEvent = (newEv: ScheduledEvent) => {
@@ -355,6 +376,28 @@ export default function App() {
 
   const handleOpenDocModalForTemplate = (template: DocumentTemplate) => {
     setSelectedTemplateForDoc(template);
+
+    const eligibleSelectedClient = selectedClientForDoc
+      ? documentEligibleClients.find((client) => client.id === selectedClientForDoc.id)
+      : null;
+
+    if (eligibleSelectedClient) {
+      setSelectedClientForDoc(eligibleSelectedClient);
+      setDocClientName(eligibleSelectedClient.name);
+      setDocClientCpf(eligibleSelectedClient.cpf);
+      setPrefilledGeneratedText(null);
+      setClientSelectorModalOpen(false);
+      setDocModalOpen(true);
+      return;
+    }
+
+    if (selectedClientForDoc) {
+      setSelectedClientForDoc(null);
+      setDocClientName('');
+      setDocClientCpf('');
+      setPrefilledGeneratedText(null);
+    }
+
     setClientSelectorModalOpen(true);
   };
 
@@ -363,6 +406,12 @@ export default function App() {
     client: Client,
     template: DocumentTemplate
   ) => {
+    if (String(client.status) === 'Arquivado') {
+      console.warn('[Documents] Archived clients cannot start document generation.');
+      return;
+    }
+
+    setSelectedClientForDoc(client);
     setDocClientName(client.name);
     setDocClientCpf(client.cpf);
     setSelectedTemplateForDoc(template);
@@ -386,8 +435,20 @@ export default function App() {
     });
   };
 
-  const handleSelectClientForDoc = (clientName: string, clientCpf: string) => {
-    openDefaultTenantTemplate(clientName, clientCpf);
+  const handleSelectClientForDoc = (client: Client) => {
+    if (String(client.status) === 'Arquivado') {
+      console.warn('[Documents] Archived clients cannot be selected for document generation.');
+      return;
+    }
+
+    setSelectedClientForDoc(client);
+    setDocClientName(client.name);
+    setDocClientCpf(client.cpf);
+    setSelectedTemplateForDoc(null);
+    setPrefilledGeneratedText(null);
+    setClientSelectorModalOpen(false);
+    setDocModalOpen(false);
+    setCurrentTab('documents');
   };
 
   if (authLoading) {
@@ -485,9 +546,12 @@ export default function App() {
           onOpenAddClientModal={() => setNewCaseModalOpen(true)}
           onSelectClientForDoc={handleSelectClientForDoc}
           onSaveClient={handleSaveClient}
-          onDeleteClient={handleDeleteClient}
           clientCategories={settings.clientCategories}
         />
+      )}
+
+      {String(currentTab) === 'cases' && (
+        <CasesWorkspaceView searchQuery={searchQuery} />
       )}
 
       {currentTab === 'documents' && (
@@ -601,7 +665,7 @@ export default function App() {
         isOpen={clientSelectorModalOpen}
         onClose={() => setClientSelectorModalOpen(false)}
         template={selectedTemplateForDoc}
-        clients={clients}
+        clients={documentEligibleClients}
         settings={settings}
         onConfirmGenerate={handleConfirmGenerateFromClientSelector}
         onUpdateClientField={handleUpdateClientField}
@@ -620,10 +684,13 @@ export default function App() {
         isOpen={docModalOpen}
         onClose={() => {
           setDocModalOpen(false);
+          setSelectedClientForDoc(null);
+          setDocClientName('');
+          setDocClientCpf('');
           setPrefilledGeneratedText(null);
         }}
         template={selectedTemplateForDoc}
-        clients={clients}
+        clients={documentEligibleClients}
         initialClientName={docClientName}
         initialClientCpf={docClientCpf}
         initialGeneratedText={prefilledGeneratedText || undefined}
