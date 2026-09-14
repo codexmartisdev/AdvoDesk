@@ -54,27 +54,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenClient,
 }) => {
   const metrics = useMemo(() => getOperationalAgendaMetrics(events, cases), [events, cases]);
-
-  const activeClients = useMemo(
-    () => clients.filter((client) => String(client.status) !== 'Arquivado'),
-    [clients]
-  );
-
-  const activeCases = useMemo(
-    () => cases.filter((legalCase) => !caseIsArchived(legalCase)),
-    [cases]
-  );
-
+  const activeClients = useMemo(() => clients.filter((client) => String(client.status) !== 'Arquivado'), [clients]);
+  const activeCases = useMemo(() => cases.filter((legalCase) => !caseIsArchived(legalCase)), [cases]);
   const urgentCases = useMemo(
     () => activeCases.filter((legalCase) => legalCase.priority === 'Urgente' && legalCase.statusLabel !== 'Concluído'),
     [activeCases]
   );
-
-  const recentClients = useMemo(
-    () => [...activeClients].slice(0, 5),
-    [activeClients]
-  );
-
+  const recentClients = useMemo(() => [...activeClients].slice(0, 5), [activeClients]);
   const upcomingEvents = useMemo(
     () => sortOperationalEvents(
       events.filter((event) => isOpenAgendaEvent(event.status) && getDaysRemaining(event.fullDate) >= 0)
@@ -88,11 +74,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       .sort((a, b) => {
         const priorityDiff = (priorityRank[a.priority || 'Normal'] ?? 2) - (priorityRank[b.priority || 'Normal'] ?? 2);
         if (priorityDiff !== 0) return priorityDiff;
-
         const aNoNextStep = !a.nextDeadlineDate ? 0 : 1;
         const bNoNextStep = !b.nextDeadlineDate ? 0 : 1;
         if (aNoNextStep !== bNoNextStep) return aNoNextStep - bNoNextStep;
-
         const aUpdated = (a as DashboardCase).updatedAt || a.lastMovementDate || a.openingDate || '';
         const bUpdated = (b as DashboardCase).updatedAt || b.lastMovementDate || b.openingDate || '';
         return bUpdated.localeCompare(aUpdated);
@@ -103,34 +87,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const workQueue = useMemo<WorkItem[]>(() => {
     const items: WorkItem[] = [];
 
-    sortOperationalEvents(
-      events.filter((event) => isOpenAgendaEvent(event.status) && getDaysRemaining(event.fullDate) < 0)
-    ).slice(0, 3).forEach((event) => {
-      const days = Math.abs(getDaysRemaining(event.fullDate));
-      items.push({
-        id: `overdue-${event.id}`,
-        title: event.title,
-        subtitle: `${event.clientName || 'Compromisso'} • ${formatToPtBR(event.fullDate)}`,
-        badge: days === 1 ? 'Vencido há 1 dia' : `Vencido há ${days} dias`,
-        tone: 'red',
-        actionLabel: event.caseId ? 'Abrir caso' : 'Abrir agenda',
-        onOpen: () => event.caseId && onOpenCase ? onOpenCase(event.caseId) : onNavigateToTab('calendar'),
+    sortOperationalEvents(events.filter((event) => isOpenAgendaEvent(event.status) && getDaysRemaining(event.fullDate) < 0))
+      .slice(0, 3)
+      .forEach((event) => {
+        const days = Math.abs(getDaysRemaining(event.fullDate));
+        items.push({
+          id: `overdue-${event.id}`,
+          title: event.title,
+          subtitle: `${event.clientName || 'Compromisso'} • ${formatToPtBR(event.fullDate)}`,
+          badge: days === 1 ? 'Vencido há 1 dia' : `Vencido há ${days} dias`,
+          tone: 'red',
+          actionLabel: event.caseId ? 'Abrir caso' : 'Abrir agenda',
+          onOpen: () => event.caseId && onOpenCase ? onOpenCase(event.caseId) : onNavigateToTab('calendar'),
+        });
       });
-    });
 
-    sortOperationalEvents(
-      events.filter((event) => isOpenAgendaEvent(event.status) && getDaysRemaining(event.fullDate) === 0)
-    ).slice(0, 3).forEach((event) => {
-      items.push({
-        id: `today-${event.id}`,
-        title: event.title,
-        subtitle: `${event.clientName || 'Compromisso'}${event.time ? ` • ${event.time}` : ''}`,
-        badge: 'Hoje',
-        tone: 'amber',
-        actionLabel: event.caseId ? 'Abrir caso' : 'Abrir agenda',
-        onOpen: () => event.caseId && onOpenCase ? onOpenCase(event.caseId) : onNavigateToTab('calendar'),
+    sortOperationalEvents(events.filter((event) => isOpenAgendaEvent(event.status) && getDaysRemaining(event.fullDate) === 0))
+      .slice(0, 3)
+      .forEach((event) => {
+        items.push({
+          id: `today-${event.id}`,
+          title: event.title,
+          subtitle: `${event.clientName || 'Compromisso'}${event.time ? ` • ${event.time}` : ''}`,
+          badge: 'Hoje',
+          tone: 'amber',
+          actionLabel: event.caseId ? 'Abrir caso' : 'Abrir agenda',
+          onOpen: () => event.caseId && onOpenCase ? onOpenCase(event.caseId) : onNavigateToTab('calendar'),
+        });
       });
-    });
 
     urgentCases.slice(0, 3).forEach((legalCase) => {
       items.push({
@@ -268,14 +252,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 };
 
-const SummaryCard = ({ title, value, icon, onClick, action, warning = false }: { title: string; value: number; icon: string; onClick: () => void; action: string; warning?: boolean }) => (
+const SummaryCard: React.FC<{ title: string; value: number; icon: string; onClick: () => void; action: string; warning?: boolean }> = ({ title, value, icon, onClick, action, warning = false }) => (
   <button type="button" onClick={onClick} className={`rounded-2xl p-4 md:p-5 border shadow-xs hover:shadow-md transition-all text-left bg-white group ${warning ? 'border-red-200' : 'border-slate-200'}`}>
     <div className="flex items-start justify-between gap-3"><div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${warning ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-[#0D0D0D] border border-[#C9A227]/50 text-[#C9A227]'}`}><span className="material-symbols-outlined text-[22px]">{icon}</span></div><span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-900">{action}</span></div>
     <div className="mt-4"><p className="text-slate-500 font-semibold text-[10px] uppercase tracking-wider">{title}</p><p className={`text-3xl font-black mt-1 ${warning ? 'text-red-800' : 'text-slate-900'}`}>{value}</p></div>
   </button>
 );
 
-const OperationalMetric = ({ label, value, icon, tone, onClick }: { label: string; value: number; icon: string; tone: 'amber' | 'blue' | 'red' | 'purple' | 'slate'; onClick: () => void }) => {
+const OperationalMetric: React.FC<{ label: string; value: number; icon: string; tone: 'amber' | 'blue' | 'red' | 'purple' | 'slate'; onClick: () => void }> = ({ label, value, icon, tone, onClick }) => {
   const styles = {
     amber: 'bg-amber-50 border-amber-200 text-amber-950',
     blue: 'bg-blue-50 border-blue-200 text-blue-950',
@@ -286,7 +270,7 @@ const OperationalMetric = ({ label, value, icon, tone, onClick }: { label: strin
   return <button type="button" onClick={onClick} className={`rounded-xl border p-3 text-left hover:shadow-sm transition-all ${styles[tone]}`}><div className="flex items-center justify-between gap-2"><span className="text-[10px] uppercase tracking-wider font-extrabold opacity-70">{label}</span><span className="material-symbols-outlined text-base opacity-70">{icon}</span></div><div className="text-2xl font-black mt-1">{value}</div></button>;
 };
 
-const WorkQueueRow = ({ item }: { item: WorkItem }) => {
+const WorkQueueRow: React.FC<{ item: WorkItem }> = ({ item }) => {
   const styles = {
     red: 'bg-red-50 text-red-800 border-red-200',
     amber: 'bg-amber-50 text-amber-900 border-amber-200',
