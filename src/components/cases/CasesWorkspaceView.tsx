@@ -135,8 +135,10 @@ const sortEvents = (items: ScheduledEvent[]) =>
     return (a.time || '').localeCompare(b.time || '');
   });
 
+const isOpenDeadlineStatus = (status: DeadlineStatus) => status === 'Pendente' || status === 'Remarcado';
+
 const getPendingCaseEvents = (caseId: string, events: ScheduledEvent[]) =>
-  sortEvents(events.filter((event) => event.caseId === caseId && event.status === 'Pendente'));
+  sortEvents(events.filter((event) => event.caseId === caseId && isOpenDeadlineStatus(event.status)));
 
 const getCaseEventSummary = (caseId: string, events: ScheduledEvent[]) => {
   const pending = getPendingCaseEvents(caseId, events);
@@ -379,8 +381,8 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
         if (!changed) continue;
         updates.push({
           ...legalCase,
-          nextDeadlineDate: summary.nextDeadlineDate,
-          nextDeadlineType: summary.nextDeadlineType,
+          nextDeadlineDate: summary.nextDeadlineDate ?? '',
+          nextDeadlineType: summary.nextDeadlineType ?? '',
           deadlinesCount: summary.deadlinesCount,
           deadlineEventsMigratedAt: migratedAt,
           updatedAt: now,
@@ -608,7 +610,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
 
     const duplicate = events.some((item) =>
       item.caseId === deadlineCase.id &&
-      item.status === 'Pendente' &&
+      isOpenDeadlineStatus(item.status) &&
       item.fullDate === deadlineForm.fullDate &&
       (item.eventType || '') === deadlineForm.eventType
     );
@@ -800,7 +802,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
             </div>
             <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 shadow-xs">
               <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700">Prazos pendentes</div>
-              <div className="text-2xl font-black text-amber-900 mt-1">{events.filter((event) => event.status === 'Pendente' && event.caseId && activeCases.some((item) => item.id === event.caseId)).length}</div>
+              <div className="text-2xl font-black text-amber-900 mt-1">{events.filter((event) => isOpenDeadlineStatus(event.status) && event.caseId && activeCases.some((item) => item.id === event.caseId)).length}</div>
             </div>
             <button type="button" onClick={() => setLifecycleFilter('archived')} className="text-left rounded-2xl border border-slate-200 bg-slate-100/70 p-4 shadow-xs">
               <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Arquivados</div>
