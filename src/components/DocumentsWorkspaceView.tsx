@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Client, DocumentTemplate, FirmSettings } from '../types';
 import { GeneratedDocument } from '../types/generatedDocument';
 import { auth } from '../lib/firebase';
+import { getBrasiliaISO } from '../utils/dateUtils';
 import {
   getUserProfileInFirestore,
+  saveSettingsInFirestore,
   subscribeToClients,
   subscribeToSettings,
 } from '../services/firestoreService';
 import { subscribeToGeneratedDocuments } from '../services/generatedDocumentService';
-import { DocumentsView as DocumentTemplatesView } from './DocumentTemplatesView';
+import { DocumentTemplatesOperationalView } from './DocumentTemplatesOperationalView';
 import { GeneratedDocumentsLibrary } from './GeneratedDocumentsLibrary';
 import { DocumentGeneratorModal } from './DocumentGeneratorModal';
 
@@ -28,11 +30,39 @@ interface DocumentsWorkspaceViewProps {
   onDeleteFormat: (formatName: string) => void;
 }
 
+type ManagedTemplate = DocumentTemplate & {
+  status?: 'Ativo' | 'Arquivado';
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type DocumentFirmSettings = FirmSettings & {
+  documentCategories?: string[];
+  documentFormats?: string[];
+};
+
+const normalizeCatalog = (saved: string[] | undefined, fallback: string[]) => {
+  const base = saved && saved.length > 0 ? saved : fallback.filter((item) => item !== 'Todos');
+  const unique: string[] = [];
+  base.forEach((value) => {
+    const clean = value.trim();
+    if (!clean) return;
+    if (!unique.some((item) => item.toLocaleLowerCase('pt-BR') === clean.toLocaleLowerCase('pt-BR'))) {
+      unique.push(clean);
+    }
+  });
+  return ['Todos', ...unique];
+};
+
 export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (props) => {
   const [workspaceTab, setWorkspaceTab] = useState<'library' | 'templates'>('library');
   const [generatedDocuments, setGeneratedDocuments] = useState<GeneratedDocument[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [settings, setSettings] = useState<FirmSettings | undefined>(undefined);
+  const [settings, setSettings] = useState<DocumentFirmSettings | undefined>(undefined);
+  const [firmId, setFirmId] = useState<string | null>(null);
+  const [documentCategories, setDocumentCategories] = useState<string[]>(() => normalizeCatalog(undefined, props.docCategories));
+  const [documentFormats, setDocumentFormats] = useState<string[]>(() => normalizeCatalog(undefined, props.docFormats));
   const [selectedDocument, setSelectedDocument] = useState<GeneratedDocument | null>(null);
   const [loadError, setLoadError] = useState('');
   const [loadingLibrary, setLoadingLibrary] = useState(true);
@@ -54,8 +84,8 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
       }
 
       const profile = await getUserProfileInFirestore(currentUser.uid);
-      const firmId = profile?.firmId?.trim();
-      if (!firmId || !active) {
+      const resolvedFirmId = profile?.firmId?.trim();
+      if (!resolvedFirmId || !active) {
         if (active) {
           setLoadError('O usuário autenticado não possui escritório vinculado.');
           setLoadingLibrary(false);
@@ -63,19 +93,25 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
         return;
       }
 
-      unsubscribeDocuments = subscribeToGeneratedDocuments(firmId, (documents) => {
+      setFirmId(resolvedFirmId);
+
+      unsubscribeDocuments = subscribeToGeneratedDocuments(resolvedFirmId, (documents) => {
         if (!active) return;
         setGeneratedDocuments(documents);
         setLoadError('');
         setLoadingLibrary(false);
       });
 
-      unsubscribeClients = subscribeToClients(firmId, (persistedClients) => {
+      unsubscribeClients = subscribeToClients(resolvedFirmId, (persistedClients) => {
         if (active) setClients(persistedClients);
       });
 
-      unsubscribeSettings = subscribeToSettings(firmId, (firmSettings) => {
-        if (active) setSettings(firmSettings);
+      unsubscribeSettings = subscribeToSettings(resolvedFirmId, (firmSettings) => {
+        if (!active) return;
+        const documentSettings = firmSettings as DocumentFirmSettings;
+        setSettings(documentSettings);
+        setDocumentCategories(normalizeCatalog(documentSettings.documentCategories, props.docCategories));
+        setDocumentFormats(normalizeCatalog(documentSettings.documentFormats, props.docFormats));
       });
     };
 
@@ -95,9 +131,112 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
     };
   }, []);
 
+  const persistCatalog = (nextCategories: string[], nextFormats: string[]) => {
+    setDocumentCategories(nextCategories);
+    setDocumentFormats(nextFormats);
+
+    if (!firmId || !settings) {
+      window.alert('A configuração do escritório ainda não terminou de carregar. Tente novamente em alguns instantes.');
+      return;
+    }
+
+    const nextSettings: DocumentFirmSettings = {
+      ...settings,
+      documentCategories: nextCategories.filter((item) => item !== 'Todos'),
+      documentFormats: nextFormats.filter((item) => item !== 'Todos'),
+    };
+    setSettings(nextSettings);
+    void saveSettingsInFirestore(nextSettings, firmId);
+  };
+
+  const addCategory = (categoryName: string) => {
+    const clean = categoryName.trim();
+    if (!clean) return;
+    if (documentCategories.some((item) => item.toLocaleLowerCase('pt-BR') === clean.toLocaleLowerCase('pt-BR'))) return;
+    persistCatalog([...documentCategories, clean], documentFormats);
+  };
+
+  const editCategory = (oldCategory: string, newCategory: string) => {
+    const clean = newCategory.trim();
+    if (!clean) return;
+    if (documentCategories.some((item) => item !== oldCategory && item.toLocaleLowerCase('pt-BR') === clean.toLocaleLowerCase('pt-BR'))) {
+      window.alert('Já existe uma categoria com este nome.');
+      return;
+    }
+    const now = getBrasiliaISO();
+    props.templates
+      .filter((template) => template.category === oldCategory)
+      .forEach((template) => props.onSaveTemplate({ ...template, category: clean, updatedAt: now } as ManagedTemplate));
+    persistCatalog(documentCategories.map((item) => item === oldCategory ? clean : item), documentFormats);
+  };
+
+  const deleteCategory = (categoryName: string) => {
+    if (props.templates.some((template) => template.category === categoryName)) {
+      window.alert('Esta categoria está sendo usada por um ou mais modelos. Reclassifique os modelos antes de removê-la.');
+      return;
+    }
+    persistCatalog(documentCategories.filter((item) => item !== categoryName), documentFormats);
+  };
+
+  const addFormat = (formatName: string) => {
+    const clean = formatName.trim();
+    if (!clean) return;
+    if (documentFormats.some((item) => item.toLocaleLowerCase('pt-BR') === clean.toLocaleLowerCase('pt-BR'))) return;
+    persistCatalog(documentCategories, [...documentFormats, clean]);
+  };
+
+  const editFormat = (oldFormat: string, newFormat: string) => {
+    const clean = newFormat.trim();
+    if (!clean) return;
+    if (documentFormats.some((item) => item !== oldFormat && item.toLocaleLowerCase('pt-BR') === clean.toLocaleLowerCase('pt-BR'))) {
+      window.alert('Já existe um formato com este nome.');
+      return;
+    }
+    const now = getBrasiliaISO();
+    props.templates
+      .filter((template) => template.format === oldFormat)
+      .forEach((template) => props.onSaveTemplate({ ...template, format: clean, updatedAt: now } as ManagedTemplate));
+    persistCatalog(documentCategories, documentFormats.map((item) => item === oldFormat ? clean : item));
+  };
+
+  const deleteFormat = (formatName: string) => {
+    if (props.templates.some((template) => template.format === formatName)) {
+      window.alert('Este formato está sendo usado por um ou mais modelos. Reclassifique os modelos antes de removê-lo.');
+      return;
+    }
+    persistCatalog(documentCategories, documentFormats.filter((item) => item !== formatName));
+  };
+
+  const archiveTemplate = (template: DocumentTemplate) => {
+    if (!window.confirm(`Arquivar o modelo "${template.title}"? Documentos já gerados continuarão preservados.`)) return;
+    const current = template as ManagedTemplate;
+    const now = getBrasiliaISO();
+    props.onSaveTemplate({
+      ...template,
+      status: 'Arquivado',
+      archivedAt: now,
+      createdAt: current.createdAt || now,
+      updatedAt: now,
+    } as ManagedTemplate);
+  };
+
+  const restoreTemplate = (template: DocumentTemplate) => {
+    const current = template as ManagedTemplate;
+    const now = getBrasiliaISO();
+    props.onSaveTemplate({
+      ...template,
+      status: 'Ativo',
+      archivedAt: null,
+      createdAt: current.createdAt || now,
+      updatedAt: now,
+    } as ManagedTemplate);
+  };
+
+  const activeTemplateCount = props.templates.filter((template) => (template as ManagedTemplate).status !== 'Arquivado').length;
+
   return (
     <>
-      <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen relative z-10 max-w-7xl mx-auto space-y-5">
+      <main className="md:ml-64 pt-16 md:pt-8 pb-5 px-4 sm:px-6 md:px-8 relative z-10 max-w-7xl mx-auto space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Central de Documentos</h1>
@@ -119,7 +258,7 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
               onClick={() => setWorkspaceTab('templates')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${workspaceTab === 'templates' ? 'bg-[#0A1F44] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
             >
-              Modelos ({props.templates.length})
+              Modelos ativos ({activeTemplateCount})
             </button>
           </div>
         </div>
@@ -148,7 +287,22 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
       </main>
 
       {workspaceTab === 'templates' && (
-        <DocumentTemplatesView {...props} />
+        <DocumentTemplatesOperationalView
+          templates={props.templates}
+          searchQuery={props.searchQuery}
+          docCategories={documentCategories}
+          docFormats={documentFormats}
+          onSelectTemplateToGenerate={props.onSelectTemplateToGenerate}
+          onSaveTemplate={props.onSaveTemplate}
+          onArchiveTemplate={archiveTemplate}
+          onRestoreTemplate={restoreTemplate}
+          onAddCategory={addCategory}
+          onEditCategory={editCategory}
+          onDeleteCategory={deleteCategory}
+          onAddFormat={addFormat}
+          onEditFormat={editFormat}
+          onDeleteFormat={deleteFormat}
+        />
       )}
 
       {selectedDocument && (
