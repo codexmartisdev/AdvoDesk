@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   setDoc,
@@ -57,13 +58,34 @@ export async function saveGeneratedDocumentInFirestore(
   const path = `generatedDocuments/${generatedDocument.id}`;
 
   try {
-    const documentWithFirm = {
+    const documentRef = doc(db, 'generatedDocuments', generatedDocument.id);
+    const existingSnapshot = await getDoc(documentRef);
+    const existingDocument = existingSnapshot.exists()
+      ? ({ id: existingSnapshot.id, ...existingSnapshot.data() } as GeneratedDocument)
+      : null;
+
+    const documentWithFirm: GeneratedDocument = {
       ...generatedDocument,
       firmId,
     };
 
+    if (generatedDocument.status === 'Arquivado' && existingDocument?.status !== 'Arquivado') {
+      documentWithFirm.statusBeforeArchive = existingDocument?.status === 'Finalizado'
+        ? 'Finalizado'
+        : 'Rascunho';
+    }
+
+    if (
+      existingDocument?.status === 'Arquivado'
+      && generatedDocument.status === 'Rascunho'
+      && existingDocument.statusBeforeArchive
+    ) {
+      documentWithFirm.status = existingDocument.statusBeforeArchive;
+      documentWithFirm.statusBeforeArchive = null;
+    }
+
     await setDoc(
-      doc(db, 'generatedDocuments', generatedDocument.id),
+      documentRef,
       sanitizeForFirestore(documentWithFirm),
       { merge: true }
     );
