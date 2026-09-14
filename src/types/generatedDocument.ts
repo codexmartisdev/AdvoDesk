@@ -1,4 +1,5 @@
 import { DocumentTemplate } from '../types';
+import { BpcCaseItem } from './bpc';
 
 export type GeneratedDocumentStatus = 'Rascunho' | 'Finalizado' | 'Arquivado';
 
@@ -16,6 +17,7 @@ export interface GeneratedDocument {
   title: string;
   content: string;
   status: GeneratedDocumentStatus;
+  statusBeforeArchive?: 'Rascunho' | 'Finalizado' | null;
   source: GeneratedDocumentSource;
 
   templateId: string;
@@ -28,6 +30,7 @@ export interface GeneratedDocument {
 
   caseId?: string;
   bpcCaseId?: string;
+  bpcCaseSnapshot?: BpcCaseItem;
   workflowInstanceId?: string;
 
   createdAt: string;
