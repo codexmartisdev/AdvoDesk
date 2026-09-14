@@ -250,6 +250,29 @@ service cloud.firestore {
       allow delete: if hasFirmAccess(resource.data.firmId);
     }
 
+    // ==========================================
+    // 8B. GENERATED DOCUMENTS (/generatedDocuments/{documentId})
+    // ==========================================
+    match /generatedDocuments/{documentId} {
+      allow read: if hasFirmAccess(resource.data.firmId);
+
+      allow create: if hasFirmAccess(request.resource.data.firmId)
+        && request.resource.data.clientId is string
+        && request.resource.data.templateId is string
+        && request.resource.data.status == 'Rascunho'
+        && request.resource.data.createdByUid == request.auth.uid;
+
+      allow update: if hasFirmAccess(resource.data.firmId)
+        && request.resource.data.firmId == resource.data.firmId
+        && request.resource.data.clientId == resource.data.clientId
+        && request.resource.data.templateId == resource.data.templateId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdByUid == resource.data.createdByUid;
+
+      // Documentos jurídicos gerados usam ciclo de vida; não há exclusão física no fluxo normal.
+      allow delete: if false;
+    }
+
     match /events/{eventId} {
       allow read: if hasFirmAccess(resource.data.firmId);
 
