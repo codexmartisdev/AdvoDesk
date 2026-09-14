@@ -10,6 +10,7 @@ import {
   subscribeToSettings,
 } from '../services/firestoreService';
 import { subscribeToGeneratedDocuments } from '../services/generatedDocumentService';
+import { seedAdvodeskDocumentLibrary } from '../services/documentLibrarySeedService';
 import { DocumentTemplatesOperationalView } from './DocumentTemplatesOperationalView';
 import { GeneratedDocumentsLibrary } from './GeneratedDocumentsLibrary';
 import { DocumentGeneratorModal } from './DocumentGeneratorModal';
@@ -94,6 +95,10 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
       }
 
       setFirmId(resolvedFirmId);
+
+      void seedAdvodeskDocumentLibrary(resolvedFirmId).catch((error) => {
+        console.warn('Não foi possível atualizar a biblioteca-base de documentos:', error);
+      });
 
       unsubscribeDocuments = subscribeToGeneratedDocuments(resolvedFirmId, (documents) => {
         if (!active) return;
