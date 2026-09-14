@@ -3,10 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ==========================================
-    // HELPER FUNCTIONS
-    // ==========================================
-
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -32,16 +28,10 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.firmId == firmId;
     }
 
-    // ==========================================
-    // 1. DEFAULT DENY
-    // ==========================================
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // ==========================================
-    // 2. USER PROFILES (/users/{userId})
-    // ==========================================
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isOwner());
       allow create: if isOwner();
@@ -49,114 +39,67 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
-    // ==========================================
-    // 3. CLIENTS (/clients/{clientId})
-    // ==========================================
     match /clients/{clientId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
-      // Clientes usam ciclo de vida por arquivamento/restauração para preservar vínculos.
       allow delete: if false;
     }
 
-    // ==========================================
-    // 4. CASES (/cases/{caseId})
-    // ==========================================
     match /cases/{caseId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
-      allow delete: if hasFirmAccess(resource.data.firmId);
+      // Casos usam arquivamento/restauração para preservar documentos, agenda e histórico.
+      allow delete: if false;
     }
 
-    // ==========================================
-    // 4B. BPC CASES (/bpcCases/{bpcCaseId})
-    // ==========================================
     match /bpcCases/{bpcCaseId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if false;
     }
 
-    // ==========================================
-    // 4C. BPC PENDENCIAS (/bpcPendencias/{pendenciaId})
-    // ==========================================
     match /bpcPendencias/{pendenciaId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if false;
     }
 
-    // ==========================================
-    // 4D. BPC PRAZOS (/bpcPrazos/{prazoId})
-    // ==========================================
     match /bpcPrazos/{prazoId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if false;
     }
 
-    // ==========================================
-    // 4E. BPC AVALIACOES (/bpcAvaliacoes/{avaliacaoId})
-    // ==========================================
     match /bpcAvaliacoes/{avaliacaoId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if false;
     }
 
-    // ==========================================
-    // 4F. BPC AUDITORIA (/bpcAuditorias/{eventId})
-    // ==========================================
     match /bpcAuditorias/{eventId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId)
         && request.resource.data.actorUid == request.auth.uid;
-
       allow update, delete: if false;
     }
 
-    // ==========================================
-    // 5. WORKFLOW TEMPLATES & VERSIONS
-    // ==========================================
     match /workflowTemplates/{templateId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if hasFirmAccess(resource.data.firmId);
 
       match /versions/{versionId} {
@@ -168,17 +111,11 @@ service cloud.firestore {
       }
     }
 
-    // ==========================================
-    // 6. WORKFLOW INSTANCES, STEPS & AUDIT LOGS
-    // ==========================================
     match /workflowInstances/{instanceId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if hasFirmAccess(resource.data.firmId);
 
       match /steps/{stepId} {
@@ -187,13 +124,11 @@ service cloud.firestore {
           && hasFirmAccess(
             get(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
           );
-
         allow create, update: if
           existsAfter(/databases/$(database)/documents/workflowInstances/$(instanceId))
           && hasFirmAccess(
             getAfter(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
           );
-
         allow delete: if
           exists(/databases/$(database)/documents/workflowInstances/$(instanceId))
           && hasFirmAccess(
@@ -207,86 +142,59 @@ service cloud.firestore {
           && hasFirmAccess(
             get(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
           );
-
         allow create: if
           existsAfter(/databases/$(database)/documents/workflowInstances/$(instanceId))
           && hasFirmAccess(
             getAfter(/databases/$(database)/documents/workflowInstances/$(instanceId)).data.firmId
           );
-
         allow update, delete: if false;
       }
     }
 
-    // ==========================================
-    // 7. FIRM SETTINGS (/settings/{settingId})
-    // ==========================================
     match /settings/{settingId} {
       allow read: if hasFirmAccess(settingId)
         && resource.data.firmId == settingId;
-
       allow create: if hasFirmAccess(settingId)
         && request.resource.data.firmId == settingId;
-
       allow update: if hasFirmAccess(settingId)
         && resource.data.firmId == settingId
         && request.resource.data.firmId == settingId;
-
       allow delete: if hasFirmAccess(settingId)
         && resource.data.firmId == settingId;
     }
 
-    // ==========================================
-    // 8. TEMPLATES (/templates/{templateId}) & EVENTS (/events/{eventId})
-    // ==========================================
     match /templates/{templateId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if hasFirmAccess(resource.data.firmId);
     }
 
-    // ==========================================
-    // 8B. GENERATED DOCUMENTS (/generatedDocuments/{documentId})
-    // ==========================================
     match /generatedDocuments/{documentId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId)
         && request.resource.data.clientId is string
         && request.resource.data.templateId is string
         && request.resource.data.status == 'Rascunho'
         && request.resource.data.createdByUid == request.auth.uid;
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId
         && request.resource.data.clientId == resource.data.clientId
         && request.resource.data.templateId == resource.data.templateId
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.createdByUid == resource.data.createdByUid;
-
-      // Documentos jurídicos gerados usam ciclo de vida; não há exclusão física no fluxo normal.
       allow delete: if false;
     }
 
     match /events/{eventId} {
       allow read: if hasFirmAccess(resource.data.firmId);
-
       allow create: if hasFirmAccess(request.resource.data.firmId);
-
       allow update: if hasFirmAccess(resource.data.firmId)
         && request.resource.data.firmId == resource.data.firmId;
-
       allow delete: if hasFirmAccess(resource.data.firmId);
     }
 
-    // ==========================================
-    // 9. CONNECTION TEST (/_connection_test_/{docId})
-    // ==========================================
     match /_connection_test_/{docId} {
       allow read: if isAuthenticated();
       allow write: if false;
