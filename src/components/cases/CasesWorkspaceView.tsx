@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Client, DocumentTemplate, FirmSettings, LegalCase } from '../../types';
+import { Client, DocumentTemplate, FirmSettings, LegalCase, ScheduledEvent } from '../../types';
 import { GeneratedDocument } from '../../types/generatedDocument';
 import { auth } from '../../lib/firebase';
 import {
   getUserProfileInFirestore,
   saveCaseInFirestore,
+  saveEventInFirestore,
   subscribeToCases,
   subscribeToClients,
+  subscribeToEvents,
   subscribeToSettings,
   subscribeToTemplates,
 } from '../../services/firestoreService';
@@ -22,6 +24,14 @@ interface CasesWorkspaceViewProps {
 }
 
 type LifecycleFilter = 'active' | 'archived';
+type DeadlineStatus = ScheduledEvent['status'];
+type OperationalCase = LegalCase & {
+  archivedAt?: string;
+  statusBeforeArchive?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  deadlineEventsMigratedAt?: string;
+};
 
 type CaseFormState = {
   clientId: string;
@@ -34,10 +44,17 @@ type CaseFormState = {
   priority: string;
   openingDate: string;
   filingDate: string;
-  nextDeadlineDate: string;
-  nextDeadlineType: string;
   caseFacts: string;
   quickNotes: string;
+};
+
+type DeadlineFormState = {
+  eventType: string;
+  title: string;
+  fullDate: string;
+  time: string;
+  location: string;
+  notes: string;
 };
 
 const STATUS_OPTIONS = [
@@ -64,6 +81,17 @@ const ACTING_OPTIONS = [
 
 const PRIORITY_OPTIONS = ['Baixa', 'Normal', 'Alta', 'Urgente'];
 
+const DEADLINE_TYPES = [
+  'Prazo de Recurso',
+  'Retorno de Exigência',
+  'Prazo de Contestação',
+  'Audiência',
+  'Perícia Médica',
+  'Perícia Social',
+  'Reunião com Cliente',
+  'Outro',
+];
+
 const normalizeText = (value: string) =>
   value
     .normalize('NFD')
@@ -72,8 +100,55 @@ const normalizeText = (value: string) =>
     .trim();
 
 const normalizeProcessNumber = (value: string) => value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-
 const today = () => getBrasiliaISO().slice(0, 10);
+
+const formatDate = (value?: string) => {
+  if (!value) return '—';
+  try {
+    return new Date(`${value}T00:00:00`).toLocaleDateString('pt-BR');
+  } catch {
+    return value;
+  }
+};
+
+const formatDateBadge = (value: string) => {
+  const [, month = '', day = ''] = value.split('-');
+  const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+  const monthIndex = Math.max(0, Number(month) - 1);
+  return `${day || '—'} ${monthNames[monthIndex] || '—'}`;
+};
+
+const eventPresentation = (eventType: string) => {
+  if (eventType.includes('Recurso') || eventType.includes('Contestação') || eventType.includes('Exigência')) {
+    return { type: 'Prazos Fatais (Recursos)', badgeColor: 'recurso' };
+  }
+  if (eventType.includes('Reunião')) {
+    return { type: 'Reuniões Internas', badgeColor: 'reuniao' };
+  }
+  return { type: 'Audiências & Perícias', badgeColor: 'pericia' };
+};
+
+const sortEvents = (items: ScheduledEvent[]) =>
+  [...items].sort((a, b) => {
+    const dateCompare = (a.fullDate || '').localeCompare(b.fullDate || '');
+    if (dateCompare !== 0) return dateCompare;
+    return (a.time || '').localeCompare(b.time || '');
+  });
+
+const isOpenDeadlineStatus = (status: DeadlineStatus) => status === 'Pendente' || status === 'Remarcado';
+
+const getPendingCaseEvents = (caseId: string, events: ScheduledEvent[]) =>
+  sortEvents(events.filter((event) => event.caseId === caseId && isOpenDeadlineStatus(event.status)));
+
+const getCaseEventSummary = (caseId: string, events: ScheduledEvent[]) => {
+  const pending = getPendingCaseEvents(caseId, events);
+  const next = pending[0];
+  return {
+    nextDeadlineDate: next?.fullDate || undefined,
+    nextDeadlineType: next?.eventType || next?.title || undefined,
+    deadlinesCount: pending.length,
+  };
+};
 
 const createCaseId = () => {
   const rawId =
@@ -84,7 +159,7 @@ const createCaseId = () => {
   return { id: `case-${rawId}`, caseNumber: `CASO-${compact.slice(-8)}` };
 };
 
-const emptyForm = (category = 'Geral'): CaseFormState => ({
+const emptyCaseForm = (category = 'Geral'): CaseFormState => ({
   clientId: '',
   title: '',
   category,
@@ -95,8 +170,6 @@ const emptyForm = (category = 'Geral'): CaseFormState => ({
   priority: 'Normal',
   openingDate: today(),
   filingDate: '',
-  nextDeadlineDate: '',
-  nextDeadlineType: '',
   caseFacts: '',
   quickNotes: '',
 });
@@ -112,10 +185,17 @@ const formFromCase = (legalCase: LegalCase): CaseFormState => ({
   priority: legalCase.priority || 'Normal',
   openingDate: legalCase.openingDate || legalCase.openedAt || '',
   filingDate: legalCase.filingDate || '',
-  nextDeadlineDate: legalCase.nextDeadlineDate || '',
-  nextDeadlineType: legalCase.nextDeadlineType || '',
   caseFacts: legalCase.caseFacts || '',
   quickNotes: legalCase.quickNotes || '',
+});
+
+const emptyDeadlineForm = (legalCase?: LegalCase): DeadlineFormState => ({
+  eventType: 'Prazo de Recurso',
+  title: legalCase ? `Prazo de Recurso — ${legalCase.clientName}` : '',
+  fullDate: today(),
+  time: '',
+  location: legalCase?.agencyOrCourt || legalCase?.court || '',
+  notes: '',
 });
 
 const priorityClass = (priority?: string) => {
@@ -125,10 +205,19 @@ const priorityClass = (priority?: string) => {
   return 'bg-blue-50 text-blue-800 border-blue-200';
 };
 
+const statusClass = (status: DeadlineStatus) => {
+  if (status === 'Concluído') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+  if (status === 'Perdido') return 'bg-red-50 text-red-800 border-red-200';
+  if (status === 'Remarcado') return 'bg-purple-50 text-purple-800 border-purple-200';
+  return 'bg-amber-50 text-amber-800 border-amber-200';
+};
+
 export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQuery = '' }) => {
-  const [cases, setCases] = useState<LegalCase[]>([]);
+  const [cases, setCases] = useState<OperationalCase[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [events, setEvents] = useState<ScheduledEvent[]>([]);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
   const [settings, setSettings] = useState<FirmSettings | undefined>(undefined);
   const [firmId, setFirmId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,15 +226,22 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
   const [categoryFilter, setCategoryFilter] = useState('Todos');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [localSearch, setLocalSearch] = useState('');
+
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<CaseFormState>(() => emptyForm());
+  const [createForm, setCreateForm] = useState<CaseFormState>(() => emptyCaseForm());
   const [createError, setCreateError] = useState('');
-  const [selectedCase, setSelectedCase] = useState<LegalCase | null>(null);
+  const [selectedCase, setSelectedCase] = useState<OperationalCase | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState<CaseFormState>(() => emptyForm());
+  const [editForm, setEditForm] = useState<CaseFormState>(() => emptyCaseForm());
   const [editError, setEditError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [documentCase, setDocumentCase] = useState<LegalCase | null>(null);
+
+  const [deadlineCase, setDeadlineCase] = useState<OperationalCase | null>(null);
+  const [deadlineForm, setDeadlineForm] = useState<DeadlineFormState>(() => emptyDeadlineForm());
+  const [deadlineError, setDeadlineError] = useState('');
+  const [deadlineSaving, setDeadlineSaving] = useState(false);
+
+  const [documentCase, setDocumentCase] = useState<OperationalCase | null>(null);
   const [documentDraft, setDocumentDraft] = useState<GeneratedDocument | null>(null);
   const [documentTemplate, setDocumentTemplate] = useState<DocumentTemplate | null>(null);
   const [documentPreparing, setDocumentPreparing] = useState(false);
@@ -155,6 +251,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
     let unsubscribeCases: (() => void) | undefined;
     let unsubscribeClients: (() => void) | undefined;
     let unsubscribeTemplates: (() => void) | undefined;
+    let unsubscribeEvents: (() => void) | undefined;
     let unsubscribeSettings: (() => void) | undefined;
 
     const connect = async () => {
@@ -180,7 +277,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
       setFirmId(resolvedFirmId);
       unsubscribeCases = subscribeToCases(resolvedFirmId, (items) => {
         if (!active) return;
-        setCases(items);
+        setCases(items as OperationalCase[]);
         setLoading(false);
         setLoadError('');
       });
@@ -189,6 +286,11 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
       });
       unsubscribeTemplates = subscribeToTemplates(resolvedFirmId, (items) => {
         if (active) setTemplates(items);
+      });
+      unsubscribeEvents = subscribeToEvents(resolvedFirmId, (items) => {
+        if (!active) return;
+        setEvents(items);
+        setEventsLoaded(true);
       });
       unsubscribeSettings = subscribeToSettings(resolvedFirmId, (value) => {
         if (active) setSettings(value);
@@ -208,9 +310,92 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
       unsubscribeCases?.();
       unsubscribeClients?.();
       unsubscribeTemplates?.();
+      unsubscribeEvents?.();
       unsubscribeSettings?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedCase) return;
+    const current = cases.find((item) => item.id === selectedCase.id);
+    if (current) setSelectedCase(current);
+  }, [cases, selectedCase?.id]);
+
+  useEffect(() => {
+    if (!firmId || !eventsLoaded || cases.length === 0) return;
+
+    const migrateLegacyDeadlines = async () => {
+      for (const legalCase of cases) {
+        if (legalCase.archivedAt || legalCase.deadlineEventsMigratedAt || !legalCase.nextDeadlineDate) continue;
+        const linkedEvents = events.filter((event) => event.caseId === legalCase.id);
+        if (linkedEvents.length > 0) continue;
+
+        const eventType = legalCase.nextDeadlineType || 'Outro';
+        const presentation = eventPresentation(eventType);
+        const legacyEvent: ScheduledEvent = {
+          id: `legacy-deadline-${legalCase.id}-${legalCase.nextDeadlineDate}`,
+          dateStr: formatDateBadge(legalCase.nextDeadlineDate),
+          fullDate: legalCase.nextDeadlineDate,
+          type: presentation.type,
+          badgeColor: presentation.badgeColor,
+          title: `${eventType} — ${legalCase.clientName}`,
+          caseId: legalCase.id,
+          clientId: legalCase.clientId,
+          clientName: legalCase.clientName,
+          benefitType: legalCase.category,
+          processNumber: legalCase.processNumber || legalCase.caseNumber,
+          eventType,
+          status: 'Pendente',
+          reminderDays: 1,
+          reminderOption: '1_day',
+          syncedWithGoogleCalendar: false,
+          notes: 'Prazo migrado automaticamente da ficha do caso para a Agenda.',
+        };
+        await saveEventInFirestore(legacyEvent, firmId);
+      }
+    };
+
+    void migrateLegacyDeadlines();
+  }, [cases, events, eventsLoaded, firmId]);
+
+  useEffect(() => {
+    if (!firmId || !eventsLoaded || cases.length === 0) return;
+
+    const synchronizeCaseSummaries = async () => {
+      const now = getBrasiliaISO();
+      const updates: OperationalCase[] = [];
+
+      for (const legalCase of cases) {
+        if (legalCase.archivedAt) continue;
+        const linkedEvents = events.filter((event) => event.caseId === legalCase.id);
+        if (linkedEvents.length === 0 && legalCase.nextDeadlineDate && !legalCase.deadlineEventsMigratedAt) continue;
+
+        const summary = getCaseEventSummary(legalCase.id, events);
+        const migratedAt = linkedEvents.length > 0 ? (legalCase.deadlineEventsMigratedAt || now) : legalCase.deadlineEventsMigratedAt;
+        const changed =
+          (legalCase.nextDeadlineDate || undefined) !== summary.nextDeadlineDate ||
+          (legalCase.nextDeadlineType || undefined) !== summary.nextDeadlineType ||
+          (legalCase.deadlinesCount || 0) !== summary.deadlinesCount ||
+          legalCase.deadlineEventsMigratedAt !== migratedAt;
+
+        if (!changed) continue;
+        updates.push({
+          ...legalCase,
+          nextDeadlineDate: summary.nextDeadlineDate ?? '',
+          nextDeadlineType: summary.nextDeadlineType ?? '',
+          deadlinesCount: summary.deadlinesCount,
+          deadlineEventsMigratedAt: migratedAt,
+          updatedAt: now,
+        });
+      }
+
+      if (updates.length === 0) return;
+      await Promise.all(updates.map((item) => saveCaseInFirestore(item, firmId)));
+      setCases((current) => current.map((item) => updates.find((updated) => updated.id === item.id) || item));
+    };
+
+    void synchronizeCaseSummaries();
+  }, [cases, events, eventsLoaded, firmId]);
 
   const eligibleClients = useMemo(
     () => clients.filter((client) => String(client.status) !== 'Arquivado'),
@@ -267,8 +452,13 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
       });
   }, [activeCases, archivedCases, lifecycleFilter, categoryFilter, statusFilter, combinedSearch, searchDigits]);
 
+  const selectedCaseEvents = useMemo(
+    () => selectedCase ? sortEvents(events.filter((event) => event.caseId === selectedCase.id)) : [],
+    [events, selectedCase?.id]
+  );
+
   const openCreate = () => {
-    setCreateForm(emptyForm(categories[0] || 'Geral'));
+    setCreateForm(emptyCaseForm(categories[0] || 'Geral'));
     setCreateError('');
     setCreateOpen(true);
   };
@@ -282,9 +472,9 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
     const normalizedProcess = normalizeProcessNumber(form.processNumber);
     if (normalizedProcess) {
       const duplicate = cases.some((item) =>
-        item.id !== currentId
-        && !item.archivedAt
-        && normalizeProcessNumber(item.processNumber) === normalizedProcess
+        item.id !== currentId &&
+        !item.archivedAt &&
+        normalizeProcessNumber(item.processNumber) === normalizedProcess
       );
       if (duplicate) return 'Já existe um caso ativo com este número de processo/protocolo.';
     }
@@ -308,7 +498,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
 
     const identity = createCaseId();
     const now = getBrasiliaISO();
-    const legalCase: LegalCase = {
+    const legalCase: OperationalCase = {
       id: identity.id,
       caseNumber: identity.caseNumber,
       processNumber: createForm.processNumber.trim(),
@@ -325,15 +515,14 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
       openingDate: createForm.openingDate || today(),
       openedAt: createForm.openingDate || today(),
       filingDate: createForm.filingDate || undefined,
-      nextDeadlineDate: createForm.nextDeadlineDate || undefined,
-      nextDeadlineType: createForm.nextDeadlineType.trim() || undefined,
       caseFacts: createForm.caseFacts.trim() || undefined,
       quickNotes: createForm.quickNotes.trim() || undefined,
       notes: [],
       currentStepIndex: 0,
       steps: [],
-      deadlinesCount: createForm.nextDeadlineDate ? 1 : 0,
+      deadlinesCount: 0,
       costs: [],
+      deadlineEventsMigratedAt: now,
       createdAt: now,
       updatedAt: now,
     };
@@ -350,7 +539,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
     }
   };
 
-  const openCase = (legalCase: LegalCase) => {
+  const openCase = (legalCase: OperationalCase) => {
     setSelectedCase(legalCase);
     setEditForm(formFromCase(legalCase));
     setEditError('');
@@ -367,7 +556,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
 
     const client = clients.find((item) => item.id === selectedCase.clientId);
     const now = getBrasiliaISO();
-    const updatedCase: LegalCase = {
+    const updatedCase: OperationalCase = {
       ...selectedCase,
       title: editForm.title.trim(),
       category: editForm.category.trim(),
@@ -380,13 +569,10 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
       openingDate: editForm.openingDate || undefined,
       openedAt: editForm.openingDate || undefined,
       filingDate: editForm.filingDate || undefined,
-      nextDeadlineDate: editForm.nextDeadlineDate || undefined,
-      nextDeadlineType: editForm.nextDeadlineType.trim() || undefined,
       caseFacts: editForm.caseFacts.trim() || undefined,
       quickNotes: editForm.quickNotes.trim() || undefined,
       clientName: client?.name || selectedCase.clientName,
       clientCpf: client?.cpf || selectedCase.clientCpf,
-      deadlinesCount: editForm.nextDeadlineDate ? Math.max(1, selectedCase.deadlinesCount || 0) : selectedCase.deadlinesCount || 0,
       updatedAt: now,
       lastMovementDate: now.slice(0, 10),
     };
@@ -404,11 +590,86 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
     }
   };
 
-  const archiveCase = async (legalCase: LegalCase) => {
+  const openDeadline = (legalCase: OperationalCase) => {
+    setDeadlineCase(legalCase);
+    setDeadlineForm(emptyDeadlineForm(legalCase));
+    setDeadlineError('');
+  };
+
+  const handleSaveDeadline = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!deadlineCase || !firmId || deadlineSaving) return;
+    if (!deadlineForm.fullDate) {
+      setDeadlineError('Informe a data do prazo ou compromisso.');
+      return;
+    }
+    if (!deadlineForm.title.trim()) {
+      setDeadlineError('Informe um título para o prazo ou compromisso.');
+      return;
+    }
+
+    const duplicate = events.some((item) =>
+      item.caseId === deadlineCase.id &&
+      isOpenDeadlineStatus(item.status) &&
+      item.fullDate === deadlineForm.fullDate &&
+      (item.eventType || '') === deadlineForm.eventType
+    );
+    if (duplicate) {
+      setDeadlineError('Já existe um prazo pendente deste tipo e nesta data para o caso.');
+      return;
+    }
+
+    const presentation = eventPresentation(deadlineForm.eventType);
+    const newEvent: ScheduledEvent = {
+      id: `ev-case-${deadlineCase.id}-${Date.now()}`,
+      dateStr: formatDateBadge(deadlineForm.fullDate),
+      fullDate: deadlineForm.fullDate,
+      time: deadlineForm.time || undefined,
+      type: presentation.type,
+      badgeColor: presentation.badgeColor,
+      title: deadlineForm.title.trim(),
+      caseId: deadlineCase.id,
+      clientId: deadlineCase.clientId,
+      clientName: deadlineCase.clientName,
+      benefitType: deadlineCase.category,
+      processNumber: deadlineCase.processNumber || deadlineCase.caseNumber,
+      eventType: deadlineForm.eventType,
+      location: deadlineForm.location.trim() || undefined,
+      status: 'Pendente',
+      notes: deadlineForm.notes.trim() || undefined,
+      reminderDays: 1,
+      reminderOption: '1_day',
+      syncedWithGoogleCalendar: false,
+    };
+
+    setDeadlineSaving(true);
+    try {
+      await saveEventInFirestore(newEvent, firmId);
+      setEvents((current) => [newEvent, ...current.filter((item) => item.id !== newEvent.id)]);
+      setDeadlineCase(null);
+      setDeadlineError('');
+    } finally {
+      setDeadlineSaving(false);
+    }
+  };
+
+  const handleDeadlineStatus = async (scheduledEvent: ScheduledEvent, status: DeadlineStatus) => {
     if (!firmId) return;
+    const updated = { ...scheduledEvent, status };
+    await saveEventInFirestore(updated, firmId);
+    setEvents((current) => current.map((item) => item.id === updated.id ? updated : item));
+  };
+
+  const archiveCase = async (legalCase: OperationalCase) => {
+    if (!firmId) return;
+    const pending = getPendingCaseEvents(legalCase.id, events);
+    if (pending.length > 0) {
+      window.alert(`Este caso possui ${pending.length} prazo(s) pendente(s). Conclua, remarque ou resolva os prazos antes de arquivar.`);
+      return;
+    }
     if (!window.confirm(`Arquivar o caso ${legalCase.caseNumber} de ${legalCase.clientName}?`)) return;
     const now = getBrasiliaISO();
-    const updated: LegalCase = {
+    const updated: OperationalCase = {
       ...legalCase,
       statusBeforeArchive: legalCase.statusLabel,
       archivedAt: now,
@@ -419,10 +680,10 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
     setSelectedCase(null);
   };
 
-  const restoreCase = async (legalCase: LegalCase) => {
+  const restoreCase = async (legalCase: OperationalCase) => {
     if (!firmId) return;
     const now = getBrasiliaISO();
-    const updated: LegalCase = {
+    const updated: OperationalCase = {
       ...legalCase,
       statusLabel: legalCase.statusBeforeArchive || legalCase.statusLabel || 'Triagem',
       archivedAt: undefined,
@@ -432,7 +693,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
     setCases((current) => current.map((item) => item.id === updated.id ? updated : item));
   };
 
-  const openDocumentFlow = (legalCase: LegalCase) => {
+  const openDocumentFlow = (legalCase: OperationalCase) => {
     const client = clients.find((item) => item.id === legalCase.clientId);
     if (!client) {
       window.alert('A ficha do cliente vinculada a este caso não foi encontrada.');
@@ -466,11 +727,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
         'placeholder',
         '[Não informado]'
       );
-      const caseAnalysis = replaceCaseVariablesInText(
-        clientAnalysis.replacedText,
-        documentCase,
-        '[Não informado]'
-      );
+      const caseAnalysis = replaceCaseVariablesInText(clientAnalysis.replacedText, documentCase, '[Não informado]');
       const now = getBrasiliaISO();
       const rawId =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -522,7 +779,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
             <div>
               <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Casos & Processos</h1>
               <p className="text-xs md:text-sm text-slate-600 mt-1 max-w-3xl">
-                Abra o caso uma vez, mantenha o contexto jurídico e gere documentos sem redigitar os dados do cliente.
+                Caso, prazo e documento compartilham o mesmo contexto. Registre uma vez e retome o trabalho sem redigitação.
               </p>
             </div>
             <button type="button" onClick={openCreate} className="px-4 py-2.5 rounded-xl bg-[#0D0D0D] hover:bg-black text-white text-xs font-bold inline-flex items-center gap-2 border border-[#C9A227]/60 shadow-md">
@@ -544,8 +801,8 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
               <div className="text-2xl font-black text-red-800 mt-1">{activeCases.filter((item) => item.priority === 'Urgente').length}</div>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 shadow-xs">
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700">Com próximo prazo</div>
-              <div className="text-2xl font-black text-amber-900 mt-1">{activeCases.filter((item) => item.nextDeadlineDate).length}</div>
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700">Prazos pendentes</div>
+              <div className="text-2xl font-black text-amber-900 mt-1">{events.filter((event) => isOpenDeadlineStatus(event.status) && event.caseId && activeCases.some((item) => item.id === event.caseId)).length}</div>
             </div>
             <button type="button" onClick={() => setLifecycleFilter('archived')} className="text-left rounded-2xl border border-slate-200 bg-slate-100/70 p-4 shadow-xs">
               <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Arquivados</div>
@@ -586,7 +843,7 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
             ) : (
               <div className="divide-y divide-slate-100">
                 <div className="hidden lg:grid grid-cols-12 gap-4 px-5 py-3 bg-slate-50/80 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  <div className="col-span-4">Caso / Cliente</div><div className="col-span-2">Área</div><div className="col-span-2">Situação</div><div className="col-span-2">Próximo passo</div><div className="col-span-2 text-right">Ações</div>
+                  <div className="col-span-4">Caso / Cliente</div><div className="col-span-2">Área</div><div className="col-span-2">Situação</div><div className="col-span-2">Próximo prazo</div><div className="col-span-2 text-right">Ações</div>
                 </div>
                 {filteredCases.map((item) => (
                   <div key={item.id} className="p-4 lg:px-5 lg:py-3.5 grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-4 lg:items-center hover:bg-slate-50/70 transition-colors">
@@ -598,15 +855,16 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
                     </div>
                     <div className="lg:col-span-2 text-xs"><span className="font-semibold text-slate-800 block truncate">{item.category}</span><span className="text-[10px] text-slate-500">{item.actingType || 'A definir'}</span></div>
                     <div className="lg:col-span-2"><span className="inline-flex px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-blue-900 text-[10px] font-bold">{item.statusLabel}</span></div>
-                    <div className="lg:col-span-2 text-xs"><span className="font-semibold text-slate-800 block">{item.nextDeadlineType || 'Sem próximo prazo'}</span><span className="text-[10px] text-slate-500">{item.nextDeadlineDate ? new Date(`${item.nextDeadlineDate}T00:00:00`).toLocaleDateString('pt-BR') : '—'}</span></div>
+                    <div className="lg:col-span-2 text-xs"><span className="font-semibold text-slate-800 block">{item.nextDeadlineType || 'Sem prazo pendente'}</span><span className="text-[10px] text-slate-500">{item.nextDeadlineDate ? formatDate(item.nextDeadlineDate) : '—'}</span></div>
                     <div className="lg:col-span-2 flex lg:justify-end gap-1.5 flex-wrap">
                       {item.archivedAt ? (
                         <button type="button" onClick={() => void restoreCase(item)} className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">Restaurar</button>
                       ) : (
                         <>
+                          <button type="button" onClick={() => openDeadline(item)} className="px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold">Prazo</button>
                           <button type="button" onClick={() => openDocumentFlow(item)} className="px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-[11px] font-bold">Documento</button>
                           <button type="button" onClick={() => openCase(item)} className="px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold">Abrir</button>
-                          <button type="button" onClick={() => void archiveCase(item)} className="px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">Arquivar</button>
+                          <button type="button" onClick={() => void archiveCase(item)} className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-bold">Arquivar</button>
                         </>
                       )}
                     </div>
@@ -642,11 +900,26 @@ export const CasesWorkspaceView: React.FC<CasesWorkspaceViewProps> = ({ searchQu
           editMode={editMode}
           error={editError}
           saving={saving}
+          caseEvents={selectedCaseEvents}
           onEdit={() => { setEditForm(formFromCase(selectedCase)); setEditMode(true); setEditError(''); }}
           onCancelEdit={() => { setEditForm(formFromCase(selectedCase)); setEditMode(false); setEditError(''); }}
           onSave={() => void handleSaveEdit()}
           onDocument={() => openDocumentFlow(selectedCase)}
+          onAddDeadline={() => openDeadline(selectedCase)}
+          onDeadlineStatus={(scheduledEvent, status) => void handleDeadlineStatus(scheduledEvent, status)}
           onClose={() => setSelectedCase(null)}
+        />
+      )}
+
+      {deadlineCase && (
+        <DeadlineModal
+          legalCase={deadlineCase}
+          form={deadlineForm}
+          setForm={setDeadlineForm}
+          error={deadlineError}
+          saving={deadlineSaving}
+          onClose={() => setDeadlineCase(null)}
+          onSubmit={handleSaveDeadline}
         />
       )}
 
@@ -716,27 +989,71 @@ const CaseFormModal: React.FC<CaseFormModalProps> = ({ title, subtitle, form, se
   </div>
 );
 
+interface DeadlineModalProps {
+  legalCase: OperationalCase;
+  form: DeadlineFormState;
+  setForm: React.Dispatch<React.SetStateAction<DeadlineFormState>>;
+  error: string;
+  saving: boolean;
+  onClose: () => void;
+  onSubmit: (event: React.FormEvent) => void;
+}
+
+const DeadlineModal: React.FC<DeadlineModalProps> = ({ legalCase, form, setForm, error, saving, onClose, onSubmit }) => {
+  const updateType = (eventType: string) => {
+    setForm((current) => ({
+      ...current,
+      eventType,
+      title: !current.title || current.title.includes('—') ? `${eventType} — ${legalCase.clientName}` : current.title,
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+      <div className="bg-white w-full max-w-xl rounded-3xl p-6 border border-slate-200 shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div className="flex items-start justify-between gap-4 mb-5"><div><h3 className="text-lg font-black text-slate-900">Novo prazo / compromisso</h3><p className="text-xs text-slate-500 mt-1">{legalCase.clientName} • {legalCase.caseNumber}</p></div><button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><span className="material-symbols-outlined">close</span></button></div>
+        <form onSubmit={onSubmit} className="space-y-4 text-xs">
+          {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-semibold text-red-800">{error}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label className="block font-bold text-slate-700 mb-1">Tipo</label><select value={form.eventType} onChange={(event) => updateType(event.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold">{DEADLINE_TYPES.map((item) => <option key={item}>{item}</option>)}</select></div>
+            <div><label className="block font-bold text-slate-700 mb-1">Data *</label><input required type="date" value={form.fullDate} onChange={(event) => setForm((current) => ({ ...current, fullDate: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" /></div>
+            <div><label className="block font-bold text-slate-700 mb-1">Horário</label><input type="time" value={form.time} onChange={(event) => setForm((current) => ({ ...current, time: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" /></div>
+            <div><label className="block font-bold text-slate-700 mb-1">Local / link</label><input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" /></div>
+          </div>
+          <div><label className="block font-bold text-slate-700 mb-1">Título *</label><input required value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" /></div>
+          <div><label className="block font-bold text-slate-700 mb-1">Observação</label><textarea rows={3} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 resize-none" placeholder="Somente o que for útil para cumprir este prazo." /></div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-900 font-semibold">Ao salvar, este compromisso aparecerá automaticamente em Agenda & Prazos e atualizará o próximo prazo da ficha.</div>
+          <div className="pt-3 border-t border-slate-100 flex justify-end gap-2"><button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold">Cancelar</button><button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl bg-amber-700 text-white font-bold disabled:opacity-50">{saving ? 'Salvando...' : 'Salvar prazo'}</button></div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 interface CaseDetailModalProps {
-  legalCase: LegalCase;
+  legalCase: OperationalCase;
   form: CaseFormState;
   setForm: React.Dispatch<React.SetStateAction<CaseFormState>>;
   categories: string[];
   editMode: boolean;
   error: string;
   saving: boolean;
+  caseEvents: ScheduledEvent[];
   onEdit: () => void;
   onCancelEdit: () => void;
   onSave: () => void;
   onDocument: () => void;
+  onAddDeadline: () => void;
+  onDeadlineStatus: (scheduledEvent: ScheduledEvent, status: DeadlineStatus) => void;
   onClose: () => void;
 }
 
-const CaseDetailModal: React.FC<CaseDetailModalProps> = ({ legalCase, form, setForm, categories, editMode, error, saving, onEdit, onCancelEdit, onSave, onDocument, onClose }) => (
+const CaseDetailModal: React.FC<CaseDetailModalProps> = ({ legalCase, form, setForm, categories, editMode, error, saving, caseEvents, onEdit, onCancelEdit, onSave, onDocument, onAddDeadline, onDeadlineStatus, onClose }) => (
   <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
     <div className="bg-white w-full max-w-4xl rounded-3xl border border-slate-200 shadow-2xl max-h-[94vh] overflow-y-auto">
       <div className="p-5 md:p-6 border-b border-slate-200 bg-slate-50/70 flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div><div className="flex items-center gap-2 flex-wrap"><span className="text-[10px] font-mono text-slate-400">{legalCase.caseNumber}</span><span className={`px-2 py-0.5 rounded-md border text-[9px] font-bold ${priorityClass(legalCase.priority)}`}>{legalCase.priority || 'Normal'}</span></div><h2 className="text-lg font-black text-slate-900 mt-1">{legalCase.title}</h2><p className="text-xs text-slate-500 mt-1">{legalCase.clientName} • CPF {legalCase.clientCpf}</p></div>
-        <div className="flex gap-2 flex-wrap"><button type="button" onClick={onDocument} className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">Documento</button>{!editMode && <button type="button" onClick={onEdit} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">Editar caso</button>}<button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><span className="material-symbols-outlined">close</span></button></div>
+        <div className="flex gap-2 flex-wrap"><button type="button" onClick={onAddDeadline} className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">Novo prazo</button><button type="button" onClick={onDocument} className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">Documento</button>{!editMode && <button type="button" onClick={onEdit} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">Editar caso</button>}<button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><span className="material-symbols-outlined">close</span></button></div>
       </div>
       <div className="p-5 md:p-6 space-y-5 text-xs">
         {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-semibold text-red-800">{error}</div>}
@@ -744,8 +1061,23 @@ const CaseDetailModal: React.FC<CaseDetailModalProps> = ({ legalCase, form, setF
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Info label="Situação" value={legalCase.statusLabel} /><Info label="Área" value={legalCase.category} /><Info label="Atuação" value={legalCase.actingType || 'A definir'} /><Info label="Prioridade" value={legalCase.priority || 'Normal'} />
-              <Info label="Processo / protocolo" value={legalCase.processNumber || 'Não informado'} /><Info label="Órgão / Vara" value={legalCase.agencyOrCourt || legalCase.court || 'Não informado'} /><Info label="Abertura" value={legalCase.openingDate ? new Date(`${legalCase.openingDate}T00:00:00`).toLocaleDateString('pt-BR') : 'Não informado'} /><Info label="Próximo prazo" value={legalCase.nextDeadlineDate ? `${legalCase.nextDeadlineType || 'Prazo'} • ${new Date(`${legalCase.nextDeadlineDate}T00:00:00`).toLocaleDateString('pt-BR')}` : 'Não informado'} />
+              <Info label="Processo / protocolo" value={legalCase.processNumber || 'Não informado'} /><Info label="Órgão / Vara" value={legalCase.agencyOrCourt || legalCase.court || 'Não informado'} /><Info label="Abertura" value={legalCase.openingDate ? formatDate(legalCase.openingDate) : 'Não informado'} /><Info label="Próximo prazo" value={legalCase.nextDeadlineDate ? `${legalCase.nextDeadlineType || 'Prazo'} • ${formatDate(legalCase.nextDeadlineDate)}` : 'Nenhum prazo pendente'} />
             </div>
+            <section className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3"><div><div className="font-extrabold text-slate-900">Prazos e compromissos</div><div className="text-[10px] text-slate-500 mt-0.5">A mesma informação aparece na Agenda; concluir ou reabrir aqui atualiza ambos.</div></div><button type="button" onClick={onAddDeadline} className="px-3 py-2 rounded-xl bg-amber-700 text-white font-bold">Adicionar prazo</button></div>
+              {caseEvents.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-amber-200 bg-white/70 p-4 text-center text-slate-500">Nenhum prazo ou compromisso vinculado ao caso.</div>
+              ) : (
+                <div className="space-y-2">
+                  {caseEvents.map((scheduledEvent) => (
+                    <div key={scheduledEvent.id} className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-slate-900">{scheduledEvent.eventType || scheduledEvent.title}</span><span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold ${statusClass(scheduledEvent.status)}`}>{scheduledEvent.status}</span></div><div className="text-[10px] text-slate-500 mt-1">{formatDate(scheduledEvent.fullDate)}{scheduledEvent.time ? ` às ${scheduledEvent.time}` : ''}{scheduledEvent.location ? ` • ${scheduledEvent.location}` : ''}</div>{scheduledEvent.notes && <div className="text-[10px] text-slate-500 mt-1 truncate">{scheduledEvent.notes}</div>}</div>
+                      <div className="flex gap-2 shrink-0">{scheduledEvent.status === 'Concluído' ? <button type="button" onClick={() => onDeadlineStatus(scheduledEvent, 'Pendente')} className="px-2.5 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold">Reabrir</button> : <button type="button" onClick={() => onDeadlineStatus(scheduledEvent, 'Concluído')} className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">Concluir</button>}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
             <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"><div className="font-bold text-slate-800 mb-2">Fatos / contexto</div><p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{legalCase.caseFacts || 'Nenhum resumo registrado.'}</p></section>
             <section className="rounded-2xl border border-slate-200 bg-white p-4"><div className="font-bold text-slate-800 mb-2">Observações rápidas</div><p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{legalCase.quickNotes || 'Nenhuma observação registrada.'}</p></section>
           </>
@@ -761,9 +1093,8 @@ const CaseDetailModal: React.FC<CaseDetailModalProps> = ({ legalCase, form, setF
               <Field label="Órgão / Vara / Agência" value={form.agencyOrCourt} onChange={(value) => setForm((current) => ({ ...current, agencyOrCourt: value }))} />
               <div><label className="block font-bold text-slate-700 mb-1">Data de abertura</label><input type="date" value={form.openingDate} onChange={(event) => setForm((current) => ({ ...current, openingDate: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" /></div>
               <div><label className="block font-bold text-slate-700 mb-1">Data do protocolo</label><input type="date" value={form.filingDate} onChange={(event) => setForm((current) => ({ ...current, filingDate: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" /></div>
-              <div><label className="block font-bold text-slate-700 mb-1">Próximo prazo</label><input type="date" value={form.nextDeadlineDate} onChange={(event) => setForm((current) => ({ ...current, nextDeadlineDate: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200" /></div>
-              <Field label="Tipo do próximo prazo" value={form.nextDeadlineType} onChange={(value) => setForm((current) => ({ ...current, nextDeadlineType: value }))} />
             </div>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-900 font-semibold">Prazos não são mais digitados nesta edição. Use “Novo prazo” para que Caso e Agenda permaneçam sincronizados.</div>
             <div><label className="block font-bold text-slate-700 mb-1">Fatos / contexto</label><textarea rows={5} value={form.caseFacts} onChange={(event) => setForm((current) => ({ ...current, caseFacts: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 resize-none" /></div>
             <div><label className="block font-bold text-slate-700 mb-1">Observações rápidas</label><textarea rows={3} value={form.quickNotes} onChange={(event) => setForm((current) => ({ ...current, quickNotes: event.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 resize-none" /></div>
             <div className="pt-3 border-t border-slate-100 flex justify-end gap-2"><button type="button" onClick={onCancelEdit} className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold">Cancelar alterações</button><button type="button" onClick={onSave} disabled={saving} className="px-5 py-2.5 rounded-xl bg-[#0A1F44] text-white font-bold disabled:opacity-50">{saving ? 'Salvando...' : 'Salvar caso'}</button></div>
