@@ -48,6 +48,14 @@ export interface DocumentLibrarySeedResult {
   seededKeys: string[];
 }
 
+const normalizeIdentity = (value?: string) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const mergeCatalog = (current: string[] | undefined, required: string[]) => {
   const result: string[] = [];
   [...(current || []), ...required].forEach((value) => {
@@ -79,6 +87,18 @@ const markSeededThisSession = (firmId: string) => {
   } catch {
     // Session storage is only an optimization. Firestore remains the source of truth.
   }
+};
+
+const isEquivalentExistingTemplate = (
+  existing: LibraryTemplate,
+  definition: (typeof ADVODESK_BASE_TEMPLATE_CATALOG)[number]
+) => {
+  if (existing.libraryKey === definition.libraryKey) return true;
+  if (definition.legacyTemplateIds.includes(existing.id)) return true;
+
+  return normalizeIdentity(existing.title) === normalizeIdentity(definition.template.title)
+    && normalizeIdentity(existing.category) === normalizeIdentity(definition.template.category)
+    && normalizeIdentity(existing.format) === normalizeIdentity(definition.template.format);
 };
 
 /**
@@ -129,8 +149,7 @@ export async function seedAdvodeskDocumentLibrary(firmId: string): Promise<Docum
     }
 
     const existing = existingTemplates.find((template) =>
-      template.libraryKey === definition.libraryKey
-      || definition.legacyTemplateIds.includes(template.id)
+      isEquivalentExistingTemplate(template, definition)
     );
 
     if (existing) {
