@@ -1,16 +1,12 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, User } from '@firebase/auth';
+import { NavigationTab, Client, LegalCase, DocumentTemplate, ScheduledEvent, FirmSettings, UserProfile } from './types';
 import {
-  NavigationTab,
-  Client,
-  LegalCase,
-  DocumentTemplate,
-  ScheduledEvent,
-  FirmSettings,
-  UserProfile,
-} from './types';
-import { INITIAL_CLIENTS, INITIAL_CASES, SCHEDULED_EVENTS } from './data/mockData';
-import { auth } from './lib/firebase';
+  INITIAL_CLIENTS,
+  INITIAL_CASES,
+  SCHEDULED_EVENTS,
+} from './data/mockData';
+import { auth, testConnection } from './lib/firebase';
 import {
   DEFAULT_SETTINGS,
   seedInitialFirestoreData,
@@ -23,6 +19,8 @@ import {
   ensureUserProfileInFirestore,
   subscribeToUserProfile,
   saveClientInFirestore,
+  saveCaseInFirestore,
+  deleteCaseFromFirestore,
   saveTemplateInFirestore,
   deleteTemplateFromFirestore,
   saveEventInFirestore,
@@ -31,8 +29,6 @@ import {
 } from './services/firestoreService';
 import { INITIAL_WORKFLOWS } from './data/defaultWorkflows';
 import { Navigation } from './components/Navigation';
-import { LoginScreen } from './components/LoginScreen';
-
 const DashboardView = lazy(() => import('./components/DashboardView').then((module) => ({ default: module.DashboardView })));
 const BpcLoasView = lazy(() => import('./components/bpc/BpcLoasView').then((module) => ({ default: module.BpcLoasView })));
 const ClientsView = lazy(() => import('./components/ClientsView').then((module) => ({ default: module.ClientsView })));
@@ -40,9 +36,11 @@ const CasesWorkspaceView = lazy(() => import('./components/cases/CasesWorkspaceV
 const DocumentsView = lazy(() => import('./components/DocumentsView').then((module) => ({ default: module.DocumentsView })));
 const CalendarView = lazy(() => import('./components/CalendarView').then((module) => ({ default: module.CalendarView })));
 const SettingsView = lazy(() => import('./components/SettingsView').then((module) => ({ default: module.SettingsView })));
+import { LoginScreen } from './components/LoginScreen';
 const NewCaseModal = lazy(() => import('./components/NewCaseModal').then((module) => ({ default: module.NewCaseModal })));
 const DocumentGeneratorModal = lazy(() => import('./components/DocumentGeneratorModal').then((module) => ({ default: module.DocumentGeneratorModal })));
 const ClientSelectorDocumentModal = lazy(() => import('./components/ClientSelectorDocumentModal').then((module) => ({ default: module.ClientSelectorDocumentModal })));
+const VariablesGuideModal = lazy(() => import('./components/VariablesGuideModal').then((module) => ({ default: module.VariablesGuideModal })));
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -51,17 +49,130 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Firebase Auth State Listener & Profile Resolution
+  useEffect(() => {
+    let unsubProfile: (() => void) | null = null;
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setAuthLoading(true);
+        setUserProfile(null);
+
+        // Subscribe to real-time updates on user profile
+        if (unsubProfile) {
+          unsubProfile();
+          unsubProfile = null;
+        }
+        unsubProfile = subscribeToUserProfile(currentUser.uid, (updatedProfile) => {
+          if (updatedProfile) {
+            setUserProfile(updatedProfile);
+          }
+        });
+
+        // Ensure and resolve persisted user profile in Firestore
+        try {
+          const persistedProfile = await ensureUserProfileInFirestore(currentUser);
+          if (persistedProfile) {
+            setUserProfile(persistedProfile);
+          }
+        } catch (err) {
+          console.error('Error resolving user profile in Firestore:', err);
+        } finally {
+          setAuthLoading(false);
+        }
+      } else {
+        setUserProfile(null);
+        if (unsubProfile) {
+          unsubProfile();
+          unsubProfile = null;
+        }
+        setAuthLoading(false);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      if (unsubProfile) unsubProfile();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
+  // Branding & Lawyer settings state
   const [settings, setSettings] = useState<FirmSettings>(() => ({
     ...DEFAULT_SETTINGS,
     practiceAreas: [...DEFAULT_SETTINGS.practiceAreas],
     clientCategories: [...DEFAULT_SETTINGS.clientCategories],
   }));
+
+  // Data state
   const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
   const [cases, setCases] = useState<LegalCase[]>(INITIAL_CASES);
   const [events, setEvents] = useState<ScheduledEvent[]>(SCHEDULED_EVENTS);
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [workflows, setWorkflows] = useState<any[]>(INITIAL_WORKFLOWS);
 
+  // Initialize and Sync Firebase Firestore only after User Profile & Firm ID are fully resolved
+  useEffect(() => {
+    if (!user || !userProfile || !userProfile.firmId) return;
+
+    const firmId = userProfile.firmId;
+    let isMounted = true;
+    let unsubClients: (() => void) | null = null;
+    let unsubCases: (() => void) | null = null;
+    let unsubTemplates: (() => void) | null = null;
+    let unsubEvents: (() => void) | null = null;
+    let unsubSettings: (() => void) | null = null;
+    let unsubWorkflows: (() => void) | null = null;
+
+    // 1. Immediately launch private multitenant real-time subscriptions in parallel
+    unsubClients = subscribeToClients(firmId, (remoteClients) => {
+      if (isMounted) setClients(remoteClients);
+    });
+    unsubCases = subscribeToCases(firmId, (remoteCases) => {
+      if (isMounted) setCases(remoteCases);
+    });
+    unsubTemplates = subscribeToTemplates(firmId, (remoteTemplates) => {
+      if (isMounted) setTemplates(remoteTemplates);
+    });
+    unsubEvents = subscribeToEvents(firmId, (remoteEvents) => {
+      if (isMounted) setEvents(remoteEvents);
+    });
+    unsubSettings = subscribeToSettings(firmId, (remoteSettings) => {
+      if (isMounted && remoteSettings) setSettings(remoteSettings);
+    });
+    unsubWorkflows = subscribeToWorkflowTemplates(firmId, (remoteWorkflows) => {
+      if (isMounted && remoteWorkflows && remoteWorkflows.length > 0) {
+        setWorkflows(remoteWorkflows);
+      }
+    });
+
+    // 2. Perform administrative data seed asynchronously in the background without blocking render
+    if (userProfile?.role === 'admin' || userProfile?.permissions?.canManageWorkflows) {
+      seedInitialFirestoreData(userProfile).catch((err) => {
+        console.warn('Background seed check notice:', err);
+      });
+    }
+
+    return () => {
+      isMounted = false;
+      if (unsubClients) unsubClients();
+      if (unsubCases) unsubCases();
+      if (unsubTemplates) unsubTemplates();
+      if (unsubEvents) unsubEvents();
+      if (unsubSettings) unsubSettings();
+      if (unsubWorkflows) unsubWorkflows();
+    };
+  }, [user, userProfile?.uid, userProfile?.firmId]);
+
+  // Document Categories & Formats
   const [docCategories, setDocCategories] = useState<string[]>([
     'Todos',
     'Previdenciário',
@@ -83,84 +194,26 @@ export default function App() {
     'Outro',
   ]);
 
+  // Modals
   const [newCaseModalOpen, setNewCaseModalOpen] = useState(false);
+
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [clientSelectorModalOpen, setClientSelectorModalOpen] = useState(false);
+  const [variablesGuideModalOpen, setVariablesGuideModalOpen] = useState(false);
+
   const [selectedTemplateForDoc, setSelectedTemplateForDoc] = useState<DocumentTemplate | null>(null);
   const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null);
   const [docClientName, setDocClientName] = useState('');
   const [docClientCpf, setDocClientCpf] = useState('');
   const [prefilledGeneratedText, setPrefilledGeneratedText] = useState<string | null>(null);
 
-  useEffect(() => {
-    let unsubProfile: (() => void) | null = null;
-
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        setUserProfile(null);
-        unsubProfile?.();
-        unsubProfile = null;
-        setAuthLoading(false);
-        return;
-      }
-
-      setAuthLoading(true);
-      setUserProfile(null);
-      unsubProfile?.();
-      unsubProfile = subscribeToUserProfile(currentUser.uid, (profile) => {
-        if (profile) setUserProfile(profile);
-      });
-
-      try {
-        const profile = await ensureUserProfileInFirestore(currentUser);
-        if (profile) setUserProfile(profile);
-      } catch (error) {
-        console.error('Error resolving user profile in Firestore:', error);
-      } finally {
-        setAuthLoading(false);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      unsubProfile?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!user || !userProfile?.firmId) return;
-
-    const firmId = userProfile.firmId;
-    let mounted = true;
-    const unsubscribeClients = subscribeToClients(firmId, (items) => mounted && setClients(items));
-    const unsubscribeCases = subscribeToCases(firmId, (items) => mounted && setCases(items));
-    const unsubscribeTemplates = subscribeToTemplates(firmId, (items) => mounted && setTemplates(items));
-    const unsubscribeEvents = subscribeToEvents(firmId, (items) => mounted && setEvents(items));
-    const unsubscribeSettings = subscribeToSettings(firmId, (value) => mounted && value && setSettings(value));
-    const unsubscribeWorkflows = subscribeToWorkflowTemplates(firmId, (items) => {
-      if (mounted && items?.length) setWorkflows(items);
-    });
-
-    if (userProfile.role === 'admin' || userProfile.permissions?.canManageWorkflows) {
-      seedInitialFirestoreData(userProfile).catch((error) => console.warn('Background seed check notice:', error));
-    }
-
-    return () => {
-      mounted = false;
-      unsubscribeClients();
-      unsubscribeCases();
-      unsubscribeTemplates();
-      unsubscribeEvents();
-      unsubscribeSettings();
-      unsubscribeWorkflows();
-    };
-  }, [user, userProfile?.uid, userProfile?.firmId]);
-
-  const documentEligibleClients = clients.filter((client) => String(client.status) !== 'Arquivado');
+  const documentEligibleClients = clients.filter(
+    (client) => String(client.status) !== 'Arquivado'
+  );
 
   useEffect(() => {
     if (!selectedClientForDoc) return;
+
     const currentClient = clients.find((client) => client.id === selectedClientForDoc.id);
     if (!currentClient || String(currentClient.status) === 'Arquivado') {
       setSelectedClientForDoc(null);
@@ -170,6 +223,7 @@ export default function App() {
       setDocModalOpen(false);
       return;
     }
+
     if (currentClient !== selectedClientForDoc) {
       setSelectedClientForDoc(currentClient);
       setDocClientName(currentClient.name);
@@ -177,141 +231,173 @@ export default function App() {
     }
   }, [clients, selectedClientForDoc?.id]);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Logout error:', error);
+  const openDefaultTenantTemplate = () => {
+    const tenantTemplate = templates[0];
+
+    setSelectedClientForDoc(null);
+
+    if (!tenantTemplate) {
+      console.warn(
+        '[Documents] No tenant template available. Redirecting to Documents.'
+      );
+
+      setSelectedTemplateForDoc(null);
+      setPrefilledGeneratedText(null);
+      setDocClientName('');
+      setDocClientCpf('');
+      setDocModalOpen(false);
+      setCurrentTab('documents');
+      return;
     }
+
+    setSelectedTemplateForDoc(tenantTemplate);
+    setPrefilledGeneratedText(null);
+    setDocClientName('');
+    setDocClientCpf('');
+    setDocModalOpen(true);
   };
 
+  // Handlers with Firestore Persistence
   const handleSaveSettings = (newSettings: FirmSettings) => {
     setSettings(newSettings);
-    if (!userProfile?.firmId) return;
-    void saveSettingsInFirestore(newSettings, userProfile.firmId);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save settings: userProfile.firmId is not defined.');
+      return;
+    }
+    saveSettingsInFirestore(newSettings, userProfile.firmId);
   };
 
-  const handleSaveTemplate = (template: DocumentTemplate) => {
-    setTemplates((current) => {
-      const exists = current.some((item) => item.id === template.id);
-      return exists
-        ? current.map((item) => item.id === template.id ? template : item)
-        : [template, ...current];
-    });
-    if (!userProfile?.firmId) return;
-    void saveTemplateInFirestore(template, userProfile.firmId);
+  const handleSaveTemplate = (tpl: DocumentTemplate) => {
+    const exists = templates.some((t) => t.id === tpl.id);
+    if (exists) {
+      setTemplates(templates.map((t) => (t.id === tpl.id ? tpl : t)));
+    } else {
+      setTemplates([tpl, ...templates]);
+    }
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save template: userProfile.firmId is not defined.');
+      return;
+    }
+    saveTemplateInFirestore(tpl, userProfile.firmId);
   };
 
   const handleDeleteTemplate = (id: string) => {
-    setTemplates((current) => current.filter((item) => item.id !== id));
-    void deleteTemplateFromFirestore(id);
+    setTemplates(templates.filter((t) => t.id !== id));
+    deleteTemplateFromFirestore(id);
   };
 
-  const handleAddCategory = (category: string) => {
-    setDocCategories((current) => current.includes(category) ? current : [...current, category]);
+  const handleAddCategory = (cat: string) => {
+    if (!docCategories.includes(cat)) {
+      setDocCategories([...docCategories, cat]);
+    }
   };
 
-  const handleEditCategory = (oldCategory: string, newCategory: string) => {
-    setDocCategories((current) => current.map((item) => item === oldCategory ? newCategory : item));
-    setTemplates((current) => current.map((template) => {
-      if (template.category !== oldCategory) return template;
-      const updated = { ...template, category: newCategory };
-      if (userProfile?.firmId) void saveTemplateInFirestore(updated, userProfile.firmId);
-      return updated;
-    }));
+  const handleEditCategory = (oldCat: string, newCat: string) => {
+    setDocCategories(docCategories.map((c) => (c === oldCat ? newCat : c)));
+    const updated = templates.map((t) => (t.category === oldCat ? { ...t, category: newCat } : t));
+    setTemplates(updated);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save templates for updated category: userProfile.firmId is not defined.');
+      return;
+    }
+    const firmId = userProfile.firmId;
+    updated.filter((t) => t.category === newCat).forEach((t) => saveTemplateInFirestore(t, firmId));
   };
 
-  const handleDeleteCategory = (category: string) => {
-    setDocCategories((current) => current.filter((item) => item !== category));
+  const handleDeleteCategory = (cat: string) => {
+    setDocCategories(docCategories.filter((c) => c !== cat));
   };
 
-  const handleAddFormat = (format: string) => {
-    setDocFormats((current) => current.includes(format) ? current : [...current, format]);
+  const handleAddFormat = (fmt: string) => {
+    if (!docFormats.includes(fmt)) {
+      setDocFormats([...docFormats, fmt]);
+    }
   };
 
-  const handleEditFormat = (oldFormat: string, newFormat: string) => {
-    setDocFormats((current) => current.map((item) => item === oldFormat ? newFormat : item));
-    setTemplates((current) => current.map((template) => {
-      if (template.format !== oldFormat) return template;
-      const updated = { ...template, format: newFormat };
-      if (userProfile?.firmId) void saveTemplateInFirestore(updated, userProfile.firmId);
-      return updated;
-    }));
+  const handleEditFormat = (oldFmt: string, newFmt: string) => {
+    setDocFormats(docFormats.map((f) => (f === oldFmt ? newFmt : f));
+    const updated = templates.map((t) => (t.format === oldFmt ? { ...t, format: newFmt } : t));
+    setTemplates(updated);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save templates for updated format: userProfile.firmId is not defined.');
+      return;
+    }
+    const firmId = userProfile.firmId;
+    updated.filter((t) => t.format === newFmt).forEach((t) => saveTemplateInFirestore(t, firmId));
   };
 
-  const handleDeleteFormat = (format: string) => {
-    setDocFormats((current) => current.filter((item) => item !== format));
+  const handleDeleteFormat = (fmt: string) => {
+    setDocFormats(docFormats.filter((f) => f !== fmt));
   };
 
   const handleClientCreated = (newClient: Client) => {
     setClients((current) => [newClient, ...current]);
     setCurrentTab('clients');
-    if (!userProfile?.firmId) return;
-    void saveClientInFirestore(newClient, userProfile.firmId);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save new client: userProfile.firmId is not defined.');
+      return;
+    }
+    saveClientInFirestore(newClient, userProfile.firmId);
   };
 
   const handleSaveClient = (updatedClient: Client) => {
-    setClients((current) => current.map((client) => client.id === updatedClient.id ? updatedClient : client));
-    if (!userProfile?.firmId) return;
-    void saveClientInFirestore(updatedClient, userProfile.firmId);
+    setClients((current) => current.map((client) => (
+      client.id === updatedClient.id ? updatedClient : client
+    )));
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save client: userProfile.firmId is not defined.');
+      return;
+    }
+    saveClientInFirestore(updatedClient, userProfile.firmId);
   };
 
-  const handleAddEvent = (event: ScheduledEvent) => {
-    setEvents((current) => [event, ...current]);
-    if (!userProfile?.firmId) return;
-    void saveEventInFirestore(event, userProfile.firmId);
+  const handleAddEvent = (newEv: ScheduledEvent) => {
+    setEvents([newEv, ...events]);
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save new event: userProfile.firmId is not defined.');
+      return;
+    }
+    saveEventInFirestore(newEv, userProfile.firmId);
   };
 
-  const handleUpdateEvent = (updatedEvent: ScheduledEvent) => {
-    setEvents((current) => current.map((event) => event.id === updatedEvent.id ? updatedEvent : event));
-    if (!userProfile?.firmId) return;
-    void saveEventInFirestore(updatedEvent, userProfile.firmId);
+  const handleUpdateEvent = (updatedEv: ScheduledEvent) => {
+    setEvents(events.map((e) => (e.id === updatedEv.id ? updatedEv : e));
+    if (!userProfile?.firmId) {
+      console.error('[Firestore Write Error] Cannot save updated event: userProfile.firmId is not defined.');
+      return;
+    }
+    saveEventInFirestore(updatedEv, userProfile.firmId);
   };
 
   const handleDeleteEvent = (eventId: string) => {
-    setEvents((current) => current.filter((event) => event.id !== eventId));
-    void deleteEventFromFirestore(eventId);
-  };
-
-  const handleUpdateClientField = (clientId: string, fieldKey: keyof Client, value: any) => {
-    setClients((current) => current.map((client) => {
-      if (client.id !== clientId) return client;
-      const updated = { ...client, [fieldKey]: value };
-      if (userProfile?.firmId) void saveClientInFirestore(updated, userProfile.firmId);
-      return updated;
-    }));
-  };
-
-  const handleSelectClientForDoc = (client: Client) => {
-    if (String(client.status) === 'Arquivado') return;
-    setSelectedClientForDoc(client);
-    setDocClientName(client.name);
-    setDocClientCpf(client.cpf);
-    setSelectedTemplateForDoc(null);
-    setPrefilledGeneratedText(null);
-    setClientSelectorModalOpen(false);
-    setDocModalOpen(false);
-    setCurrentTab('documents');
+    setEvents(events.filter((e) => e.id !== eventId));
+    deleteEventFromFirestore(eventId);
   };
 
   const handleOpenDocModalForTemplate = (template: DocumentTemplate) => {
     setSelectedTemplateForDoc(template);
-    const selected = selectedClientForDoc
+
+    const eligibleSelectedClient = selectedClientForDoc
       ? documentEligibleClients.find((client) => client.id === selectedClientForDoc.id)
       : null;
-    if (selected) {
-      setSelectedClientForDoc(selected);
-      setDocClientName(selected.name);
-      setDocClientCpf(selected.cpf);
+
+    if (eligibleSelectedClient) {
+      setSelectedClientForDoc(eligibleSelectedClient);
+      setDocClientName(eligibleSelectedClient.name);
+      setDocClientCpf(eligibleSelectedClient.cpf);
       setPrefilledGeneratedText(null);
       setClientSelectorModalOpen(false);
       setDocModalOpen(true);
       return;
     }
-    setSelectedClientForDoc(null);
-    setDocClientName('');
-    setDocClientCpf('');
-    setPrefilledGeneratedText(null);
+
+    if (selectedClientForDoc) {
+      setSelectedClientForDoc(null);
+      setDocClientName('');
+      setDocClientCpf('');
+      setPrefilledGeneratedText(null);
+    }
+
     setClientSelectorModalOpen(true);
   };
 
@@ -320,7 +406,11 @@ export default function App() {
     client: Client,
     template: DocumentTemplate
   ) => {
-    if (String(client.status) === 'Arquivado') return;
+    if (String(client.status) === 'Arquivado') {
+      console.warn('[Documents] Archived clients cannot start document generation.');
+      return;
+    }
+
     setSelectedClientForDoc(client);
     setDocClientName(client.name);
     setDocClientCpf(client.cpf);
@@ -330,19 +420,35 @@ export default function App() {
     setDocModalOpen(true);
   };
 
-  const openDefaultTenantTemplate = () => {
-    const template = templates.find((item) => item.status !== 'Arquivado') || templates[0];
-    setSelectedClientForDoc(null);
-    if (!template) {
-      setSelectedTemplateForDoc(null);
-      setCurrentTab('documents');
+  const handleUpdateClientField = (clientId: string, fieldKey: keyof Client, value: any) => {
+    setClients((prev) => {
+      const updated = prev.map((c) => (c.id === clientId ? { ...c, [fieldKey]: value } : c));
+      const target = updated.find((c) => c.id === clientId);
+      if (target) {
+        if (!userProfile?.firmId) {
+          console.error('[Firestore Write Error] Cannot update client field: userProfile.firmId is not defined.');
+        } else {
+          saveClientInFirestore(target, userProfile.firmId);
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleSelectClientForDoc = (client: Client) => {
+    if (String(client.status) === 'Arquivado') {
+      console.warn('[Documents] Archived clients cannot be selected for document generation.');
       return;
     }
-    setSelectedTemplateForDoc(template);
+
+    setSelectedClientForDoc(client);
+    setDocClientName(client.name);
+    setDocClientCpf(client.cpf);
+    setSelectedTemplateForDoc(null);
     setPrefilledGeneratedText(null);
-    setDocClientName('');
-    setDocClientCpf('');
-    setDocModalOpen(true);
+    setClientSelectorModalOpen(false);
+    setDocModalOpen(false);
+    setCurrentTab('documents');
   };
 
   if (authLoading) {
@@ -355,7 +461,13 @@ export default function App() {
   }
 
   if (!user) {
-    return <LoginScreen firmName={settings.firmName} firmSubtitle={settings.firmSubtitle} logoUrl={settings.logoUrl} />;
+    return (
+      <LoginScreen
+        firmName={settings.firmName}
+        firmSubtitle={settings.firmSubtitle}
+        logoUrl={settings.logoUrl}
+      />
+    );
   }
 
   if (!userProfile) {
@@ -367,9 +479,18 @@ export default function App() {
           </div>
           <div className="space-y-2">
             <h2 className="text-lg font-extrabold text-slate-900">Acesso Não Provisionado</h2>
-            <p className="text-xs text-slate-600 leading-relaxed">Seu usuário foi autenticado, mas ainda não possui acesso a um escritório no AdvoDesk.</p>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Seu usuário foi autenticado, mas ainda não possui acesso a um escritório no AdvoDesk. Solicite ao administrador que cadastre ou autorize seu perfil.
+            </p>
           </div>
-          <button type="button" onClick={handleLogout} className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white text-xs font-bold">Sair</button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center justify-center space-x-1.5"
+          >
+            <span className="material-symbols-outlined text-base">logout</span>
+            <span>Sair</span>
+          </button>
         </div>
       </div>
     );
@@ -377,8 +498,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#0D0D0D] font-body-md text-sm relative overflow-x-hidden">
-      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40" style={{ background: 'radial-gradient(circle at 10% 20%, rgba(201, 162, 39, 0.05), transparent 45%), radial-gradient(circle at 90% 80%, rgba(13, 13, 13, 0.03), transparent 45%)' }} />
+      {/* Background Ambient Glow */}
+      <div 
+        className="fixed inset-0 z-[-1] pointer-events-none opacity-40"
+        style={{
+          background: 'radial-gradient(circle at 10% 20%, rgba(201, 162, 39, 0.05), transparent 45%), radial-gradient(circle at 90% 80%, rgba(13, 13, 13, 0.03), transparent 45%)',
+        }}
+      />
 
+      {/* Persistent Navigation */}
       <Navigation
         currentTab={currentTab}
         onTabChange={setCurrentTab}
@@ -389,123 +517,186 @@ export default function App() {
         onLogout={handleLogout}
       />
 
+      {/* Main View Router */}
       <Suspense fallback={<main className="md:ml-64 pt-24 text-center text-sm text-slate-500">Carregando...</main>}>
-        {currentTab === 'dashboard' && (
-          <DashboardView
-            events={events}
-            clients={clients}
-            templates={templates}
-            onNavigateToTab={setCurrentTab}
-            onOpenNewClientModal={() => setNewCaseModalOpen(true)}
-            onOpenDocModal={openDefaultTenantTemplate}
-            onSelectClientForDoc={handleSelectClientForDoc}
-          />
-        )}
+      {currentTab === 'dashboard' && (
+        <DashboardView
+          events={events}
+          clients={clients}
+          templates={templates}
+          onNavigateToTab={setCurrentTab}
+          onOpenNewClientModal={() => setNewCaseModalOpen(true)}
+          onOpenDocModal={() => {
+            openDefaultTenantTemplate();
+          }}
+          onSelectClientForDoc={handleSelectClientForDoc}
+        />
+      )}
 
-        {currentTab === 'bpc-loas' && <BpcLoasView clients={clients} />}
+      {currentTab === 'bpc-loas' && (
+        <BpcLoasView
+          clients={clients}
+        />
+      )}
 
-        {currentTab === 'clients' && (
-          <ClientsView
-            clients={clients}
-            searchQuery={searchQuery}
-            onOpenAddClientModal={() => setNewCaseModalOpen(true)}
-            onSelectClientForDoc={handleSelectClientForDoc}
-            onSaveClient={handleSaveClient}
-            clientCategories={settings.clientCategories}
-          />
-        )}
+      {currentTab === 'clients' && (
+        <ClientsView
+          clients={clients}
+          searchQuery={searchQuery}
+          onOpenAddClientModal={() => setNewCaseModalOpen(true)}
+          onSelectClientForDoc={handleSelectClientForDoc}
+          onSaveClient={handleSaveClient}
+          clientCategories={settings.clientCategories}
+        />
+      )}
 
-        {String(currentTab) === 'cases' && <CasesWorkspaceView searchQuery={searchQuery} />}
+      {String(currentTab) === 'cases' && (
+        <CasesWorkspaceView searchQuery={searchQuery} />
+      )}
 
-        {currentTab === 'documents' && (
-          <DocumentsView
-            templates={templates}
-            searchQuery={searchQuery}
-            docCategories={docCategories}
-            docFormats={docFormats}
-            onSelectTemplateToGenerate={handleOpenDocModalForTemplate}
-            onSaveTemplate={handleSaveTemplate}
-            onDeleteTemplate={handleDeleteTemplate}
-            onAddCategory={handleAddCategory}
-            onEditCategory={handleEditCategory}
-            onDeleteCategory={handleDeleteCategory}
-            onAddFormat={handleAddFormat}
-            onEditFormat={handleEditFormat}
-            onDeleteFormat={handleDeleteFormat}
-          />
-        )}
+      {currentTab === 'documents' && (
+        <DocumentsView
+          templates={templates}
+          searchQuery={searchQuery}
+          docCategories={docCategories}
+          docFormats={docFormats}
+          onSelectTemplateToGenerate={handleOpenDocModalForTemplate}
+          onSaveTemplate={handleSaveTemplate}
+          onDeleteTemplate={handleDeleteTemplate}
+          onAddCategory={handleAddCategory}
+          onEditCategory={handleEditCategory}
+          onDeleteCategory={handleDeleteCategory}
+          onAddFormat={handleAddFormat}
+          onEditFormat={handleEditFormat}
+          onDeleteFormat={handleDeleteFormat}
+        />
+      )}
 
-        {currentTab === 'calendar' && (
-          <CalendarView
-            events={events}
-            cases={cases}
-            clients={clients}
-            searchQuery={searchQuery}
-            onAddEvent={handleAddEvent}
-            onUpdateEvent={handleUpdateEvent}
-            onDeleteEvent={handleDeleteEvent}
-          />
-        )}
+      {currentTab === 'calendar' && (
+        <CalendarView
+          events={events}
+          cases={cases}
+          clients={clients}
+          searchQuery={searchQuery}
+          onAddEvent={handleAddEvent}
+          onUpdateEvent={handleUpdateEvent}
+          onDeleteEvent={handleDeleteEvent}
+        />
+      )}
 
-        {currentTab === 'settings' && (
-          <SettingsView settings={{ ...settings, workflows }} onUpdateSettings={handleSaveSettings} />
-        )}
+      {/* Settings View */}
+      {currentTab === 'settings' && (
+        <SettingsView
+          settings={{ ...settings, workflows }}
+          onUpdateSettings={handleSaveSettings}
+        />
+      )}
 
-        {currentTab === 'support' && (
-          <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen">
-            <div className="max-w-3xl mx-auto glass-panel rounded-[24px] p-8 border border-slate-200/90 shadow-sm space-y-6">
-              <h1 className="font-display-lg text-2xl font-extrabold text-slate-900">Suporte Técnico • {settings.firmName}</h1>
-              <p className="text-sm text-slate-600">Canais de suporte técnico do AdvoDesk.</p>
-              <div className="space-y-3 text-xs">
-                <a href="https://wa.me/55991503232" target="_blank" rel="noopener noreferrer" className="block p-4 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-800">WhatsApp: (55) 99150-3232</a>
-                <a href="mailto:codex.martis.dev@gmail.com" className="block p-4 rounded-xl bg-blue-50 border border-blue-200 font-bold text-blue-900">codex.martis.dev@gmail.com</a>
+      {/* Support View */}
+      {currentTab === 'support' && (
+        <main className="md:ml-64 pt-16 md:pt-8 pb-12 px-4 sm:px-6 md:px-8 min-h-screen">
+          <div className="max-w-3xl mx-auto glass-panel rounded-[24px] p-8 border border-slate-200/90 shadow-sm space-y-6">
+            <h1 className="font-display-lg text-2xl font-extrabold text-slate-900">Suporte Técnico • {settings.firmName} {settings.firmSubtitle}</h1>
+            <p className="text-sm text-slate-600">
+              Caso tenha dúvidas sobre o sistema ou para suporte no desenvolvimento, entre em contato através dos canais abaixo:
+            </p>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <span className="material-symbols-outlined text-xl">chat</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-800 text-sm block">WhatsApp do Desenvolvedor do Sistema</span>
+                    <span className="text-slate-500 text-xs">Contato direto via WhatsApp para suporte técnico</span>
+                  </div>
+                </div>
+                <a
+                  href="https://wa.me/55991503232"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-sm">chat</span>
+                  <span>(55) 99150-3232</span>
+                </a>
+              </div>
+
+              <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#0A1F44] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <span className="material-symbols-outlined text-xl">mail</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-800 text-sm block">E-mail de Suporte Técnico</span>
+                    <span className="text-slate-500 text-xs">Canal oficial para dúvidas, melhorias e chamados</span>
+                  </div>
+                </div>
+                <a
+                  href="mailto:codex.martis.dev@gmail.com"
+                  className="px-4 py-2 bg-[#0A1F44] hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-sm">mail</span>
+                  <span>codex.martis.dev@gmail.com</span>
+                </a>
               </div>
             </div>
-          </main>
-        )}
+          </div>
+        </main>
+      )}
+
+
       </Suspense>
-
+      {/* Modals */}
       <Suspense fallback={null}>
-        {newCaseModalOpen && (
-          <NewCaseModal
-            isOpen={newCaseModalOpen}
-            onClose={() => setNewCaseModalOpen(false)}
-            clients={clients}
-            onClientCreated={handleClientCreated}
-            clientCategories={settings.clientCategories}
-          />
-        )}
+      {newCaseModalOpen && (
+      <NewCaseModal
+        isOpen={newCaseModalOpen}
+        onClose={() => setNewCaseModalOpen(false)}
+        clients={clients}
+        onClientCreated={handleClientCreated}
+        clientCategories={settings.clientCategories}
+      />
+      )}
 
-        {clientSelectorModalOpen && (
-          <ClientSelectorDocumentModal
-            isOpen={clientSelectorModalOpen}
-            onClose={() => setClientSelectorModalOpen(false)}
-            template={selectedTemplateForDoc}
-            clients={documentEligibleClients}
-            settings={settings}
-            onConfirmGenerate={handleConfirmGenerateFromClientSelector}
-            onUpdateClientField={handleUpdateClientField}
-          />
-        )}
+      {clientSelectorModalOpen && (
+      <ClientSelectorDocumentModal
+        isOpen={clientSelectorModalOpen}
+        onClose={() => setClientSelectorModalOpen(false)}
+        template={selectedTemplateForDoc}
+        clients={documentEligibleClients}
+        settings={settings}
+        onConfirmGenerate={handleConfirmGenerateFromClientSelector}
+        onUpdateClientField={handleUpdateClientField}
+      />
+      )}
 
-        {docModalOpen && (
-          <DocumentGeneratorModal
-            isOpen={docModalOpen}
-            onClose={() => {
-              setDocModalOpen(false);
-              setSelectedClientForDoc(null);
-              setDocClientName('');
-              setDocClientCpf('');
-              setPrefilledGeneratedText(null);
-            }}
-            template={selectedTemplateForDoc}
-            clients={documentEligibleClients}
-            initialClientName={docClientName}
-            initialClientCpf={docClientCpf}
-            initialGeneratedText={prefilledGeneratedText || undefined}
-            settings={settings}
-          />
-        )}
+      {variablesGuideModalOpen && (
+      <VariablesGuideModal
+        isOpen={variablesGuideModalOpen}
+        onClose={() => setVariablesGuideModalOpen(false)}
+      />
+      )}
+
+      {docModalOpen && (
+      <DocumentGeneratorModal
+        isOpen={docModalOpen}
+        onClose={() => {
+          setDocModalOpen(false);
+          setSelectedClientForDoc(null);
+          setDocClientName('');
+          setDocClientCpf('');
+          setPrefilledGeneratedText(null);
+        }}
+        template={selectedTemplateForDoc}
+        clients={documentEligibleClients}
+        initialClientName={docClientName}
+        initialClientCpf={docClientCpf}
+        initialGeneratedText={prefilledGeneratedText || undefined}
+        settings={settings}
+      />
+      )}
       </Suspense>
     </div>
   );
