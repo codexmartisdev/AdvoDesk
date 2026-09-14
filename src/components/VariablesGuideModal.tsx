@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CLIENT_VARIABLES } from '../utils/documentReplacer';
 import { BPC_DOCUMENT_VARIABLES } from '../utils/bpcDocumentVariables';
+import { CASE_DOCUMENT_VARIABLES } from '../utils/caseDocumentVariables';
 
 interface VariablesGuideModalProps {
   isOpen: boolean;
@@ -8,7 +9,7 @@ interface VariablesGuideModalProps {
   onSelectVariable?: (variableKey: string) => void;
 }
 
-const ALL_VARIABLES = [...CLIENT_VARIABLES, ...BPC_DOCUMENT_VARIABLES];
+const ALL_VARIABLES = [...CLIENT_VARIABLES, ...CASE_DOCUMENT_VARIABLES, ...BPC_DOCUMENT_VARIABLES];
 
 export const VariablesGuideModal: React.FC<VariablesGuideModalProps> = ({
   isOpen,
@@ -27,6 +28,7 @@ export const VariablesGuideModal: React.FC<VariablesGuideModalProps> = ({
     'Contato & Endereço',
     'Trabalho & Previdência',
     'Família & Outros',
+    'Caso Geral',
     'BPC / Caso',
     'Geral & Advogado',
   ];
@@ -62,7 +64,7 @@ export const VariablesGuideModal: React.FC<VariablesGuideModalProps> = ({
           <div>
             <h2 className="font-title-md text-lg font-black text-slate-900">Variáveis Disponíveis para Minutas e Documentos</h2>
             <p className="text-xs text-slate-500 font-medium">
-              Dados do cliente, caso BPC e escritório podem ser reutilizados automaticamente. Clique para copiar uma variável.
+              Dados do cliente, caso geral, BPC e escritório podem ser reutilizados automaticamente. Clique para copiar uma variável.
             </p>
           </div>
         </div>
@@ -72,7 +74,7 @@ export const VariablesGuideModal: React.FC<VariablesGuideModalProps> = ({
             <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[18px]">search</span>
             <input
               type="text"
-              placeholder="Buscar variável (ex: {CLIENTE_CPF}, {BPC_DER}, OAB, endereço)..."
+              placeholder="Buscar variável (ex: {CLIENTE_CPF}, {CASO_PROCESSO}, {BPC_DER})..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-900/20"
