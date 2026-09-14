@@ -17,6 +17,7 @@ export interface GeneratedDocument {
   title: string;
   content: string;
   status: GeneratedDocumentStatus;
+  statusBeforeArchive?: 'Rascunho' | 'Finalizado' | null;
   source: GeneratedDocumentSource;
 
   templateId: string;
