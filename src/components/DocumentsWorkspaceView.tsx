@@ -10,6 +10,7 @@ import {
   subscribeToSettings,
 } from '../services/firestoreService';
 import { subscribeToGeneratedDocuments } from '../services/generatedDocumentService';
+import { seedAdvodeskDocumentLibrary } from '../services/documentLibrarySeedService';
 import { DocumentTemplatesOperationalView } from './DocumentTemplatesOperationalView';
 import { GeneratedDocumentsLibrary } from './GeneratedDocumentsLibrary';
 import { DocumentGeneratorModal } from './DocumentGeneratorModal';
@@ -95,6 +96,10 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
 
       setFirmId(resolvedFirmId);
 
+      void seedAdvodeskDocumentLibrary(resolvedFirmId).catch((error) => {
+        console.warn('Não foi possível atualizar a biblioteca-base de documentos:', error);
+      });
+
       unsubscribeDocuments = subscribeToGeneratedDocuments(resolvedFirmId, (documents) => {
         if (!active) return;
         setGeneratedDocuments(documents);
@@ -149,6 +154,26 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
     void saveSettingsInFirestore(nextSettings, firmId);
   };
 
+  const saveTemplatePreservingLibraryMetadata = (template: DocumentTemplate) => {
+    const existing = props.templates.find((item) => item.id === template.id);
+    if (existing?.origin === 'advodesk-base') {
+      props.onSaveTemplate({
+        ...template,
+        origin: existing.origin,
+        originLabel: existing.originLabel,
+        libraryKey: existing.libraryKey,
+        libraryVersion: existing.libraryVersion,
+        libraryRegisteredAt: existing.libraryRegisteredAt,
+      });
+      return;
+    }
+
+    props.onSaveTemplate({
+      ...template,
+      origin: template.origin || 'custom',
+    });
+  };
+
   const addCategory = (categoryName: string) => {
     const clean = categoryName.trim();
     if (!clean) return;
@@ -166,7 +191,7 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
     const now = getBrasiliaISO();
     props.templates
       .filter((template) => template.category === oldCategory)
-      .forEach((template) => props.onSaveTemplate({ ...template, category: clean, updatedAt: now } as ManagedTemplate));
+      .forEach((template) => saveTemplatePreservingLibraryMetadata({ ...template, category: clean, updatedAt: now } as ManagedTemplate));
     persistCatalog(documentCategories.map((item) => item === oldCategory ? clean : item), documentFormats);
   };
 
@@ -195,7 +220,7 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
     const now = getBrasiliaISO();
     props.templates
       .filter((template) => template.format === oldFormat)
-      .forEach((template) => props.onSaveTemplate({ ...template, format: clean, updatedAt: now } as ManagedTemplate));
+      .forEach((template) => saveTemplatePreservingLibraryMetadata({ ...template, format: clean, updatedAt: now } as ManagedTemplate));
     persistCatalog(documentCategories, documentFormats.map((item) => item === oldFormat ? clean : item));
   };
 
@@ -211,7 +236,7 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
     if (!window.confirm(`Arquivar o modelo "${template.title}"? Documentos já gerados continuarão preservados.`)) return;
     const current = template as ManagedTemplate;
     const now = getBrasiliaISO();
-    props.onSaveTemplate({
+    saveTemplatePreservingLibraryMetadata({
       ...template,
       status: 'Arquivado',
       archivedAt: now,
@@ -223,7 +248,7 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
   const restoreTemplate = (template: DocumentTemplate) => {
     const current = template as ManagedTemplate;
     const now = getBrasiliaISO();
-    props.onSaveTemplate({
+    saveTemplatePreservingLibraryMetadata({
       ...template,
       status: 'Ativo',
       archivedAt: null,
@@ -233,6 +258,7 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
   };
 
   const activeTemplateCount = props.templates.filter((template) => (template as ManagedTemplate).status !== 'Arquivado').length;
+  const baseTemplateCount = props.templates.filter((template) => template.origin === 'advodesk-base').length;
 
   return (
     <>
@@ -243,6 +269,12 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
             <p className="text-xs md:text-sm text-slate-600 mt-1 max-w-3xl">
               Retome rascunhos, consulte documentos finalizados e use modelos sem redigitar dados já cadastrados no AdvoDesk.
             </p>
+            {baseTemplateCount > 0 && (
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-800">
+                <span className="material-symbols-outlined text-sm">verified</span>
+                Modelo base AdvoDesk: {baseTemplateCount} cadastrado(s)
+              </div>
+            )}
           </div>
 
           <div className="inline-flex p-1 rounded-2xl bg-slate-100 border border-slate-200 self-start lg:self-auto">
@@ -293,7 +325,7 @@ export const DocumentsWorkspaceView: React.FC<DocumentsWorkspaceViewProps> = (pr
           docCategories={documentCategories}
           docFormats={documentFormats}
           onSelectTemplateToGenerate={props.onSelectTemplateToGenerate}
-          onSaveTemplate={props.onSaveTemplate}
+          onSaveTemplate={saveTemplatePreservingLibraryMetadata}
           onArchiveTemplate={archiveTemplate}
           onRestoreTemplate={restoreTemplate}
           onAddCategory={addCategory}
